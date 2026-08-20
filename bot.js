@@ -25,6 +25,7 @@ if (!fs.existsSync(CARPETA_IMAGENES)) {
 
 // Mapas y variables de estado en memoria
 const chatsPausados = new Map();
+const historialesChat = new Map(); // Memoria conversacional por usuario
 const ultimasSolicitudesAdmin = new Map();
 const pendientesRegistro = new Map(); // Para rastrear a quién se le envió el aviso de privacidad
 const idsMensajesEnviadosBot = new Set(); // Para registrar IDs de mensajes del bot
@@ -539,7 +540,8 @@ async function iniciarBot() {
 REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
 
 1. REGLA DE ORO DE INFORMACIÓN MÉDICA Y ORIENTACIÓN PROFESIONAL:
-   - Tienes estrictamente prohibido inventar información médica, dosis o diagnósticos. Utiliza únicamente la información y documentos oficiales cargados.
+   - Tienes estrictamente prohibido inventar información médica de métodos que no tengamos o inventar disponibilidad.
+   - Si te preguntan sobre un tema médico general de salud reproductiva (ej. puerperio, menstruación, anatomía) que no esté en tus documentos, SÍ puedes dar una explicación breve y general basada en tu conocimiento médico, pero aclarando que es solo información educativa y que para un diagnóstico o valoración siempre se requiere acudir presencialmente.
    - Si un usuario pregunta si se puede colocar o usar un método específico, explícale de forma amigable, respetuosa y resumida que para utilizar cualquier método debe recibir primero una adecuada orientación y consejería presencial por un profesional de la salud, con el fin de que el paciente y el personal de salud tomen la mejor decisión de forma conjunta basándose en criterios científicos y en las características propias de cada persona. (No menciones explícitamente las siglas de la OMS al paciente).
 
 2. PROHIBICIÓN ABSOLUTA DE ASEGURAR CITAS O ATENCIONES INMEDIATAS:
@@ -1005,13 +1007,25 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             const modelosPrueba = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"];
             let ultimoError = null;
 
+            // Obtener o crear historial para el usuario
+            if (!historialesChat.has(remitente)) {
+                historialesChat.set(remitente, []);
+            }
+            const historial = historialesChat.get(remitente);
+            
+            // Construir el prompt con contexto
+            let promptConMemoria = msg.body;
+            if (historial.length > 0) {
+                promptConMemoria = `Historial de la conversación reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
+            }
+
             for (const nombreModelo of modelosPrueba) {
                 try {
                     const m = genAI.getGenerativeModel({
                         model: nombreModelo,
                         systemInstruction: systemInstruction
                     });
-                    const res = await m.generateContent(msg.body);
+                    const res = await m.generateContent(promptConMemoria);
                     respuestaIA = res.response.text();
                     if (respuestaIA) break;
                 } catch (e) {
@@ -1020,6 +1034,11 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             }
 
             if (respuestaIA) {
+                // Guardar en la memoria
+                historial.push(`Paciente: ${msg.body}`);
+                historial.push(`Asistente: ${respuestaIA}`);
+                if (historial.length > 10) historial.splice(0, 2); // Mantener solo los últimos 5 pares de mensajes
+
                 let respuestaConSalida = respuestaIA;
                 if (!respuestaIA.toLowerCase().includes('asesor')) {
                     respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
