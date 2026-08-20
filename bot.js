@@ -1002,7 +1002,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         // -------------------------------------------------------------
         try {
             let respuestaIA = null;
-            const modelosPrueba = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+            const modelosPrueba = ["gemini-1.5-flash-latest", "gemini-1.0-pro-latest"];
             let ultimoError = null;
 
             for (const nombreModelo of modelosPrueba) {
@@ -1082,8 +1082,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 }
 
                 // Si fue enviado por el administrador secundario desde un chat admin, no pausar
-                const listaAdmins = obtenerNumerosAdmin();
-                if (listaAdmins.includes(msg.to)) {
+                if (esNumeroAdmin(msg.to)) {
                     return;
                 }
 
