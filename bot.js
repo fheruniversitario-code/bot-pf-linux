@@ -1009,11 +1009,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 try {
                     const m = genAI.getGenerativeModel({
                         model: nombreModelo,
-                        systemInstruction: systemInstruction,
-                        generationConfig: {
-                            temperature: 0.3,
-                            maxOutputTokens: 350
-                        }
+                        systemInstruction: systemInstruction
                     });
                     const res = await m.generateContent(msg.body);
                     respuestaIA = res.response.text();
