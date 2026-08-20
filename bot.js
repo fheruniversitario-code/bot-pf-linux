@@ -214,12 +214,12 @@ async function procesarInfografiasInyectables(client, remitente, textoLower, msg
 async function procesarInfografiasDiu(client, remitente, textoLower, msgRef = null) {
     const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía');
 
-    if (textoLower.includes('cobre')) {
+    if (textoLower.includes('cobre') || textoLower.includes('t de cobre') || textoLower.includes('te de cobre') || textoLower.includes('cruz') || textoLower.includes('aparatito de metal')) {
         await enviarInfografiaSiExiste(client, remitente, 'diu_cobre', 'DIU de Cobre', forzar, msgRef);
         return;
     }
 
-    if (textoLower.includes('medicado') || textoLower.includes('mirena') || textoLower.includes('levonorgestrel')) {
+    if (textoLower.includes('medicado') || textoLower.includes('mirena') || textoLower.includes('levonorgestrel') || textoLower.includes('hormonal') || textoLower.includes('diu de plastico')) {
         await enviarInfografiaSiExiste(client, remitente, 'diu_medicado', 'DIU Medicado (Levonorgestrel)', forzar, msgRef);
         return;
     }
@@ -552,7 +552,8 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
    - Tus respuestas deben ser breves (máximo 2 a 3 frases cortas por mensaje).
    - NUNCA des toda la información de un método o vasectomía de golpe.
    - Cuando un paciente pregunte sobre un método (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducción de 1 o 2 frases y PREGÚNTALE qué detalle específico le gustaría conocer (ej. su duración, cómo se coloca, su efectividad o sus posibles efectos secundarios).
-   - Si un método NO ESTÁ DISPONIBLE en la clínica (ej. parches anticonceptivos), infórmaselo amablemente de inmediato en 1 frase y ofrécele alternativas disponibles (ej. pastillas o implante). No expliques su uso a menos que te lo pidan explícitamente.
+   - Si un método NO ESTÁ DISPONIBLE en la clínica (ej. parches anticonceptivos), infórmaselo amablemente de inmediato en 1 frase y ofrécele alternativas que SÍ estén disponibles y que sean ADECUADAS para el paciente, tomando siempre en cuenta lo que te haya platicado en su historial (por ejemplo, si te dijo que está lactando, ofrécele DIU o Implante, NUNCA pastillas tradicionales). No expliques su uso a menos que te lo pidan explícitamente.
+   - Si el paciente te pide ver una imagen, foto o infografía de algún método, dile amablemente que en un momento el sistema automatizado le hará llegar la ilustración (NUNCA digas que no puedes enviar imágenes).
 
 4. SOLICITUD DE ASESOR Y AVISO DE DEMORA POR CONSULTA O PROCEDIMIENTOS:
    - Cuando el usuario pida hablar con un asesor o personal de salud, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
@@ -887,17 +888,19 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         if (textoLower.includes('metodos') || textoLower.includes('métodos') || textoLower.includes('catalogo') || textoLower.includes('catálogo')) {
             await enviarInfografiaSiExiste(client, remitente, 'metodos', 'Catálogo General de Métodos Anticonceptivos', forzarImagen, msg);
         }
-        if (textoLower.includes('implante') && !pideDisponibilidadGeneral) await enviarInfografiaSiExiste(client, remitente, 'implante', 'Implante Subdérmico', forzarImagen, msg);
+        if ((textoLower.includes('implante') || textoLower.includes('implente') || textoLower.includes('chip') || textoLower.includes('aparatito del brazo')) && !pideDisponibilidadGeneral) {
+            await enviarInfografiaSiExiste(client, remitente, 'implante', 'Implante Subdérmico', forzarImagen, msg);
+        }
         
         // NO enviar parche.png si pregunta disponibilidad o si el método no está disponible
-        if (textoLower.includes('parche') && forzarImagen) {
+        if ((textoLower.includes('parche') || textoLower.includes('parchesito')) && forzarImagen) {
             await enviarInfografiaSiExiste(client, remitente, 'parche', 'Parche Anticonceptivo', true, msg);
         }
 
-        if (textoLower.includes('condon') || textoLower.includes('condón')) await enviarInfografiaSiExiste(client, remitente, 'condon', 'Condón Masculino y Femenino', forzarImagen, msg);
-        if (textoLower.includes('pastilla') || textoLower.includes('pastillas')) await enviarInfografiaSiExiste(client, remitente, 'pastillas', 'Pastillas Anticonceptivas', forzarImagen, msg);
-        if (textoLower.includes('emergencia')) await enviarInfografiaSiExiste(client, remitente, 'emergencia', 'Anticoncepción de Emergencia', forzarImagen, msg);
-        if (textoLower.includes('ubicacion') || textoLower.includes('mapa')) await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'Ubicación CAISES Jaral', forzarImagen, msg);
+        if (textoLower.includes('condon') || textoLower.includes('condón') || textoLower.includes('preservativo')) await enviarInfografiaSiExiste(client, remitente, 'condon', 'Condón Masculino y Femenino', forzarImagen, msg);
+        if (textoLower.includes('pastilla') || textoLower.includes('pastillas') || textoLower.includes('pildora') || textoLower.includes('píldora')) await enviarInfografiaSiExiste(client, remitente, 'pastillas', 'Pastillas Anticonceptivas', forzarImagen, msg);
+        if (textoLower.includes('emergencia') || textoLower.includes('dia despues') || textoLower.includes('día después')) await enviarInfografiaSiExiste(client, remitente, 'emergencia', 'Anticoncepción de Emergencia', forzarImagen, msg);
+        if (textoLower.includes('ubicacion') || textoLower.includes('mapa') || textoLower.includes('donde estan') || textoLower.includes('dónde están')) await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'Ubicación CAISES Jaral', forzarImagen, msg);
 
         // -------------------------------------------------------------
         // E. MENÚ INTERACTIVO DE BIENVENIDA O SELECCIÓN RÁPIDA (LIBRE PARA TODOS)
@@ -1037,7 +1040,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 // Guardar en la memoria
                 historial.push(`Paciente: ${msg.body}`);
                 historial.push(`Asistente: ${respuestaIA}`);
-                if (historial.length > 10) historial.splice(0, 2); // Mantener solo los últimos 5 pares de mensajes
+                if (historial.length > 20) historial.splice(0, 2); // Mantener hasta 10 idas y vueltas (20 mensajes)
 
                 let respuestaConSalida = respuestaIA;
                 if (!respuestaIA.toLowerCase().includes('asesor')) {
