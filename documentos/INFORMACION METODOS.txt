@@ -1,0 +1,230 @@
+- TODOS LOS MÉTODOS ANTICONCEPTIVOS SE PUEDEN UTILIZAR SIEMPRE Y CUANDO EL PACIENTE RECIBA UNA ADECUADA ORIENTACIÓN Y CONSEJERÍA POR UN PROFESIONAL DE LA SALUD, CON EL FIN DE QUE EL PACIENTE Y EL PROFESIONAL TOMEN LA MEJOR DECISIÓN DE MANERA CONJUNTA BASÁNDOSE EN CRITERIOS CIENTÍFICOS Y EN LAS NECESIDADES, ANTECEDENTES Y CARACTERÍSTICAS PROPIAS DE CADA PACIENTE. EN FORMA AMABLE, AMIGABLE Y RESUMIDA EXPLICA ESTO EN CASO DE QUE ALGUIEN PREGUNTE SI SE PUEDE COLOCAR O USAR UN MÉTODOS ESPECÍFICO (SIN MENCIONAR EXPLÍCITAMENTE LAS SIGLAS DE LA OMS AL PACIENTE).
+- CUANDO EL USUARIO PIDA HABLAR CON UN ASESOR EL BOT DEBE COMENTAR QUE ES POSIBLE QUE DEMORE UN POCO YA QUE ES POSIBLE QUE NOS ENCONTREMOS EN CONSULTA O UN PROCEDIMIENTO.
+- NO SE DEBE ASEGURAR NINGUN SERVICIO U ATENCION , RETIRO, COLOCACION O CUALQUIER COSA QUE SOLICITE EL USUARIO, SIEMPRE DE FORMA CORDIAL SE DEBE ACLARAR QUE LAS ATENCIONES QUEDAN SUJETAS A DISPONIBILIDAD DE HORARIO Y FECHAS, SIEMPRE CON PREVIA ASESORIA CON UN ASESOR, EL BOT NO DEBE ASEGURAR NADA RESPECTO A LAS ATENCIONES SOLO DAR INFORMACION.
+
+🛡️ MÉTODOS DE BARRERA
+1. Condón Masculino (o Externo)
+¿Qué es y cómo funciona?: Es una funda de látex delgada y elástica que se coloca sobre el pene erecto antes de iniciar la relación sexual
+. Su función es retener los espermatozoides para evitar que entren a la vagina
+. Además, es el único método que te protege de Infecciones de Transmisión Sexual (ITS) y VIH
+.
+Efectividad: Es muy alta si se usa bien. Su efectividad es del 98% con el uso perfecto (en cada relación sexual de principio a fin), y baja a un 87% en el uso común
+.
+Duración: Se debe usar un condón nuevo en cada relación sexual
+.
+Efectos secundarios: En raras ocasiones puede causar una leve irritación o alergia al látex (comezón o enrojecimiento)
+.
+¿Para quién es ideal?: Para cualquier persona sexualmente activa
+. Es ideal para usarlo junto con otro método (no doble condon) para evitar tanto embarazos como infecciones
+.
+💰 Costo: ¡Totalmente gratuito! Puedes pedirlos libremente en tu clínica de salud
+.
+2. Condón Femenino (o Interno)
+¿Qué es y cómo funciona?: Es una funda delgada y transparente de plástico suave con dos anillos flexibles en los extremos
+. Se coloca dentro de la vagina antes de la relación sexual
+. Protege el cuello del útero, la vagina y los genitales externos del contacto directo con el pene y el semen
+. Al igual que el masculino, te protege doble: evita embarazos y previene infecciones como el VIH
+.
+Efectividad: Tiene un 95% de efectividad con el uso perfecto y baja a un 79% con el uso común
+.
+Duración: Se utiliza uno nuevo en cada relación sexual
+. No debe usarse al mismo tiempo que un condón masculino
+.
+Efectos secundarios: Puede provocar una leve irritación por el roce
+. Se puede solucionar agregando más lubricante a base de agua
+.
+¿Para quién es ideal?: Para mujeres que desean tener el control directo de su protección contra embarazos e Infecciones de Transmisión sexual.
+.
+💰 Costo: ¡Totalmente gratuito! Disponible sin costo en los servicios de salud
+.
+💊 MÉTODOS HORMONALES TEMPORALES
+3. Pastillas Anticonceptivas Combinadas
+¿Qué es y cómo funciona?: Son tabletas diarias que contienen dos hormonas similares a las que produce el cuerpo de la mujer
+. Funcionan impidiendo que los ovarios liberen óvulos y haciendo que el moco del útero sea más espeso para que los espermatozoides no puedan pasar
+.
+Uso adecuado: Se debe tomar UNA pastilla todos los días a la misma hora sin interrupciones
+. Vienen en paquetes de 21 o 28 pastillas
+.
+Efectividad: Es del 99.7% si se toman correctamente todos los días, pero baja al 93% si hay olvidos o retrasos en la toma
+.
+Efectos secundarios: En los primeros meses es normal tener leves dolores de cabeza, náuseas, sensibilidad en los pechos, ligeros cambios de peso o pequeños manchados de sangre fuera de la regla
+. Estos síntomas son inofensivos y suelen desaparecer pronto
+.
+¿Para quién es ideal?: Para mujeres sanas en edad fértil que sean muy organizadas con sus tomas diarias
+. No se recomiendan durante la lactancia, ni en mujeres mayores de 35 años que fuman
+.
+💰 Costo: ¡Totalmente gratuito! Se te entregan los paquetes necesarios sin costo en tu clínica de salud
+.
+4. Pastillas de Progestágeno Solo (Minipíldora) *DE MOMENTO NO DISPONIBLE*
+¿Qué es y cómo funciona?: Son pastillas diarias que contienen una sola hormona (sin estrógenos)
+. Su función principal es espesar el moco del cuello de la matriz para bloquear el paso de los espermatozoides
+.
+Uso adecuado: Se toma una pastilla diaria exactamente a la misma hora
+. El retraso de más de 3 horas en su toma puede disminuir su efectividad
+.
+Efectividad: Tiene un 99.7% de efectividad con el uso perfecto y baja al 93% con el uso típico
+.
+Efectos secundarios: Puede provocar cambios en el sangrado (reglas irregulares, manchados o ausencia de la regla)
+.
+¿Para quién es ideal?: Es el método hormonal oral ideal para mujeres que están amamantando, ya que no afecta la cantidad ni la calidad de la leche, y para quienes no pueden usar estrógenos
+.
+💰 Costo: ¡Totalmente gratuito! Insumo gratuito en el sector de salud pública
+.
+5. Parche Anticonceptivo *DE MOMENTO NO DISPONIBLE*
+¿Qué es y cómo funciona?: Es un pequeño cuadrado de plástico flexible que se pega en la piel (en brazos, abdomen, glúteos o espalda)
+. Libera hormonas de forma constante a través de la piel hacia la sangre, impidiendo que ocurra la ovulación
+.
+Uso adecuado: Te colocas un parche nuevo cada semana por 3 semanas consecutivas
+. La cuarta semana no te pones parche y es cuando se presenta tu menstruación
+.
+Efectividad: Es del 99.7% con el uso correcto, disminuyendo al 93% si se despega o se olvida cambiar a tiempo
+. Su efectividad puede bajar en mujeres que pesan más de 90 kg
+.
+Efectos secundarios: Puede causar enrojecimiento o comezón donde se pega el parche, dolor en los pechos, náuseas o dolor de cabeza leve
+.
+¿Para quién es ideal?: Para mujeres que buscan un método cómodo que no requiera una toma diaria
+. No se debe usar durante la lactancia materna
+.
+💰 Costo: ¡Totalmente gratuito! Recibe tus cajas de parches gratis en tu centro de salud
+.
+6. Inyección Anticonceptiva Mensual
+¿Qué es y cómo funciona?: Es una inyección de aplicación mensual que combina dos hormonas
+. Evita el embarazo impidiendo la ovulación y haciendo espeso el moco del útero
+.
+Uso adecuado: Se aplica una inyección cada 30 días (con un margen de hasta 7 días de anticipación o retraso) de forma intramuscular en el glúteo o muslo
+. No se debe dar masaje en la zona después de aplicarla
+.
+Efectividad: Sumamente alta, de un 99.95% si se aplica a tiempo, y de un 97% en el uso común
+.
+Efectos secundarios: Cambios en la menstruación (manchados, sangrados fuera de tiempo o retraso de la regla), dolor de cabeza leve o náuseas
+.
+¿Para quién es ideal?: Para mujeres que prefieren un método de aplicación mensual muy discreto y efectivo
+.
+. No se recomiendan durante la lactancia
+💰 Costo: ¡Totalmente gratuito! Las consultas de aplicación y las ampolletas son gratis
+.
+7. Inyecciones Bimestrales y Trimestrales (De Progestágeno Solo)
+¿Qué es y cómo funciona?: Son inyecciones que contienen una sola hormona (progestina) y brindan protección de mediano plazo
+. Impiden la ovulación y espesan el moco del útero
+.
+Uso adecuado: La inyección bimestral se aplica cada 2 meses (60 días)
+. La trimestral se aplica cada 3 meses (90 días)
+. Esta última tiene presentación intramuscular o subcutánea (un dispositivo listo para aplicarse debajo de la piel en abdomen o muslo)
+.
+Efectividad: Altísima, del 99.8% con uso correcto y 96% con uso típico
+.
+Efectos secundarios: Cambios frecuentes en el patrón de sangrado, como reglas irregulares o la desaparición temporal de la menstruación (lo cual es seguro e inofensivo para el cuerpo)
+.
+¿Para quién es ideal?: Mujeres que amamantan (seguro de usar a partir de las 6 semanas después del parto) y quienes desean protección prolongada sin preocuparse por recordar tomas diarias o semanales
+.
+💰 Costo: ¡Totalmente gratuito! Disponibles sin costo en el sistema de salud
+.
+⏱️ MÉTODOS DE LARGA DURACIÓN REVERSIBLES
+8. Implante Subdérmico (de 1 y 2 varillas)
+¿Qué es y cómo funciona?: Son una o dos varitas de plástico muy suaves y delgadas (del tamaño de un cerillo) que un médico coloca debajo de la piel en la parte interna del brazo con anestesia local
+. Liberan hormonas de forma lenta para espesar el moco del útero y evitar que los espermatozoides fecunden
+.
+Duración y Diferencias:
+El de 1 varilla: Brinda protección hasta por 3 años
+. En usuarias con un peso de 80 kg o más, su efectividad óptima puede reducirse a 2 años
+El de 2 varillas: Protege hasta por 5 años
+. En usuarias con un peso de 80 kg o más, su efectividad óptima puede reducirse a 4 años
+.
+Efectividad: Es uno de los métodos más seguros del mundo con un 99.9% de efectividad
+.
+Efectos secundarios: Al principio puede provocar dolor de cabeza, náuseas, dolor en senos y cambios en la menstruación, incluyendo manchados constantes o la ausencia de la regla por varios meses
+. Esto es normal y no afecta tu salud
+.
+¿Para quién es ideal?: Mujeres de cualquier edad (incluidas adolescentes) que deseen olvidarse de la anticoncepción por años
+. Es completamente seguro durante la lactancia
+.
+💰 Costo: ¡Totalmente gratuito! Tanto la colocación como el retiro por médicos capacitados no tienen ningún costo
+.
+9. Dispositivo Intrauterino de Cobre (DIU No Hormonal)
+¿Qué es y cómo funciona?: Es un pequeño aparato de plástico en forma de "T" rodeado de hilos de cobre
+. Un profesional de la salud lo coloca dentro de tu matriz en una consulta rápida siempre y cuando se encuentre en su periodo menstrual, tanto para colocarlo como para retirarlo.
+. El cobre actúa desactivando los espermatozoides para evitar que se unan al óvulo
+. No contiene hormonas
+.
+Efectividad y Duración: Su efectividad es del 99.4%
+. Te protege de manera continua hasta por 10 años (según el modelo)
+.
+Efectos secundarios: En los primeros meses es normal que tus reglas sean un poco más abundantes, duren más días o se acompañen de cólicos
+. Esto suele disminuir con el tiempo
+.
+Situaciones especiales: Se puede colocar inmediatamente después de un parto, cesárea o aborto
+. Es compatible con la lactancia.
+💰 Costo: ¡Totalmente gratuito! Su colocación, revisiones anuales y retiro son gratis
+.
+10. Dispositivo Intrauterino Medicado (DIU Hormonal o Medicado)
+¿Qué es y cómo funciona?: Es un dispositivo en forma de "T" que se coloca dentro de la matriz y libera de forma local una dosis muy baja de una hormona llamada levonorgestrel
+. Un profesional de la salud lo coloca dentro de tu matriz en una consulta rápida siempre y cuando se encuentre en su periodo menstrual, tanto para colocarlo como para retirarlo.
+. Espesa el moco del cuello del útero impidiendo que pasen los espermatozoides
+.
+Efectividad y Duración: Su efectividad es del 99.5%
+. Te protege de 3 a 5 años (según el modelo)
+.
+Efectos secundarios: Puede haber manchados irregulares en los primeros meses
+. Con el paso del tiempo, tus periodos menstruales se volverán muy escasos o desaparecerán temporalmente
+.
+¿Para quién es ideal?: Es excelente para mujeres que sufren de reglas muy abundantes o cólicos menstruales severos, ya que reduce significativamente el dolor y la cantidad de sangrado
+. Es compatible con la lactancia
+.
+💰 Costo: ¡Totalmente gratuito! Dispositivo y colocación gratuita en tu clínica
+.
+🚨 ANTICONCEPCIÓN DE EMERGENCIA
+11. Pastilla del Día Siguiente (Anticoncepción de Emergencia)
+¿Qué es y cómo funciona?: Son pastillas hormonales que se toman de forma excepcional para retrasar la ovulación y evitar un embarazo después de una relación sexual sin protección, en caso de agresión sexual o si falló tu método anticonceptivo (por ejemplo, si se rompió el condón)
+. No son abortivas (si ya estás embarazada, no le harán daño al bebé ni interrumpirán el embarazo)
+.
+Uso adecuado: Deben tomarse lo más pronto posible (dentro de las primeras 72 horas idealmente para mayor efectividad, aunque pueden funcionar hasta 120 horas/5 días después)
+.
+Efectividad: Disminuye conforme pasa el tiempo desde la relación sexual
+. También puede reducirse en mujeres que pesan más de 80 kg.
+Efectos secundarios: Son pasajeros y desaparecen en menos de 24 horas: náuseas, dolor de cabeza, dolor abdominal o sensibilidad en los senos
+. Tu siguiente regla podría adelantarse o retrasarse unos días
+.
+Nota: No se debe usar de forma regular (mas de una vez cada 3 meses) porque es menos efectiva que un método de uso diario o de larga duración y puede tener efectos secundarios severos.
+.
+💰 Costo: ¡Totalmente gratuito! Se te entregan sin costo en tu centro de salud y no necesitas receta médica para solicitarlas
+.
+12. Ligadura de Trompas CON CORTE (OTB o Salpingoclasia)
+¿Qué es y cómo funciona?: Es una cirugía sencilla y definitiva para mujeres que ya no desean tener más hijos o que tienen su maternidad satisfecha
+. Consiste en realizar una pequeña incisión en el abdomen para cortar las trompas de Falopio
+. Esto evita que el óvulo y el espermatozoide se unan, impidiendo la fertilización
+.
+Efectividad: Mayor al 99.5% desde el momento de la cirugía
+.
+Efectos secundarios: Ninguno a largo plazo
+. No afecta tu deseo sexual, no altera tu peso, ni modifica tu menstruación (seguirás reglando de forma completamente normal)
+.
+¿Para quién es ideal?: Para mujeres que están completamente seguras de haber concluido su vida reproductiva, ya que es irreversible
+.
+💰 Costo: si no tienes ninguna derechohabiencia (IMSS , ISSSTE, SEDENA, ETC) es ¡Totalmente gratuito! La valoración, la cirugía ambulatoria, los medicamentos y las citas de revisión no tienen ningún costo en las instituciones de salud públicas, sin embargo SI TIENE ALGUNA DERECHOHABIENCIA, podria ser necesario enviarla a su institución.
+.
+13. Vasectomía sin Bisturí (Para Hombres)
+La Vasectomía sin Bisturí es un método definitivo y sumamente seguro para hombres que han decidido no tener hijos o que ya tienen su paternidad satisfecha
+. Es un procedimiento moderno que destaca por ser sencillo, rápido y sin dolor
+.
+El procedimiento en simples pasos para el usuario:
+Anestesia local sin dolor: Te recuestas cómodamente en el consultorio
+. El médico aplica una dosis pequeña de anestesia local con una aguja ultra delgada directamente en la piel de tu escroto, por lo que no sentirás ninguna molestia durante el proceso
+.
+Sin cortes de bisturí (Punción): En lugar de realizar cortes con un bisturí tradicional, el especialista utiliza una pinza de diseño exclusivo con una punta muy afilada para realizar una diminuta punción (un pequeño orificio de apenas 5 milímetros) en la piel del escroto
+.
+Bloqueo de los conductos: A través de esa pequeña abertura, el médico localiza los conductos deferentes (los tubitos que transportan los espermatozoides), extrae una sección muy pequeña, los corta y los liga (los amarra)
+.
+Sin puntadas de sutura: Como el orificio de la punción es extremadamente pequeño, no se necesita dar puntadas ni suturar la piel
+. La piel cicatriza de forma natural por sí sola en muy poco tiempo
+.
+Recuperación rápida en casa: El procedimiento toma entre 15 y 20 minutos
+. Sales de la clínica caminando por tu propio pie directo a tu casa con indicaciones sencillas de reposo y hielo local
+.
+Efectividad: Es del 99.9%
+.
+Dato muy importante de seguimiento: Después de la vasectomía, aún quedan espermatozoides alojados en los conductos superiores
+. Por ello, debes esperar 3 meses o realizar 25 eyaculaciones (usando condón como respaldo) antes de tener relaciones sin protección
+. A los 3 meses se realiza un sencillo estudio de laboratorio llamado espermatoconteo para confirmar que tu semen ya no tiene espermatozoides y otorgarte tu alta definitiva
+.
+💰 Costo: PARA PACIENTES CON O SIN DERECHOHABIENCIA ES ¡Totalmente gratuito! La valoración, la cirugía, los medicamentos QUE TENGAMOS DISPONIBLE y las revisiones.
+.

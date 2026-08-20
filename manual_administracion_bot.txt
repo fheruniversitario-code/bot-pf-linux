@@ -1,0 +1,58 @@
+====================================================================
+  🏥 MANUAL RÁPIDO DE ADMINISTRACIÓN: BOT PLANIFICACIÓN FAMILIAR 🏥
+                        CAISES JARAL DEL PROGRESO
+====================================================================
+
+🤖 1. ¿CÓMO FUNCIONA EL ASISTENTE DE IA?
+--------------------------------------------------------------------
+• Atención Automática 24/7: Responde dudas sobre métodos anticonceptivos,
+  requisitos, horarios y ubicación.
+• Distintivo Visual (🤖): Todos los mensajes enviados por el bot inician
+  con el emojicito 🤖 en el texto y en la vista previa del chat.
+• Tono Profesional y Breve: Información clara en 2 o 3 oraciones.
+• Sin Promesas Intempestivas: El bot NUNCA asegura atenciones o citas
+  inmediatas; siempre aclara que todo servicio está sujeto a disponibilidad
+  de agenda y previa orientación sobre criterios de elegibilidad de la OMS.
+
+
+⏸️ 2. REGLAS DE PAUSA AUTOMÁTICA E INTERVENCIÓN HUMANA
+--------------------------------------------------------------------
+• El usuario solicita Asesor: El bot les avisa que el personal puede
+  demorar por estar en consulta/procedimientos, Y EL BOT SE MANTIENE
+  ACTIVO respondiendo más dudas que el usuario pueda tener.
+• Respuesta Manual del Personal: Al contestar manualmente desde tu celular
+  o WhatsApp Web a un paciente, EL BOT SE PAUSA AUTOMÁTICAMENTE SOLO
+  PARA ESA PERSONA durante 30 minutos.
+• Atención Paralela: Los chats de todos los demás usuarios siguen
+  siendo atendidos por el bot normalmente sin interrupción.
+
+
+📢 3. ALERTAS SILENCIOSAS DE ATENCIÓN PRIORITARIA (VASECTOMÍA)
+--------------------------------------------------------------------
+• Cuando un usuario pregunta sobre Vasectomía Sin Bisturí, el bot
+  responde sus dudas y al mismo tiempo les envía una NOTIFICACIÓN
+  SILENCIOSA a sus celulares administradores con el nombre, teléfono
+  y duda exacta del paciente para agendar su cita personal.
+
+
+📱 4. COMANDOS RÁPIDOS POR WHATSAPP (CONTROL MÓVIL)
+--------------------------------------------------------------------
+Puedes enviar estos comandos directamente a cualquier chat desde tu celular:
+
+1. !reactivar -> COMANDO MAESTRO: Cancela vacaciones, cursos o pausas
+   y reactiva la atención al 100% de inmediato.
+2. !pendientes -> Genera el reporte de pacientes atendidos por el bot
+   en tu ausencia.
+3. !vacaciones [días] -> Activa aviso de vacaciones (ejemplo: !vacaciones 3).
+4. !curso [días] -> Activa aviso de capacitación/curso (ejemplo: !curso 1).
+5. !pausa -> Detiene el bot de forma global e indefinida.
+6. !registrar [teléfono] [nombre] -> Registra a un nuevo paciente en el
+   sistema (ejemplo: !registrar 4111234567 María Pérez).
+
+
+📸 5. ENVÍO INTELIGENTE DE INFOGRAFÍAS OFICIALES
+--------------------------------------------------------------------
+• Disponibilidad: Si un paciente pregunta disponibilidad, responde en texto.
+• Solicitud: Si pide detalles o escribe "ver infografía" / "ver imagen",
+  el bot adjunta la infografía oficial correspondiente.
+====================================================================
