@@ -1002,7 +1002,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         // -------------------------------------------------------------
         try {
             let respuestaIA = null;
-            const modelosPrueba = ["gemini-1.5-flash-latest", "gemini-1.0-pro-latest"];
+            const modelosPrueba = ["gemini-1.5-flash", "gemini-1.5-pro"];
             let ultimoError = null;
 
             for (const nombreModelo of modelosPrueba) {
