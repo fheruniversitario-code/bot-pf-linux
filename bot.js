@@ -623,7 +623,15 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         const texto = msg.body.trim();
         const textoLower = texto.toLowerCase();
 
-        console.log(`💬 [MENSAJE RECIBIDO] De: ${remitente} | Texto: "${texto}"`);
+        console.log(`💬 [MENSAJE RECIBIDO] De: ${remitente} | Tipo: ${msg.type} | Texto: "${texto}"`);
+
+        // -------------------------------------------------------------
+        // FILTRO DE AUDIOS (NO PERMITIDOS)
+        // -------------------------------------------------------------
+        if (msg.type === 'ptt' || msg.type === 'audio') {
+            await responderMensajeSeguro(client, msg, "🎙️ *Hola. Por el momento mi sistema de Inteligencia Artificial solo puede leer mensajes de texto.*\n\nPor favor, escríbeme tu duda o consulta por escrito para poder ayudarte.");
+            return;
+        }
 
         // -------------------------------------------------------------
         // EXCEPCIÓN PARA TELÉFONOS ADMINISTRADORES SECUNDARIOS Y COMANDOS (!)
@@ -1086,12 +1094,23 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         await encolarMensaje(msg);
     });
 
+    // Escuchar y rechazar llamadas entrantes (voz/video)
+    client.on('call', async (call) => {
+        try {
+            console.log(`📞 Llamada entrante rechazada de: ${call.from}`);
+            await call.reject();
+            await client.sendMessage(call.from, "📞 *Hola. Este número es administrado por un asistente virtual y no puede recibir llamadas de voz ni de video.*\n\nPor favor, escríbeme tu duda por mensaje de texto para poder ayudarte.");
+        } catch (err) {
+            console.error("Error al rechazar llamada:", err.message);
+        }
+    });
+
     // Escuchar mensajes salientes manuales del teléfono principal para pausar automáticamente
     client.on('message_create', async (msg) => {
         try {
             if (msg.fromMe && msg.to && msg.to !== 'status@broadcast') {
-                // Ignorar mensajes salientes automáticos del bot
-                if (Date.now() - ultimoEnvioBotTimestamp < 3500) {
+                // Ignorar mensajes salientes automáticos del bot (aumentado a 15 segundos por si tardan en subir las fotos)
+                if (Date.now() - ultimoEnvioBotTimestamp < 15000) {
                     return;
                 }
 
