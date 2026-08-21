@@ -638,7 +638,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         // -------------------------------------------------------------
         const esAdminSecundario = esNumeroAdmin(remitente);
 
-        if (esAdminSecundario || msg.fromMe || texto.startsWith('!')) {
+        if (esAdminSecundario || msg.fromMe) {
             if (texto.startsWith('!')) {
                 console.log(`👑 Ejecutando Comando de Administrador desde ${remitente}: ${texto}`);
 
