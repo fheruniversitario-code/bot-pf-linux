@@ -1,11 +1,11 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Polyfill para Linux sin entorno gráfico (evita error "DOMMatrix is not defined" de pdf-parse)
+// Polyfill para Linux sin entorno grÃ¡fico (evita error "DOMMatrix is not defined" de pdf-parse)
 if (typeof globalThis.DOMMatrix === 'undefined') {
     globalThis.DOMMatrix = class DOMMatrix {
         constructor() { this.m = Array(16).fill(0); this.m[0]=1; this.m[5]=1; this.m[10]=1; this.m[15]=1; }
@@ -27,19 +27,19 @@ if (!fs.existsSync(CARPETA_IMAGENES)) {
 const chatsPausados = new Map();
 const historialesChat = new Map(); // Memoria conversacional por usuario
 const ultimasSolicitudesAdmin = new Map();
-const pendientesRegistro = new Map(); // Para rastrear a quién se le envió el aviso de privacidad
+const pendientesRegistro = new Map(); // Para rastrear a quiÃ©n se le enviÃ³ el aviso de privacidad
 const idsMensajesEnviadosBot = new Set(); // Para registrar IDs de mensajes del bot
 const chatsAtendidosBot = new Map(); // Rastrear pacientes atendidos por el bot para el resumen !pendientes
-const cacheNumerosTelefono = new Map(); // Caché en memoria para evitar evaluar DOM repetidamente en @lid
+const cacheNumerosTelefono = new Map(); // CachÃ© en memoria para evitar evaluar DOM repetidamente en @lid
 
-// Cola de mensajes asíncrona para evitar congelamientos en CPUs de 4GB RAM
+// Cola de mensajes asÃ­ncrona para evitar congelamientos en CPUs de 4GB RAM
 const colaMensajes = [];
 let procesandoCola = false;
 
 let botPausadoGlobal = false; // Pausa global indefinida (!pausa / !reactivar)
 let ultimoEnvioBotTimestamp = 0; // Timestamp para evitar carreras en el evento message_create
 
-// Helper para formatear números de WhatsApp (@c.us)
+// Helper para formatear nÃºmeros de WhatsApp (@c.us)
 function formatearNumeroWhatsApp(numeroRaw) {
     let num = numeroRaw.toString().trim().replace(/[^0-9]/g, '');
     if (!num) return null;
@@ -76,13 +76,13 @@ function guardarPaciente(remitente, nombre) {
     };
     try {
         fs.writeFileSync(ARCHIVO_PACIENTES, JSON.stringify(pacientes, null, 2), 'utf-8');
-        console.log(`✅ Paciente registrado en pacientes.json: ${nombre} (${remitente})`);
+        console.log(`âœ… Paciente registrado en pacientes.json: ${nombre} (${remitente})`);
     } catch (err) {
         console.error('Error al guardar en pacientes.json:', err.message);
     }
 }
 
-// Cargar y guardar infografías enviadas (persistente en JSON)
+// Cargar y guardar infografÃ­as enviadas (persistente en JSON)
 function cargarInfografiasEnviadas() {
     try {
         if (fs.existsSync(ARCHIVO_INFOGRAFIAS)) {
@@ -112,7 +112,7 @@ function cargarEstadoVacaciones() {
                     estado.activo = false;
                     estado.fechaFin = null;
                     guardarEstadoVacaciones(estado);
-                    console.log('⏰ El periodo de vacaciones/curso expiró automáticamente.');
+                    console.log('â° El periodo de vacaciones/curso expirÃ³ automÃ¡ticamente.');
                 }
             }
             return estado;
@@ -126,7 +126,7 @@ function cargarEstadoVacaciones() {
 function guardarEstadoVacaciones(estado) {
     try {
         fs.writeFileSync(ARCHIVO_VACACIONES, JSON.stringify(estado, null, 2), 'utf-8');
-        console.log(`🌴 Estado de receso (vacaciones/curso) actualizado: ${estado.activo ? 'ACTIVADO' : 'DESACTIVADO'}`);
+        console.log(`ðŸŒ´ Estado de receso (vacaciones/curso) actualizado: ${estado.activo ? 'ACTIVADO' : 'DESACTIVADO'}`);
     } catch (err) {
         console.error('Error al guardar vacaciones.json:', err.message);
     }
@@ -135,36 +135,36 @@ function guardarEstadoVacaciones(estado) {
 function obtenerMensajeReceso(estadoVacaciones) {
     const esCurso = estadoVacaciones && estadoVacaciones.tipo === 'curso';
     const titulo = esCurso ?
-        '🎓 *AVISO DE CURSO DE ACTUALIZACIÓN Y CAPACITACIÓN (CAISES JARAL)* 📚' :
-        '🌴 *AVISO DE PERIODO VACACIONAL (CAISES JARAL)* 🏖️';
+        'ðŸŽ“ *AVISO DE CURSO DE ACTUALIZACIÃ“N Y CAPACITACIÃ“N (CAISES JARAL)* ðŸ“š' :
+        'ðŸŒ´ *AVISO DE PERIODO VACACIONAL (CAISES JARAL)* ðŸ–ï¸';
 
     const razon = esCurso ?
-        'Por el momento, nuestro personal de consejería presencial y agendamiento directo se encuentra en *curso de actualización y capacitación profesional* para brindarte una atención de la mejor calidad.' :
-        'Por el momento, nuestro personal de consejería presencial y agendamiento directo se encuentra en periodo de receso vacacional.';
+        'Por el momento, nuestro personal de consejerÃ­a presencial y agendamiento directo se encuentra en *curso de actualizaciÃ³n y capacitaciÃ³n profesional* para brindarte una atenciÃ³n de la mejor calidad.' :
+        'Por el momento, nuestro personal de consejerÃ­a presencial y agendamiento directo se encuentra en periodo de receso vacacional.';
 
-    const detallePeriodo = estadoVacaciones && estadoVacaciones.mensaje ? `\n📌 *Nota del personal:* ${estadoVacaciones.mensaje}` : '';
-    const detalleFecha = estadoVacaciones && estadoVacaciones.fechaFin ? `\n🗓️ *Fecha estimada de reanudación:* ${new Date(estadoVacaciones.fechaFin).toLocaleDateString('es-MX')}` : '';
+    const detallePeriodo = estadoVacaciones && estadoVacaciones.mensaje ? `\nðŸ“Œ *Nota del personal:* ${estadoVacaciones.mensaje}` : '';
+    const detalleFecha = estadoVacaciones && estadoVacaciones.fechaFin ? `\nðŸ—“ï¸ *Fecha estimada de reanudaciÃ³n:* ${new Date(estadoVacaciones.fechaFin).toLocaleDateString('es-MX')}` : '';
 
-    return `🤖 ${titulo}
+    return `ðŸ¤– ${titulo}
 
 ${razon} ${detallePeriodo}${detalleFecha}
 
-*¡Sin embargo, tu atención médica y entrega de métodos no se detiene!* Te ofrecemos las siguientes alternativas presenciales:
+*Â¡Sin embargo, tu atenciÃ³n mÃ©dica y entrega de mÃ©todos no se detiene!* Te ofrecemos las siguientes alternativas presenciales:
 
-🏥 *CITAS DEL DÍA (CONSULTA GENERAL EN VENTANILLA):*
-Puedes acudir directamente a la *Ventanilla de Archivo Clínico* del CAISES Jaral a solicitar una "Cita del Día". En tu módulo asignado se te brindará la consulta y la entrega de tus métodos anticonceptivos.
+ðŸ¥ *CITAS DEL DÃA (CONSULTA GENERAL EN VENTANILLA):*
+Puedes acudir directamente a la *Ventanilla de Archivo ClÃ­nico* del CAISES Jaral a solicitar una "Cita del DÃ­a". En tu mÃ³dulo asignado se te brindarÃ¡ la consulta y la entrega de tus mÃ©todos anticonceptivos.
 
-_Mientras tanto, yo como asistente virtual sigo disponible 24/7 para responder todas tus preguntas informativas sobre métodos, horarios y requisitos._`;
+_Mientras tanto, yo como asistente virtual sigo disponible 24/7 para responder todas tus preguntas informativas sobre mÃ©todos, horarios y requisitos._`;
 }
 
-// Helper para buscar y enviar una infografía si existe en la carpeta 'imagenes'
-// No repite la misma infografía para el mismo chat a menos que la pida explícitamente ("ver", "imagen", "infografía")
+// Helper para buscar y enviar una infografÃ­a si existe en la carpeta 'imagenes'
+// No repite la misma infografÃ­a para el mismo chat a menos que la pida explÃ­citamente ("ver", "imagen", "infografÃ­a")
 async function enviarInfografiaSiExiste(client, remitente, palabraClave, tituloPersonalizado = null, forzarEnvio = false, msgRef = null) {
     const claveTracking = `${remitente}_${palabraClave}`;
     const infografiasEnviadas = cargarInfografiasEnviadas();
 
     if (infografiasEnviadas.has(claveTracking) && !forzarEnvio) {
-        console.log(`ℹ️ Infografía ${palabraClave} ya fue enviada previamente a ${remitente}. Omitiendo envío repetido.`);
+        console.log(`â„¹ï¸ InfografÃ­a ${palabraClave} ya fue enviada previamente a ${remitente}. Omitiendo envÃ­o repetido.`);
         return false;
     }
 
@@ -177,10 +177,10 @@ async function enviarInfografiaSiExiste(client, remitente, palabraClave, tituloP
             try {
                 ultimoEnvioBotTimestamp = Date.now();
                 const media = MessageMedia.fromFilePath(rutaImagen);
-                const sentMsg = await client.sendMessage(remitente, media, { caption: `🤖 🖼️ *Infografía: ${titulo}*` });
+                const sentMsg = await client.sendMessage(remitente, media, { caption: `ðŸ¤– ðŸ–¼ï¸ *InfografÃ­a: ${titulo}*` });
                 if (sentMsg && sentMsg.id) idsMensajesEnviadosBot.add(sentMsg.id._serialized);
                 guardarInfografiaEnviada(claveTracking);
-                console.log(`🖼️ Infografía enviada a ${remitente}: ${palabraClave}${ext}`);
+                console.log(`ðŸ–¼ï¸ InfografÃ­a enviada a ${remitente}: ${palabraClave}${ext}`);
                 return true;
             } catch (errImg) {
                 console.error(`Error al enviar imagen ${palabraClave}${ext}:`, errImg.message);
@@ -190,29 +190,29 @@ async function enviarInfografiaSiExiste(client, remitente, palabraClave, tituloP
     return false;
 }
 
-// Helper para el envío inteligente y fraccionado de infografías de inyectables
+// Helper para el envÃ­o inteligente y fraccionado de infografÃ­as de inyectables
 async function procesarInfografiasInyectables(client, remitente, textoLower, msgRef = null) {
-    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía');
+    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografÃ­a');
 
     if (textoLower.includes('mensual') || textoLower.includes('mes')) {
-        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_mensual', 'Inyección Anticonceptiva Mensual', forzar, msgRef);
+        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_mensual', 'InyecciÃ³n Anticonceptiva Mensual', forzar, msgRef);
         return;
     }
 
     if (textoLower.includes('bimensual') || textoLower.includes('dos meses') || textoLower.includes('2 meses')) {
-        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_bimensual', 'Inyección Anticonceptiva Bimensual', forzar, msgRef);
+        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_bimensual', 'InyecciÃ³n Anticonceptiva Bimensual', forzar, msgRef);
         return;
     }
 
     if (textoLower.includes('trimestral') || textoLower.includes('tres meses') || textoLower.includes('3 meses')) {
-        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_trimestral', 'Inyección Anticonceptiva Trimestral', forzar, msgRef);
+        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_trimestral', 'InyecciÃ³n Anticonceptiva Trimestral', forzar, msgRef);
         return;
     }
 }
 
-// Helper para el envío inteligente de infografías de DIU (Cobre vs Medicado)
+// Helper para el envÃ­o inteligente de infografÃ­as de DIU (Cobre vs Medicado)
 async function procesarInfografiasDiu(client, remitente, textoLower, msgRef = null) {
-    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía');
+    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografÃ­a');
 
     if (textoLower.includes('cobre') || textoLower.includes('t de cobre') || textoLower.includes('te de cobre') || textoLower.includes('cruz') || textoLower.includes('aparatito de metal')) {
         await enviarInfografiaSiExiste(client, remitente, 'diu_cobre', 'DIU de Cobre', forzar, msgRef);
@@ -225,19 +225,19 @@ async function procesarInfografiasDiu(client, remitente, textoLower, msgRef = nu
     }
 }
 
-// Cargar dinámicamente los documentos desde la carpeta 'documentos'
+// Cargar dinÃ¡micamente los documentos desde la carpeta 'documentos'
 async function cargarDocumentosConocimiento() {
     const carpetaDoc = path.join(__dirname, 'documentos');
     let textoAcumulado = '';
 
     if (!fs.existsSync(carpetaDoc)) {
         fs.mkdirSync(carpetaDoc, { recursive: true });
-        console.log('📂 Se creó la carpeta "documentos". Agrega tus archivos .txt, .md o .pdf ahí.');
+        console.log('ðŸ“‚ Se creÃ³ la carpeta "documentos". Agrega tus archivos .txt, .md o .pdf ahÃ­.');
         return '';
     }
 
     const archivos = fs.readdirSync(carpetaDoc);
-    console.log(`📁 Leyendo la carpeta 'documentos'... (${archivos.length} archivo(s) encontrado(s))`);
+    console.log(`ðŸ“ Leyendo la carpeta 'documentos'... (${archivos.length} archivo(s) encontrado(s))`);
 
     for (const archivo of archivos) {
         const rutaCompleta = path.join(carpetaDoc, archivo);
@@ -247,28 +247,28 @@ async function cargarDocumentosConocimiento() {
             if (ext === '.txt' || ext === '.md') {
                 const contenido = fs.readFileSync(rutaCompleta, 'utf-8');
                 textoAcumulado += `\n--- INICIO DOCUMENTO (${archivo}) ---\n${contenido}\n--- FIN DOCUMENTO (${archivo}) ---\n`;
-                console.log(`  ✅ Documento cargado: ${archivo}`);
+                console.log(`  âœ… Documento cargado: ${archivo}`);
             } else if (ext === '.pdf') {
                 const dataBuffer = fs.readFileSync(rutaCompleta);
                 const pdfData = await pdfParse(dataBuffer);
                 textoAcumulado += `\n--- INICIO PDF (${archivo}) ---\n${pdfData.text}\n--- FIN PDF (${archivo}) ---\n`;
-                console.log(`  ✅ Documento PDF cargado: ${archivo}`);
+                console.log(`  âœ… Documento PDF cargado: ${archivo}`);
             }
         } catch (err) {
-            console.error(`  ❌ Error al leer el archivo ${archivo}:`, err.message);
+            console.error(`  âŒ Error al leer el archivo ${archivo}:`, err.message);
         }
     }
 
     return textoAcumulado;
 }
 
-// Obtener la lista de números administradores desde .env
+// Obtener la lista de nÃºmeros administradores desde .env
 function obtenerNumerosAdmin() {
     const envVar = process.env.NUMEROS_NOTIFICACIONES || process.env.NUMERO_NOTIFICACIONES || '';
     return envVar.split(',').map(n => n.trim()).filter(Boolean);
 }
 
-// Evaluar si un número o JID pertenece a un administrador (comparando los últimos 10 dígitos)
+// Evaluar si un nÃºmero o JID pertenece a un administrador (comparando los Ãºltimos 10 dÃ­gitos)
 function esNumeroAdmin(remitente) {
     if (!remitente) return false;
     const rawRemitente = remitente.toString().replace(/[^0-9]/g, '');
@@ -303,7 +303,7 @@ function esHorarioLaboral() {
         if (parte.type === 'minute') minuto = parseInt(parte.value, 10);
     }
 
-    const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
+    const diasLaborables = ['lun', 'mar', 'miÃ©', 'jue', 'vie'];
     const esDiaLaboral = diasLaborables.some(d => diaSemana.startsWith(d));
 
     if (!esDiaLaboral) return false;
@@ -315,50 +315,50 @@ function esHorarioLaboral() {
     return minutosTotales >= inicioLaboral && minutosTotales <= finLaboral;
 }
 
-// Texto del Menú Interactivo de Bienvenida
+// Texto del MenÃº Interactivo de Bienvenida
 function obtenerMenuBienvenida(nombrePaciente = null) {
     const saludoHeader = nombrePaciente ?
-        `🏥 *¡Hola de nuevo, ${nombrePaciente}! Bienvenido/a al servicio de Planificación Familiar del CAISES Jaral.*` :
-        `🏥 *¡Hola! Bienvenido/a al servicio de Planificación Familiar del CAISES Jaral.*`;
+        `ðŸ¥ *Â¡Hola de nuevo, ${nombrePaciente}! Bienvenido/a al servicio de PlanificaciÃ³n Familiar del CAISES Jaral.*` :
+        `ðŸ¥ *Â¡Hola! Bienvenido/a al servicio de PlanificaciÃ³n Familiar del CAISES Jaral.*`;
 
     return `${saludoHeader}
 
-De Lunes a Viernes de 2:00 PM a 8:30 PM estamos para servirte. ☺️
+De Lunes a Viernes de 2:00 PM a 8:30 PM estamos para servirte. â˜ºï¸
 
-Elige una opción enviando el número o escribe tu duda directamente:
+Elige una opciÃ³n enviando el nÃºmero o escribe tu duda directamente:
 
-1️⃣ 📋 *Requisitos para atención*
-2️⃣ 💊 *Métodos anticonceptivos disponibles*
-3️⃣ ⏰ *Horarios de atención*
-4️⃣ 📍 *Ubicación del CAISES*
-5️⃣ 👨‍⚕️ *Solicitar Asesor Humano / Agendar Cita*
+1ï¸âƒ£ ðŸ“‹ *Requisitos para atenciÃ³n*
+2ï¸âƒ£ ðŸ’Š *MÃ©todos anticonceptivos disponibles*
+3ï¸âƒ£ â° *Horarios de atenciÃ³n*
+4ï¸âƒ£ ðŸ“ *UbicaciÃ³n del CAISES*
+5ï¸âƒ£ ðŸ‘¨â€âš•ï¸ *Solicitar Asesor Humano / Agendar Cita*
 
-_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
+_Escribe el nÃºmero de la opciÃ³n o tu pregunta libremente y con gusto te responderÃ©._`;
 }
 
 // Formulario de Registro y Aviso de Privacidad oficial para nuevos usuarios
-const MENSAJE_REGISTRO_PRIMERA_VEZ = `🏥 *Solicitud de Atención Personalizada (CAISES Jaral)* 👨🏻⚕️👩🏽⚕️
+const MENSAJE_REGISTRO_PRIMERA_VEZ = `ðŸ¥ *Solicitud de AtenciÃ³n Personalizada (CAISES Jaral)* ðŸ‘¨ðŸ»âš•ï¸ðŸ‘©ðŸ½âš•ï¸
 
-Para poder brindarte consejería directa y agendar tu cita 100% confidencial con nuestro personal médico o de enfermería, es necesario realizar tu rápido registro previo. 🔏
+Para poder brindarte consejerÃ­a directa y agendar tu cita 100% confidencial con nuestro personal mÃ©dico o de enfermerÃ­a, es necesario realizar tu rÃ¡pido registro previo. ðŸ”
 
 Por favor:
-1️⃣ Ingresa a este enlace y llena tus datos básicos:
-👉 https://forms.gle/zJxZeXXj1TwWGF9N8
+1ï¸âƒ£ Ingresa a este enlace y llena tus datos bÃ¡sicos:
+ðŸ‘‰ https://forms.gle/zJxZeXXj1TwWGF9N8
 
-2️⃣ Al terminar, escríbeme por aquí tu *NOMBRE COMPLETO* para confirmar tu registro y conectarte con el asesor de inmediato. 👍🏼
+2ï¸âƒ£ Al terminar, escrÃ­beme por aquÃ­ tu *NOMBRE COMPLETO* para confirmar tu registro y conectarte con el asesor de inmediato. ðŸ‘ðŸ¼
 
-¡Muchas gracias! Estamos atentos para atenderte. 🩺✨`;
+Â¡Muchas gracias! Estamos atentos para atenderte. ðŸ©ºâœ¨`;
 
-// Helper para resolver el número telefónico real de 10 dígitos (incluso si WhatsApp envía un identificador @lid)
+// Helper para resolver el nÃºmero telefÃ³nico real de 10 dÃ­gitos (incluso si WhatsApp envÃ­a un identificador @lid)
 async function obtenerNumeroTelefonoReal(client, msgRef, remitente) {
     if (!remitente) return 'No disponible';
 
-    // 0. Si ya está en caché de memoria, retornar instantáneamente sin tocar la CPU
+    // 0. Si ya estÃ¡ en cachÃ© de memoria, retornar instantÃ¡neamente sin tocar la CPU
     if (cacheNumerosTelefono.has(remitente)) {
         return cacheNumerosTelefono.get(remitente);
     }
 
-    // 1. Si es un número administrador registrado, resolver directamente sus 10 dígitos
+    // 1. Si es un nÃºmero administrador registrado, resolver directamente sus 10 dÃ­gitos
     const listaAdmins = obtenerNumerosAdmin();
     const rawRem = remitente.replace(/[^0-9]/g, '');
     if (rawRem.length >= 10) {
@@ -371,7 +371,7 @@ async function obtenerNumeroTelefonoReal(client, msgRef, remitente) {
         }
     }
 
-    // 2. Si el remitente NO es @lid y tiene 10 o más dígitos
+    // 2. Si el remitente NO es @lid y tiene 10 o mÃ¡s dÃ­gitos
     if (!remitente.includes('@lid')) {
         const rawDigits = remitente.replace(/[^0-9]/g, '');
         if (rawDigits.length >= 10) {
@@ -443,7 +443,7 @@ async function obtenerNumeroTelefonoReal(client, msgRef, remitente) {
         } catch (e) {}
     }
 
-    // 5. Si está registrado en pacientes.json, obtener sus datos
+    // 5. Si estÃ¡ registrado en pacientes.json, obtener sus datos
     const pacientesBD = cargarPacientes();
     if (pacientesBD[remitente] && pacientesBD[remitente].nombre) {
         const resBD = `Paciente Registrado (${pacientesBD[remitente].nombre})`;
@@ -454,39 +454,39 @@ async function obtenerNumeroTelefonoReal(client, msgRef, remitente) {
     return 'Chat Directo de WhatsApp';
 }
 
-// Notificación silenciosa EXCLUSIVA para consultas sobre VASECTOMÍA
+// NotificaciÃ³n silenciosa EXCLUSIVA para consultas sobre VASECTOMÃA
 async function notificarAlertaVasectomia(client, remitente, nombrePaciente, mensajeUsuario, msgRef = null) {
     const listaAdmins = obtenerNumerosAdmin();
     if (listaAdmins.length === 0) return;
 
     const numeroFormateado = await obtenerNumeroTelefonoReal(client, msgRef, remitente);
 
-    const mensajeAlerta = `✂️ *INTERÉS EN VASECTOMÍA (CAISES JARAL)* ✂️\n\n` +
-        `👤 *Paciente:* ${nombrePaciente}\n` +
-        `📱 *WhatsApp:* ${numeroFormateado}\n` +
-        `💬 *Consulta:* "${mensajeUsuario}"\n` +
-        `⏰ *Hora:* ${new Date().toLocaleTimeString('es-MX')}\n\n` +
-        `ℹ️ *Nota:* El bot sigue respondiendo sus dudas normalmente sin pausarse. Puedes ingresar a su chat cuando gustes para agendar su cita personal.`;
+    const mensajeAlerta = `âœ‚ï¸ *INTERÃ‰S EN VASECTOMÃA (CAISES JARAL)* âœ‚ï¸\n\n` +
+        `ðŸ‘¤ *Paciente:* ${nombrePaciente}\n` +
+        `ðŸ“± *WhatsApp:* ${numeroFormateado}\n` +
+        `ðŸ’¬ *Consulta:* "${mensajeUsuario}"\n` +
+        `â° *Hora:* ${new Date().toLocaleTimeString('es-MX')}\n\n` +
+        `â„¹ï¸ *Nota:* El bot sigue respondiendo sus dudas normalmente sin pausarse. Puedes ingresar a su chat cuando gustes para agendar su cita personal.`;
 
     for (const adminNum of listaAdmins) {
         try {
             ultimoEnvioBotTimestamp = Date.now();
             const sent = await client.sendMessage(adminNum, mensajeAlerta);
             if (sent && sent.id) idsMensajesEnviadosBot.add(sent.id._serialized);
-            console.log(`🔔 Notificación silenciosa de Vasectomía enviada a ${adminNum}`);
+            console.log(`ðŸ”” NotificaciÃ³n silenciosa de VasectomÃ­a enviada a ${adminNum}`);
         } catch (err) {
-            console.error(`❌ Error al notificar Vasectomía a ${adminNum}:`, err.message);
+            console.error(`âŒ Error al notificar VasectomÃ­a a ${adminNum}:`, err.message);
         }
     }
 }
 
-// Función auxiliar para responder mensajes registrando ID y marca distintiva de bot 🤖
+// FunciÃ³n auxiliar para responder mensajes registrando ID y marca distintiva de bot ðŸ¤–
 async function responderMensajeSeguro(client, msg, contenido) {
     try {
         ultimoEnvioBotTimestamp = Date.now();
 
-        // Agregar distintivo visual 🤖 si no está presente
-        const mensajeFinal = contenido.startsWith('🤖') ? contenido : `🤖 ${contenido}`;
+        // Agregar distintivo visual ðŸ¤– si no estÃ¡ presente
+        const mensajeFinal = contenido.startsWith('ðŸ¤–') ? contenido : `ðŸ¤– ${contenido}`;
 
         const sent = await msg.reply(mensajeFinal);
         if (sent && sent.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -505,7 +505,7 @@ async function responderMensajeSeguro(client, msg, contenido) {
     }
 }
 
-// Helper para limpiar automáticamente procesos huérfanos de Chrome y bloqueos de sesión tras cerrar la laptop
+// Helper para limpiar automÃ¡ticamente procesos huÃ©rfanos de Chrome y bloqueos de sesiÃ³n tras cerrar la laptop
 function limpiarProcesosHuerfanosYBloqueos() {
     try {
         if (process.platform === 'win32') {
@@ -518,7 +518,7 @@ function limpiarProcesosHuerfanosYBloqueos() {
         const lockPath = path.join(__dirname, '.wwebjs_auth', 'session', 'SingletonLock');
         if (fs.existsSync(lockPath)) {
             fs.unlinkSync(lockPath);
-            console.log('🧹 Bloqueo de sesión previo eliminado con éxito.');
+            console.log('ðŸ§¹ Bloqueo de sesiÃ³n previo eliminado con Ã©xito.');
         }
     } catch (eLock) {}
 }
@@ -529,39 +529,39 @@ async function iniciarBot() {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        console.error('❌ ERROR CRÍTICO: No se encontró la variable GEMINI_API_KEY en el archivo .env');
+        console.error('âŒ ERROR CRÃTICO: No se encontrÃ³ la variable GEMINI_API_KEY en el archivo .env');
         process.exit(1);
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    const systemInstruction = `Eres un asistente virtual de salud del área de planificación familiar del CAISES Jaral. Tu tono debe ser empático, amable, profesional, claro y muy conversacional.
+    const systemInstruction = `Eres un asistente virtual de salud del Ã¡rea de planificaciÃ³n familiar del CAISES Jaral. Tu tono debe ser empÃ¡tico, amable, profesional, claro y muy conversacional.
 
-REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
+REGLAS DE ATENCIÃ“N E INSTRUCCIONES ESPECÃFICAS DE RESPUESTA:
 
-1. REGLA DE ORO DE INFORMACIÓN MÉDICA Y ORIENTACIÓN PROFESIONAL:
-   - Tienes estrictamente prohibido inventar información médica de métodos que no tengamos o inventar disponibilidad.
-   - Si te preguntan sobre un tema médico general de salud reproductiva (ej. puerperio, menstruación, anatomía) que no esté en tus documentos, SÍ puedes dar una explicación breve y general basada en tu conocimiento médico, pero aclarando que es solo información educativa y que para un diagnóstico o valoración siempre se requiere acudir presencialmente.
-   - Si un usuario pregunta si se puede colocar o usar un método específico, explícale de forma amigable, respetuosa y resumida que para utilizar cualquier método debe recibir primero una adecuada orientación y consejería presencial por un profesional de la salud, con el fin de que el paciente y el personal de salud tomen la mejor decisión de forma conjunta basándose en criterios científicos y en las características propias de cada persona. (No menciones explícitamente las siglas de la OMS al paciente).
+1. REGLA DE ORO DE INFORMACIÃ“N MÃ‰DICA Y ORIENTACIÃ“N PROFESIONAL:
+   - Tienes estrictamente prohibido inventar informaciÃ³n mÃ©dica de mÃ©todos que no tengamos o inventar disponibilidad.
+   - Si te preguntan sobre un tema mÃ©dico general de salud reproductiva (ej. puerperio, menstruaciÃ³n, anatomÃ­a) que no estÃ© en tus documentos, SÃ puedes dar una explicaciÃ³n breve y general basada en tu conocimiento mÃ©dico, pero aclarando que es solo informaciÃ³n educativa y que para un diagnÃ³stico o valoraciÃ³n siempre se requiere acudir presencialmente.
+   - Si un usuario pregunta si se puede colocar o usar un mÃ©todo especÃ­fico, explÃ­cale de forma amigable, respetuosa y resumida que para utilizar cualquier mÃ©todo debe recibir primero una adecuada orientaciÃ³n y consejerÃ­a presencial por un profesional de la salud, con el fin de que el paciente y el personal de salud tomen la mejor decisiÃ³n de forma conjunta basÃ¡ndose en criterios cientÃ­ficos y en las caracterÃ­sticas propias de cada persona. (No menciones explÃ­citamente las siglas de la OMS al paciente).
 
-2. PROHIBICIÓN ABSOLUTA DE ASEGURAR CITAS O ATENCIONES INMEDIATAS:
-   - JAMÁS asegures o prometas atenciones el mismo día, retirado, colocación o servicios inmediatos.
-   - Aclara siempre de forma cordial que cualquier atención, colocación o retiro queda estrictamente sujeta a disponibilidad de horario y fechas, previa consejería con el personal de salud.
+2. PROHIBICIÃ“N ABSOLUTA DE ASEGURAR CITAS O ATENCIONES INMEDIATAS:
+   - JAMÃS asegures o prometas atenciones el mismo dÃ­a, retirado, colocaciÃ³n o servicios inmediatos.
+   - Aclara siempre de forma cordial que cualquier atenciÃ³n, colocaciÃ³n o retiro queda estrictamente sujeta a disponibilidad de horario y fechas, previa consejerÃ­a con el personal de salud.
 
-3. ATENCIÓN FRACCIONADA Y BREVE (NUNCA DE GOLPE):
-   - Tus respuestas deben ser breves (máximo 2 a 3 frases cortas por mensaje).
-   - NUNCA des toda la información de un método o vasectomía de golpe.
-   - Cuando un paciente pregunte sobre un método (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducción de 1 o 2 frases y PREGÚNTALE qué detalle específico le gustaría conocer (ej. su duración, cómo se coloca, su efectividad o sus posibles efectos secundarios).
-   - Si un método NO ESTÁ DISPONIBLE en la clínica (ej. parches anticonceptivos), infórmaselo amablemente de inmediato en 1 frase y ofrécele alternativas que SÍ estén disponibles y que sean ADECUADAS para el paciente, tomando siempre en cuenta lo que te haya platicado en su historial (por ejemplo, si te dijo que está lactando, ofrécele DIU o Implante, NUNCA pastillas tradicionales). No expliques su uso a menos que te lo pidan explícitamente.
-   - Si el paciente te pide ver una imagen, foto o infografía de algún método, dile amablemente que en un momento el sistema automatizado le hará llegar la ilustración (NUNCA digas que no puedes enviar imágenes).
+3. ATENCIÃ“N FRACCIONADA Y BREVE (NUNCA DE GOLPE):
+   - Tus respuestas deben ser breves (mÃ¡ximo 2 a 3 frases cortas por mensaje).
+   - NUNCA des toda la informaciÃ³n de un mÃ©todo o vasectomÃ­a de golpe.
+   - Cuando un paciente pregunte sobre un mÃ©todo (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducciÃ³n de 1 o 2 frases y PREGÃšNTALE quÃ© detalle especÃ­fico le gustarÃ­a conocer (ej. su duraciÃ³n, cÃ³mo se coloca, su efectividad o sus posibles efectos secundarios).
+   - Si un mÃ©todo NO ESTÃ DISPONIBLE en la clÃ­nica (ej. parches anticonceptivos), infÃ³rmaselo amablemente de inmediato en 1 frase y ofrÃ©cele alternativas que SÃ estÃ©n disponibles y que sean ADECUADAS para el paciente, tomando siempre en cuenta lo que te haya platicado en su historial (por ejemplo, si te dijo que estÃ¡ lactando, ofrÃ©cele DIU o Implante, NUNCA pastillas tradicionales). No expliques su uso a menos que te lo pidan explÃ­citamente.
+   - Si el paciente te pide ver una imagen, foto o infografÃ­a de algÃºn mÃ©todo, dile amablemente que en un momento el sistema automatizado le harÃ¡ llegar la ilustraciÃ³n (NUNCA digas que no puedes enviar imÃ¡genes).
 
 4. SOLICITUD DE ASESOR Y AVISO DE DEMORA POR CONSULTA O PROCEDIMIENTOS:
-   - Cuando el usuario pida hablar con un asesor o personal de salud, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
-   - Aclara que mientras tanto tú te mantienes activo para responder cualquier duda adicional.
+   - Cuando el usuario pida hablar con un asesor o personal de salud, comÃ©ntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento mÃ©dico.
+   - Aclara que mientras tanto tÃº te mantienes activo para responder cualquier duda adicional.
    - Al final de tus respuestas informativas, si no incluiste la palabra "asesor", recuerda al usuario de forma sutil que para agendar cita o hablar directamente con nuestro personal presencial puede escribir la palabra "asesor" en cualquier momento.
 
-A CONTINUACIÓN TIENES LA INFORMACIÓN Y DOCUMENTOS OFICIALES PARA RESPONDER:
-${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay documentos específicos cargados en el sistema.'}`;
+A CONTINUACIÃ“N TIENES LA INFORMACIÃ“N Y DOCUMENTOS OFICIALES PARA RESPONDER:
+${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay documentos especÃ­ficos cargados en el sistema.'}`;
 
     const client = new Client({
         authStrategy: new LocalAuth(),
@@ -598,68 +598,68 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
     });
 
     client.on('loading_screen', (percent, message) => {
-        console.log(`⏳ Cargando WhatsApp... ${percent}% - ${message}`);
+        console.log(`â³ Cargando WhatsApp... ${percent}% - ${message}`);
     });
 
     client.on('qr', (qr) => {
         qrcode.generate(qr, { small: true });
-        console.log('📲 Escanea el código QR anterior en tu aplicación de WhatsApp.');
+        console.log('ðŸ“² Escanea el cÃ³digo QR anterior en tu aplicaciÃ³n de WhatsApp.');
     });
 
     client.on('ready', () => {
         const admins = obtenerNumerosAdmin();
-        console.log('🚀 ¡Conectado con éxito! El bot de CAISES Jaral está en ejecución...');
-        console.log(`👑 Administradores registrados para alertas de Vasectomía (${admins.length}):`, admins.join(', '));
+        console.log('ðŸš€ Â¡Conectado con Ã©xito! El bot de CAISES Jaral estÃ¡ en ejecuciÃ³n...');
+        console.log(`ðŸ‘‘ Administradores registrados para alertas de VasectomÃ­a (${admins.length}):`, admins.join(', '));
     });
 
     // Procesador universal de mensajes de WhatsApp
     async function procesarMensaje(msg) {
         if (!msg || !msg.body || msg.from === 'status@broadcast' || msg.from.endsWith('@g.us')) return;
 
-        // Evitar procesar mensajes generados por las respuestas automáticas del bot
+        // Evitar procesar mensajes generados por las respuestas automÃ¡ticas del bot
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         const remitente = msg.from;
         const texto = msg.body.trim();
         const textoLower = texto.toLowerCase();
 
-        console.log(`💬 [MENSAJE RECIBIDO] De: ${remitente} | Tipo: ${msg.type} | Texto: "${texto}"`);
+        console.log(`ðŸ’¬ [MENSAJE RECIBIDO] De: ${remitente} | Tipo: ${msg.type} | Texto: "${texto}"`);
 
         // -------------------------------------------------------------
         // FILTRO DE AUDIOS (NO PERMITIDOS)
         // -------------------------------------------------------------
         if (msg.type === 'ptt' || msg.type === 'audio') {
-            await responderMensajeSeguro(client, msg, "🎙️ *Hola. Por el momento mi sistema de Inteligencia Artificial solo puede leer mensajes de texto.*\n\nPor favor, escríbeme tu duda o consulta por escrito para poder ayudarte.");
+            await responderMensajeSeguro(client, msg, "ðŸŽ™ï¸ *Hola. Por el momento mi sistema de Inteligencia Artificial solo puede leer mensajes de texto.*\n\nPor favor, escrÃ­beme tu duda o consulta por escrito para poder ayudarte.");
             return;
         }
 
         // -------------------------------------------------------------
-        // EXCEPCIÓN PARA TELÉFONOS ADMINISTRADORES SECUNDARIOS Y COMANDOS (!)
+        // EXCEPCIÃ“N PARA TELÃ‰FONOS ADMINISTRADORES SECUNDARIOS Y COMANDOS (!)
         // -------------------------------------------------------------
         const esAdminSecundario = esNumeroAdmin(remitente);
 
         if (esAdminSecundario || msg.fromMe || texto.startsWith('!')) {
             if (texto.startsWith('!')) {
-                console.log(`👑 Ejecutando Comando de Administrador desde ${remitente}: ${texto}`);
+                console.log(`ðŸ‘‘ Ejecutando Comando de Administrador desde ${remitente}: ${texto}`);
 
                 if (textoLower === '!pendientes' || textoLower === '!resumen' || textoLower === '!reporte') {
                     const pacientesBD = cargarPacientes();
                     if (chatsAtendidosBot.size === 0) {
-                        await responderMensajeSeguro(client, msg, "📋 *REPORTE DE AUSENCIA:* No se han registrado nuevas consultas atendidas por el bot recientemente.");
+                        await responderMensajeSeguro(client, msg, "ðŸ“‹ *REPORTE DE AUSENCIA:* No se han registrado nuevas consultas atendidas por el bot recientemente.");
                         return;
                     }
 
-                    let reporte = `📋 *REPORTE DE CHATS ATENDIDOS POR EL BOT EN TU AUSENCIA (${chatsAtendidosBot.size}):*\n\n`;
+                    let reporte = `ðŸ“‹ *REPORTE DE CHATS ATENDIDOS POR EL BOT EN TU AUSENCIA (${chatsAtendidosBot.size}):*\n\n`;
                     let idx = 1;
                     for (const [jid, data] of chatsAtendidosBot.entries()) {
                         const infoBD = pacientesBD[jid];
-                        const nombreFinal = infoBD ? infoBD.nombre : "Paciente (Primera Vez / Consulta Anónima)";
+                        const nombreFinal = infoBD ? infoBD.nombre : "Paciente (Primera Vez / Consulta AnÃ³nima)";
                         const numLimpio = await obtenerNumeroTelefonoReal(client, null, jid);
-                        reporte += `${idx}️⃣ 👤 *${nombreFinal}*\n📱 WhatsApp: ${numLimpio}\n💬 Último mensaje: "${data.mensajeUltimo}"\n⏰ Hora: ${data.hora}\n\n`;
+                        reporte += `${idx}ï¸âƒ£ ðŸ‘¤ *${nombreFinal}*\nðŸ“± WhatsApp: ${numLimpio}\nðŸ’¬ Ãšltimo mensaje: "${data.mensajeUltimo}"\nâ° Hora: ${data.hora}\n\n`;
                         idx++;
                     }
 
-                    reporte += `_💡 Puedes ingresar directamente a sus chats en WhatsApp Web para darles seguimiento o agendar cita._`;
+                    reporte += `_ðŸ’¡ Puedes ingresar directamente a sus chats en WhatsApp Web para darles seguimiento o agendar cita._`;
                     await responderMensajeSeguro(client, msg, reporte);
                     return;
                 }
@@ -675,7 +675,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                         estado.mensaje = null;
                         estado.fechaFin = null;
                         guardarEstadoVacaciones(estado);
-                        await responderMensajeSeguro(client, msg, "🏖️ *MODO VACACIONES DESACTIVADO.* El bot reanuda la atención normal.");
+                        await responderMensajeSeguro(client, msg, "ðŸ–ï¸ *MODO VACACIONES DESACTIVADO.* El bot reanuda la atenciÃ³n normal.");
                         return;
                     }
 
@@ -695,23 +695,23 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
                         guardarEstadoVacaciones(estado);
                         await responderMensajeSeguro(client, msg, 
-                            `🌴 *MODO VACACIONES ACTIVADO CON ÉXITO.*\n\n` +
-                            `📌 Nota opcional: ${estado.mensaje ? estado.mensaje : 'En receso vacacional'}\n` +
-                            `🗓️ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
+                            `ðŸŒ´ *MODO VACACIONES ACTIVADO CON Ã‰XITO.*\n\n` +
+                            `ðŸ“Œ Nota opcional: ${estado.mensaje ? estado.mensaje : 'En receso vacacional'}\n` +
+                            `ðŸ—“ï¸ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
                         );
                         return;
                     }
 
                     await responderMensajeSeguro(client, msg, 
-                        "🌴 *COMANDOS DE GESTIÓN DE VACACIONES:*\n\n" +
-                        "• `!vacaciones 10` (10 días a partir de hoy)\n" +
-                        "• `!vacaciones activar [mensaje opcional]`\n" +
-                        "• `!vacaciones desactivar`"
+                        "ðŸŒ´ *COMANDOS DE GESTIÃ“N DE VACACIONES:*\n\n" +
+                        "â€¢ `!vacaciones 10` (10 dÃ­as a partir de hoy)\n" +
+                        "â€¢ `!vacaciones activar [mensaje opcional]`\n" +
+                        "â€¢ `!vacaciones desactivar`"
                     );
                     return;
                 }
 
-                if (textoLower.startsWith('!curso') || textoLower.startsWith('!capacitacion') || textoLower.startsWith('!capacitación')) {
+                if (textoLower.startsWith('!curso') || textoLower.startsWith('!capacitacion') || textoLower.startsWith('!capacitaciÃ³n')) {
                     const partes = texto.split(' ');
                     const accion = partes[1] ? partes[1].toLowerCase() : '';
                     const estado = cargarEstadoVacaciones();
@@ -722,7 +722,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                         estado.mensaje = null;
                         estado.fechaFin = null;
                         guardarEstadoVacaciones(estado);
-                        await responderMensajeSeguro(client, msg, "🎓 *MODO CURSO / CAPACITACIÓN DESACTIVADO.* El bot reanuda la atención normal.");
+                        await responderMensajeSeguro(client, msg, "ðŸŽ“ *MODO CURSO / CAPACITACIÃ“N DESACTIVADO.* El bot reanuda la atenciÃ³n normal.");
                         return;
                     }
 
@@ -742,20 +742,20 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
                         guardarEstadoVacaciones(estado);
                         await responderMensajeSeguro(client, msg, 
-                            `🎓 *MODO CURSO / CAPACITACIÓN ACTIVADO CON ÉXITO.*\n\n` +
-                            `📌 Tipo: Curso de Actualización Profesional\n` +
-                            `📌 Nota opcional: ${estado.mensaje ? estado.mensaje : 'En curso de capacitación'}\n` +
-                            `🗓️ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
+                            `ðŸŽ“ *MODO CURSO / CAPACITACIÃ“N ACTIVADO CON Ã‰XITO.*\n\n` +
+                            `ðŸ“Œ Tipo: Curso de ActualizaciÃ³n Profesional\n` +
+                            `ðŸ“Œ Nota opcional: ${estado.mensaje ? estado.mensaje : 'En curso de capacitaciÃ³n'}\n` +
+                            `ðŸ—“ï¸ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
                         );
                         return;
                     }
 
                     await responderMensajeSeguro(client, msg, 
-                        "🎓 *COMANDOS DE GESTIÓN DE CURSO Y CAPACITACIÓN:*\n\n" +
-                        "• `!curso 1` (1 día de curso)\n" +
-                        "• `!curso 3` (3 días de curso)\n" +
-                        "• `!curso activar [nota opcional]`\n" +
-                        "• `!curso desactivar`"
+                        "ðŸŽ“ *COMANDOS DE GESTIÃ“N DE CURSO Y CAPACITACIÃ“N:*\n\n" +
+                        "â€¢ `!curso 1` (1 dÃ­a de curso)\n" +
+                        "â€¢ `!curso 3` (3 dÃ­as de curso)\n" +
+                        "â€¢ `!curso activar [nota opcional]`\n" +
+                        "â€¢ `!curso desactivar`"
                     );
                     return;
                 }
@@ -768,12 +768,12 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                     const targetId = formatearNumeroWhatsApp(numRaw);
 
                     if (!targetId) {
-                        await responderMensajeSeguro(client, msg, "⚠️ Especifica un número válido de 10 dígitos (ej. `!registrar 4771234567 María López`).");
+                        await responderMensajeSeguro(client, msg, "âš ï¸ Especifica un nÃºmero vÃ¡lido de 10 dÃ­gitos (ej. `!registrar 4771234567 MarÃ­a LÃ³pez`).");
                         return;
                     }
 
                     guardarPaciente(targetId, nombreIngresado);
-                    await responderMensajeSeguro(client, msg, `✅ *Paciente Registrado en Sistema:*\n📱 Número: +${targetId.replace('@c.us', '')}\n👤 Nombre: ${nombreIngresado}`);
+                    await responderMensajeSeguro(client, msg, `âœ… *Paciente Registrado en Sistema:*\nðŸ“± NÃºmero: +${targetId.replace('@c.us', '')}\nðŸ‘¤ Nombre: ${nombreIngresado}`);
                     return;
                 }
 
@@ -783,16 +783,16 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
                     if (!numRaw || numRaw.toLowerCase() === 'global' || numRaw.toLowerCase() === 'todo') {
                         botPausadoGlobal = true;
-                        await responderMensajeSeguro(client, msg, "⏸️ *BOT PAUSADO GLOBALMENTE DE FORMA INDEFINIDA.*\n\nEl bot no responderá a ningún paciente hasta que envíes `!reactivar`.");
+                        await responderMensajeSeguro(client, msg, "â¸ï¸ *BOT PAUSADO GLOBALMENTE DE FORMA INDEFINIDA.*\n\nEl bot no responderÃ¡ a ningÃºn paciente hasta que envÃ­es `!reactivar`.");
                         return;
                     }
 
                     const targetId = formatearNumeroWhatsApp(numRaw);
                     if (targetId) {
                         chatsPausados.set(targetId, Date.now());
-                        await responderMensajeSeguro(client, msg, `⏸️ Chat +${targetId.replace('@c.us', '')} pausado por 30 minutos.`);
+                        await responderMensajeSeguro(client, msg, `â¸ï¸ Chat +${targetId.replace('@c.us', '')} pausado por 30 minutos.`);
                     } else {
-                        await responderMensajeSeguro(client, msg, "⚠️ Especifica un número válido de 10 dígitos o escribe `!pausa` solo para pausar todo de forma indefinida.");
+                        await responderMensajeSeguro(client, msg, "âš ï¸ Especifica un nÃºmero vÃ¡lido de 10 dÃ­gitos o escribe `!pausa` solo para pausar todo de forma indefinida.");
                     }
                     return;
                 }
@@ -810,19 +810,19 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                     botPausadoGlobal = false;
                     chatsPausados.clear();
 
-                    await responderMensajeSeguro(client, msg, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han desactivado las vacaciones/curso y todas las pausas. El bot reanuda la atención normal.");
+                    await responderMensajeSeguro(client, msg, "âœ… *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han desactivado las vacaciones/curso y todas las pausas. El bot reanuda la atenciÃ³n normal.");
                     return;
                 }
 
                 if (textoLower === '!ayuda' || textoLower === '!help') {
                     await responderMensajeSeguro(client, msg, 
-                        "🤖 *COMANDOS DE ADMINISTRADOR (CAISES JARAL):*\n\n" +
-                        "🌴 `!vacaciones 10` -> Activa receso por vacaciones (10 días).\n" +
-                        "🎓 `!curso 1` -> Activa aviso de Curso/Capacitación (1 o 3 días).\n" +
-                        "⏸️ `!pausa` -> Pausa GLOBALMENTE el bot de forma indefinida.\n" +
-                        "▶️ `!reactivar` -> COMANDO ÚNICO para reanudar la atención (desactiva vacaciones, curso y pausas).\n" +
-                        "📋 `!pendientes` -> Muestra el resumen de chats atendidos en tu ausencia.\n" +
-                        "📝 `!registrar 4111234567 María López` -> Registra paciente en sistema."
+                        "ðŸ¤– *COMANDOS DE ADMINISTRADOR (CAISES JARAL):*\n\n" +
+                        "ðŸŒ´ `!vacaciones 10` -> Activa receso por vacaciones (10 dÃ­as).\n" +
+                        "ðŸŽ“ `!curso 1` -> Activa aviso de Curso/CapacitaciÃ³n (1 o 3 dÃ­as).\n" +
+                        "â¸ï¸ `!pausa` -> Pausa GLOBALMENTE el bot de forma indefinida.\n" +
+                        "â–¶ï¸ `!reactivar` -> COMANDO ÃšNICO para reanudar la atenciÃ³n (desactiva vacaciones, curso y pausas).\n" +
+                        "ðŸ“‹ `!pendientes` -> Muestra el resumen de chats atendidos en tu ausencia.\n" +
+                        "ðŸ“ `!registrar 4111234567 MarÃ­a LÃ³pez` -> Registra paciente en sistema."
                     );
                     return;
                 }
@@ -832,17 +832,17 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         }
 
         // -------------------------------------------------------------
-        // B. CHATS PAUSADOS (GLOBAL O POR INTERVENCIÓN HUMANA)
+        // B. CHATS PAUSADOS (GLOBAL O POR INTERVENCIÃ“N HUMANA)
         // -------------------------------------------------------------
         if (botPausadoGlobal) {
-            console.log(`⏸️ Bot pausado globalmente. Omitiendo respuesta a ${remitente}`);
+            console.log(`â¸ï¸ Bot pausado globalmente. Omitiendo respuesta a ${remitente}`);
             return;
         }
 
         if (chatsPausados.has(remitente)) {
             const tiempoPausa = chatsPausados.get(remitente);
             if (Date.now() - tiempoPausa < 30 * 60 * 1000) {
-                console.log(`⏸️ Chat ${remitente} está pausado por atención humana.`);
+                console.log(`â¸ï¸ Chat ${remitente} estÃ¡ pausado por atenciÃ³n humana.`);
                 return;
             } else {
                 chatsPausados.delete(remitente);
@@ -863,115 +863,115 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
             const estadoVacaciones = cargarEstadoVacaciones();
             if (estadoVacaciones.activo) {
-                await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro ha sido confirmado. 👍🏼`);
+                await responderMensajeSeguro(client, msg, `Â¡Muchas gracias, *${nombreIngresado}*! Tu registro ha sido confirmado. ðŸ‘ðŸ¼`);
                 await responderMensajeSeguro(client, msg, obtenerMensajeReceso(estadoVacaciones));
                 return;
             }
 
-            await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. 👍🏼\n\nNotificando al personal de salud del CAISES Jaral...\n\n📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si tienes más dudas o deseas consultar algún otro tema.*`);
+            await responderMensajeSeguro(client, msg, `Â¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con Ã©xito. ðŸ‘ðŸ¼\n\nNotificando al personal de salud del CAISES Jaral...\n\nðŸ“Œ *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algÃºn procedimiento mÃ©dico.\n\nðŸ¤– *Mientras tanto, el asistente virtual se mantiene activo por si tienes mÃ¡s dudas o deseas consultar algÃºn otro tema.*`);
             return;
         }
 
         // -------------------------------------------------------------
-        // D. ENVÍO AUTOMÁTICO Y CONTROLADO DE INFOGRAFÍAS
+        // D. ENVÃO AUTOMÃTICO Y CONTROLADO DE INFOGRAFÃAS
         // -------------------------------------------------------------
-        const forzarImagen = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía');
+        const forzarImagen = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografÃ­a');
         const pideDisponibilidadGeneral = textoLower.includes('tienen') || textoLower.includes('hay') || textoLower.includes('disponible') || textoLower.includes('cuentan');
 
-        if (textoLower.includes('vasectomia') || textoLower.includes('vasectomía')) {
-            const nombreVasectomia = pacienteExistente ? pacienteExistente.nombre : "Paciente (Consulta Anónima)";
+        if (textoLower.includes('vasectomia') || textoLower.includes('vasectomÃ­a')) {
+            const nombreVasectomia = pacienteExistente ? pacienteExistente.nombre : "Paciente (Consulta AnÃ³nima)";
             await notificarAlertaVasectomia(client, remitente, nombreVasectomia, msg.body, msg);
 
-            // Si pregunta por requisitos/preparación o cita, se envía preparacion_vasectomia
+            // Si pregunta por requisitos/preparaciÃ³n o cita, se envÃ­a preparacion_vasectomia
             if (textoLower.includes('requisito') || textoLower.includes('preparac') || textoLower.includes('cita') || textoLower.includes('rasurar')) {
-                await enviarInfografiaSiExiste(client, remitente, 'preparacion_vasectomia', 'Preparación para Vasectomía Sin Bisturí', forzarImagen, msg);
+                await enviarInfografiaSiExiste(client, remitente, 'preparacion_vasectomia', 'PreparaciÃ³n para VasectomÃ­a Sin BisturÃ­', forzarImagen, msg);
             } else if (forzarImagen) {
-                await enviarInfografiaSiExiste(client, remitente, 'vasectomia', 'Vasectomía Sin Bisturí', forzarImagen, msg);
+                await enviarInfografiaSiExiste(client, remitente, 'vasectomia', 'VasectomÃ­a Sin BisturÃ­', forzarImagen, msg);
             }
         }
 
         await procesarInfografiasInyectables(client, remitente, textoLower, msg);
         await procesarInfografiasDiu(client, remitente, textoLower, msg);
 
-        if (textoLower.includes('metodos') || textoLower.includes('métodos') || textoLower.includes('catalogo') || textoLower.includes('catálogo')) {
-            await enviarInfografiaSiExiste(client, remitente, 'metodos', 'Catálogo General de Métodos Anticonceptivos', forzarImagen, msg);
+        if (textoLower.includes('metodos') || textoLower.includes('mÃ©todos') || textoLower.includes('catalogo') || textoLower.includes('catÃ¡logo')) {
+            await enviarInfografiaSiExiste(client, remitente, 'metodos', 'CatÃ¡logo General de MÃ©todos Anticonceptivos', forzarImagen, msg);
         }
         if ((textoLower.includes('implante') || textoLower.includes('implente') || textoLower.includes('chip') || textoLower.includes('aparatito del brazo')) && !pideDisponibilidadGeneral) {
-            await enviarInfografiaSiExiste(client, remitente, 'implante', 'Implante Subdérmico', forzarImagen, msg);
+            await enviarInfografiaSiExiste(client, remitente, 'implante', 'Implante SubdÃ©rmico', forzarImagen, msg);
         }
         
-        // NO enviar parche.png si pregunta disponibilidad o si el método no está disponible
+        // NO enviar parche.png si pregunta disponibilidad o si el mÃ©todo no estÃ¡ disponible
         if ((textoLower.includes('parche') || textoLower.includes('parchesito')) && forzarImagen) {
             await enviarInfografiaSiExiste(client, remitente, 'parche', 'Parche Anticonceptivo', true, msg);
         }
 
-        if (textoLower.includes('condon') || textoLower.includes('condón') || textoLower.includes('preservativo')) await enviarInfografiaSiExiste(client, remitente, 'condon', 'Condón Masculino y Femenino', forzarImagen, msg);
-        if (textoLower.includes('pastilla') || textoLower.includes('pastillas') || textoLower.includes('pildora') || textoLower.includes('píldora')) await enviarInfografiaSiExiste(client, remitente, 'pastillas', 'Pastillas Anticonceptivas', forzarImagen, msg);
-        if (textoLower.includes('emergencia') || textoLower.includes('dia despues') || textoLower.includes('día después')) await enviarInfografiaSiExiste(client, remitente, 'emergencia', 'Anticoncepción de Emergencia', forzarImagen, msg);
-        if (textoLower.includes('ubicacion') || textoLower.includes('mapa') || textoLower.includes('donde estan') || textoLower.includes('dónde están')) await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'Ubicación CAISES Jaral', forzarImagen, msg);
+        if (textoLower.includes('condon') || textoLower.includes('condÃ³n') || textoLower.includes('preservativo')) await enviarInfografiaSiExiste(client, remitente, 'condon', 'CondÃ³n Masculino y Femenino', forzarImagen, msg);
+        if (textoLower.includes('pastilla') || textoLower.includes('pastillas') || textoLower.includes('pildora') || textoLower.includes('pÃ­ldora')) await enviarInfografiaSiExiste(client, remitente, 'pastillas', 'Pastillas Anticonceptivas', forzarImagen, msg);
+        if (textoLower.includes('emergencia') || textoLower.includes('dia despues') || textoLower.includes('dÃ­a despuÃ©s')) await enviarInfografiaSiExiste(client, remitente, 'emergencia', 'AnticoncepciÃ³n de Emergencia', forzarImagen, msg);
+        if (textoLower.includes('ubicacion') || textoLower.includes('mapa') || textoLower.includes('donde estan') || textoLower.includes('dÃ³nde estÃ¡n')) await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'UbicaciÃ³n CAISES Jaral', forzarImagen, msg);
 
         // -------------------------------------------------------------
-        // E. MENÚ INTERACTIVO DE BIENVENIDA O SELECCIÓN RÁPIDA (LIBRE PARA TODOS)
+        // E. MENÃš INTERACTIVO DE BIENVENIDA O SELECCIÃ“N RÃPIDA (LIBRE PARA TODOS)
         // -------------------------------------------------------------
-        const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
+        const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menÃº', 'inicio', 'opciones', 'empezar', 'hola!'];
         if (saludos.includes(textoLower)) {
             const nombreMostrar = pacienteExistente ? pacienteExistente.nombre : null;
             await responderMensajeSeguro(client, msg, obtenerMenuBienvenida(nombreMostrar));
             return;
         }
 
-        // Respuestas inmediatas por número de menú
+        // Respuestas inmediatas por nÃºmero de menÃº
         if (textoLower === '1') {
-            const reqMsg = `📋 *REQUISITOS PARA ATENCIÓN EN CAISES JARAL:*
+            const reqMsg = `ðŸ“‹ *REQUISITOS PARA ATENCIÃ“N EN CAISES JARAL:*
 
 En caso de no contar con expediente se requiere enviar por foto o traer copias impresas de:
-🪪 CREDENCIAL DE ELECTOR (solo si cuenta con ella) o bien
-📃 CURP y
-🏠 COMPROBANTE DE DOMICILIO RECIENTE
+ðŸªª CREDENCIAL DE ELECTOR (solo si cuenta con ella) o bien
+ðŸ“ƒ CURP y
+ðŸ  COMPROBANTE DE DOMICILIO RECIENTE
 
-✨ *NO ES NECESARIO SER MAYOR DE EDAD Y EL SERVICIO DE PLANIFICACIÓN FAMILIAR ES GRATUITO Y CONFIDENCIAL SIN IMPORTAR DERECHOHABIENCIA O LUGAR DE RESIDENCIA.*
-Si ya tiene número de expediente📄, otorgarlo para dar continuidad.
+âœ¨ *NO ES NECESARIO SER MAYOR DE EDAD Y EL SERVICIO DE PLANIFICACIÃ“N FAMILIAR ES GRATUITO Y CONFIDENCIAL SIN IMPORTAR DERECHOHABIENCIA O LUGAR DE RESIDENCIA.*
+Si ya tiene nÃºmero de expedienteðŸ“„, otorgarlo para dar continuidad.
 
-_💡 Si deseas agendar cita directa o atención personal, escribe la palabra *asesor*._`;
+_ðŸ’¡ Si deseas agendar cita directa o atenciÃ³n personal, escribe la palabra *asesor*._`;
             await responderMensajeSeguro(client, msg, reqMsg);
             return;
         }
 
         if (textoLower === '2') {
-            await enviarInfografiaSiExiste(client, remitente, 'metodos', 'Catálogo General de Métodos Anticonceptivos', forzarImagen, msg);
-            const metodosMsg = `💊 *MÉTODOS ANTICONCEPTIVOS DISPONIBLES (100% GRATIS):*\n\n` +
-                `• Condón masculino y femenino.\n` +
-                `• Pastillas anticonceptivas orales.\n` +
-                `• Inyecciones anticonceptivas (mensuales, bimensuales y trimestrales).\n` +
-                `• Implante subdérmico.\n` +
-                `• Dispositivo Intrauterino (DIU) de cobre.\n` +
-                `• Dispositivo Intrauterino (DIU) Medicado (Levonorgestrel).\n` +
-                `• Vasectomía sin bisturí.\n` +
-                `• Método de emergencia.\n\n` +
-                `_¿Deseas información sobre alguno en específico? Pregúntame libremente o escribe *asesor* para agendar una cita._`;
+            await enviarInfografiaSiExiste(client, remitente, 'metodos', 'CatÃ¡logo General de MÃ©todos Anticonceptivos', forzarImagen, msg);
+            const metodosMsg = `ðŸ’Š *MÃ‰TODOS ANTICONCEPTIVOS DISPONIBLES (100% GRATIS):*\n\n` +
+                `â€¢ CondÃ³n masculino y femenino.\n` +
+                `â€¢ Pastillas anticonceptivas orales.\n` +
+                `â€¢ Inyecciones anticonceptivas (mensuales, bimensuales y trimestrales).\n` +
+                `â€¢ Implante subdÃ©rmico.\n` +
+                `â€¢ Dispositivo Intrauterino (DIU) de cobre.\n` +
+                `â€¢ Dispositivo Intrauterino (DIU) Medicado (Levonorgestrel).\n` +
+                `â€¢ VasectomÃ­a sin bisturÃ­.\n` +
+                `â€¢ MÃ©todo de emergencia.\n\n` +
+                `_Â¿Deseas informaciÃ³n sobre alguno en especÃ­fico? PregÃºntame libremente o escribe *asesor* para agendar una cita._`;
             await responderMensajeSeguro(client, msg, metodosMsg);
             return;
         }
 
         if (textoLower === '3') {
-            const horarioMsg = `⏰ *HORARIOS DE ATENCIÓN Y CONSULTA DE PLANIFICACIÓN FAMILIAR:*
+            const horarioMsg = `â° *HORARIOS DE ATENCIÃ“N Y CONSULTA DE PLANIFICACIÃ“N FAMILIAR:*
 
-🗓️ *Atención presencial y por chat:* Lunes a Viernes de 2:00 PM a 8:30 PM.
-⛔ *Sábados, Domingos y Días Festivos:* No hay consulta externa.
+ðŸ—“ï¸ *AtenciÃ³n presencial y por chat:* Lunes a Viernes de 2:00 PM a 8:30 PM.
+â›” *SÃ¡bados, Domingos y DÃ­as Festivos:* No hay consulta externa.
 
-_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor*._`;
+_ðŸ’¡ Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor*._`;
             await responderMensajeSeguro(client, msg, horarioMsg);
             return;
         }
 
         if (textoLower === '4') {
-            await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'Ubicación CAISES Jaral', forzarImagen, msg);
-            const ubicaMsg = `📍 *UBICACIÓN Y DOMICILIO DEL CAISES JARAL:*
+            await enviarInfografiaSiExiste(client, remitente, 'ubicacion', 'UbicaciÃ³n CAISES Jaral', forzarImagen, msg);
+            const ubicaMsg = `ðŸ“ *UBICACIÃ“N Y DOMICILIO DEL CAISES JARAL:*
 
-Puedes abrir la ubicación exacta en Google Maps aquí:
-🔗 https://maps.app.goo.gl/S51vXVfHb3kihpjp9
+Puedes abrir la ubicaciÃ³n exacta en Google Maps aquÃ­:
+ðŸ”— https://maps.app.goo.gl/S51vXVfHb3kihpjp9
 
-_💡 Si deseas agendar cita directa o atención personal, escribe la palabra *asesor*._`;
+_ðŸ’¡ Si deseas agendar cita directa o atenciÃ³n personal, escribe la palabra *asesor*._`;
             await responderMensajeSeguro(client, msg, ubicaMsg);
             return;
         }
@@ -992,20 +992,20 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             const enHorario = esHorarioLaboral();
 
             if (enHorario) {
-                // Si NO está registrado, le enviamos el aviso de privacidad
+                // Si NO estÃ¡ registrado, le enviamos el aviso de privacidad
                 if (!pacienteExistente) {
                     pendientesRegistro.set(remitente, true);
                     await responderMensajeSeguro(client, msg, MENSAJE_REGISTRO_PRIMERA_VEZ);
                     return;
                 }
 
-                await responderMensajeSeguro(client, msg, `👨‍⚕️ Entendido, *${pacienteExistente.nombre}*. He notificado a nuestro personal del CAISES Jaral por este chat.\n\n📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si deseas hacer más preguntas o consultar cualquier otro tema.*`);
+                await responderMensajeSeguro(client, msg, `ðŸ‘¨â€âš•ï¸ Entendido, *${pacienteExistente.nombre}*. He notificado a nuestro personal del CAISES Jaral por este chat.\n\nðŸ“Œ *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algÃºn procedimiento mÃ©dico.\n\nðŸ¤– *Mientras tanto, el asistente virtual se mantiene activo por si deseas hacer mÃ¡s preguntas o consultar cualquier otro tema.*`);
                 return;
             } else {
-                await responderMensajeSeguro(client, msg, "⏰ Hola. Por el momento nos encontramos *fuera de nuestro horario de atención personalizada*.\n\n" +
-                    "📌 *Nuestro horario de atención en CAISES Jaral es:*\n" +
-                    "🗓️ Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n" +
-                    "Con gusto atenderemos tu solicitud personalizada en cuanto reanudemos actividades. Mientras tanto, puedes hacerme cualquier consulta sobre métodos, requisitos o servicios y con gusto te informarme.");
+                await responderMensajeSeguro(client, msg, "â° Hola. Por el momento nos encontramos *fuera de nuestro horario de atenciÃ³n personalizada*.\n\n" +
+                    "ðŸ“Œ *Nuestro horario de atenciÃ³n en CAISES Jaral es:*\n" +
+                    "ðŸ—“ï¸ Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n" +
+                    "Con gusto atenderemos tu solicitud personalizada en cuanto reanudemos actividades. Mientras tanto, puedes hacerme cualquier consulta sobre mÃ©todos, requisitos o servicios y con gusto te informarme.");
                 return;
             }
         }
@@ -1027,7 +1027,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             // Construir el prompt con contexto
             let promptConMemoria = msg.body;
             if (historial.length > 0) {
-                promptConMemoria = `Historial de la conversación reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
+                promptConMemoria = `Historial de la conversaciÃ³n reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
             }
 
             for (const nombreModelo of modelosPrueba) {
@@ -1052,19 +1052,19 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
 
                 let respuestaConSalida = respuestaIA;
                 if (!respuestaIA.toLowerCase().includes('asesor')) {
-                    respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
+                    respuestaConSalida += `\n\n_ðŸ’¡ Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
                 }
                 await responderMensajeSeguro(client, msg, respuestaConSalida);
-                console.log(`🤖 Respuesta enviada a ${remitente}`);
+                console.log(`ðŸ¤– Respuesta enviada a ${remitente}`);
             } else {
                 throw ultimoError || new Error("No se pudo obtener respuesta de Gemini");
             }
 
         } catch (error) {
-            console.error("❌ Error de comunicación con Gemini:", error.message);
+            console.error("âŒ Error de comunicaciÃ³n con Gemini:", error.message);
             try {
                 if (msg && typeof msg.reply === 'function') {
-                    await responderMensajeSeguro(client, msg, "Hola, disculpa la molestia. En este momento el servicio de respuestas por IA está experimentando alta demanda. Por favor intenta enviarme tu mensaje nuevamente en un momento.");
+                    await responderMensajeSeguro(client, msg, "Hola, disculpa la molestia. En este momento el servicio de respuestas por IA estÃ¡ experimentando alta demanda. Por favor intenta enviarme tu mensaje nuevamente en un momento.");
                 }
             } catch (errReply) {
                 console.error("Error al enviar respuesta de falla por WhatsApp:", errReply.message);
@@ -1072,7 +1072,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         }
     }
 
-    // Función para procesar la cola de mensajes secuencialmente
+    // FunciÃ³n para procesar la cola de mensajes secuencialmente
     async function encolarMensaje(msg) {
         colaMensajes.push(msg);
         if (!procesandoCola) {
@@ -1097,19 +1097,19 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
     // Escuchar y rechazar llamadas entrantes (voz/video)
     client.on('call', async (call) => {
         try {
-            console.log(`📞 Llamada entrante rechazada de: ${call.from}`);
+            console.log(`ðŸ“ž Llamada entrante rechazada de: ${call.from}`);
             await call.reject();
-            await client.sendMessage(call.from, "📞 *Hola. Este número es administrado por un asistente virtual y no puede recibir llamadas de voz ni de video.*\n\nPor favor, escríbeme tu duda por mensaje de texto para poder ayudarte.");
+            await client.sendMessage(call.from, "ðŸ“ž *Hola. Este nÃºmero es administrado por un asistente virtual y no puede recibir llamadas de voz ni de video.*\n\nPor favor, escrÃ­beme tu duda por mensaje de texto para poder ayudarte.");
         } catch (err) {
             console.error("Error al rechazar llamada:", err.message);
         }
     });
 
-    // Escuchar mensajes salientes manuales del teléfono principal para pausar automáticamente
+    // Escuchar mensajes salientes manuales del telÃ©fono principal para pausar automÃ¡ticamente
     client.on('message_create', async (msg) => {
         try {
             if (msg.fromMe && msg.to && msg.to !== 'status@broadcast') {
-                // Ignorar mensajes salientes automáticos del bot (aumentado a 15 segundos por si tardan en subir las fotos)
+                // Ignorar mensajes salientes automÃ¡ticos del bot (aumentado a 15 segundos por si tardan en subir las fotos)
                 if (Date.now() - ultimoEnvioBotTimestamp < 15000) {
                     return;
                 }
@@ -1123,9 +1123,9 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                     return;
                 }
 
-                // Solo si fue escrito manualmente por un humano en el teléfono principal a un paciente
+                // Solo si fue escrito manualmente por un humano en el telÃ©fono principal a un paciente
                 chatsPausados.set(msg.to, Date.now());
-                console.log(`⏸️ Pausa automática activada en chat ${msg.to} por mensaje manual enviado desde el teléfono principal.`);
+                console.log(`â¸ï¸ Pausa automÃ¡tica activada en chat ${msg.to} por mensaje manual enviado desde el telÃ©fono principal.`);
 
                 const textoTrim = msg.body ? msg.body.trim() : '';
                 if (textoTrim.startsWith('!')) {
@@ -1137,7 +1137,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         }
     });
 
-    console.log('🤖 Inicializando motor de WhatsApp Web...');
+    console.log('ðŸ¤– Inicializando motor de WhatsApp Web...');
     client.initialize();
 }
 
