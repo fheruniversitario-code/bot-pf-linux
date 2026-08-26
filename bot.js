@@ -315,6 +315,36 @@ function esHorarioLaboral() {
     return minutosTotales >= inicioLaboral && minutosTotales <= finLaboral;
 }
 
+// Función inteligente para decir cuándo vuelve el asesor según el día y hora exactos
+function obtenerTextoProximoHorario() {
+    const ahora = new Date();
+    const opcionesHora = { timeZone: 'America/Mexico_City', hour12: false, weekday: 'short', hour: '2-digit', minute: '2-digit' };
+    const formateador = new Intl.DateTimeFormat('es-MX', opcionesHora);
+    const partes = formateador.formatToParts(ahora);
+    
+    let diaSemana = '';
+    let hora = 0;
+
+    for (const parte of partes) {
+        if (parte.type === 'weekday') diaSemana = parte.value.toLowerCase();
+        if (parte.type === 'hour') hora = parseInt(parte.value, 10);
+    }
+
+    const esFinDeSemana = diaSemana.startsWith('s') || diaSemana.startsWith('d'); // sab, dom
+    const esViernes = diaSemana.startsWith('v');
+
+    if (esFinDeSemana) {
+        return "el próximo lunes a partir de las 2:00 PM";
+    } else if (esViernes && hora >= 20) {
+        return "el próximo lunes a partir de las 2:00 PM";
+    } else if (hora >= 20) {
+        return "mañana a partir de las 2:00 PM";
+    } else if (hora < 14) {
+        return "hoy a partir de las 2:00 PM";
+    }
+    return "en nuestro próximo horario laboral (2:00 PM)"; // Fallback de seguridad
+}
+
 // Texto del Menú Interactivo de Bienvenida
 function obtenerMenuBienvenida(nombrePaciente = null) {
     const saludoHeader = nombrePaciente ?
@@ -1072,7 +1102,8 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                     if (esHorarioLaboral() && !estadoVac.activo) {
                         respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
                     } else {
-                        respuestaConSalida += `\n\n_🕒 Si requieres atención presencial o agendar cita, por favor escribe la palabra *asesor* dentro de nuestro próximo horario laboral._`;
+                        const proximo = obtenerTextoProximoHorario();
+                        respuestaConSalida += `\n\n_🕒 Si requieres atención presencial, nuestro personal te puede atender ${proximo}. Escribe la palabra *asesor* en ese momento._`;
                     }
                 }
                 await responderMensajeSeguro(client, msg, respuestaConSalida);
