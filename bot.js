@@ -154,7 +154,7 @@ ${razon} ${detallePeriodo}${detalleFecha}
 🏥 *CITAS DEL DÍA (CONSULTA GENERAL EN VENTANILLA):*
 Puedes acudir directamente a la *Ventanilla de Archivo Clínico* del CAISES Jaral a solicitar una "Cita del Día". En tu módulo asignado se te brindará la consulta y la entrega de tus métodos anticonceptivos.
 
-_Mientras tanto, yo como asistente virtual sigo disponible 24/7 para responder todas tus preguntas._`;
+_Mientras tanto, yo como asistente virtual disponible 24/7 para responder todas tus preguntas._`;
 }
 
 // Helper para buscar y enviar una infografía si existe en la carpeta 'imagenes'
@@ -318,20 +318,20 @@ function esHorarioLaboral() {
 // Texto del Menú Interactivo de Bienvenida
 function obtenerMenuBienvenida(nombrePaciente = null) {
     const saludoHeader = nombrePaciente ?
-        `🏥 *¡Hola de nuevo, ${nombrePaciente}! Bienvenido/a al servicio de Planificación Familiar del CAISES Jaral.*` :
+        `🏥 *¡Hola, ${nombrePaciente}! Bienvenido/a al servicio de Planificación Familiar del CAISES Jaral.*` :
         `🏥 *¡Hola! Bienvenido/a al servicio de Planificación Familiar del CAISES Jaral.*`;
 
     return `${saludoHeader}
 
 De Lunes a Viernes de 2:00 PM a 8:30 PM estamos para servirte. ☺️
 
-Elige una opción enviando el número o escribe tu duda directamente:
+Elige una opción:
 
 1️⃣ 📋 *Requisitos para atención*
-2️⃣ 💊 *Métodos anticonceptivos disponibles*
+2️⃣ 💊 *Métodos disponibles*
 3️⃣ ⏰ *Horarios de atención*
 4️⃣ 📍 *Ubicación del CAISES*
-5️⃣ 👨‍⚕️ *Solicitar Asesor Humano / Agendar Cita*
+5️⃣ 👨‍⚕️ *Solicitar Asesor / Agendar Cita*
 
 _Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 }
@@ -339,7 +339,7 @@ _Escribe el número de la opción o tu pregunta libremente y con gusto te respon
 // Formulario de Registro y Aviso de Privacidad oficial para nuevos usuarios
 const MENSAJE_REGISTRO_PRIMERA_VEZ = `🏥 *Solicitud de Atención Personalizada (CAISES Jaral)* 👨🏻⚕️👩🏽⚕️
 
-Para poder brindarte consejería directa y agendar tu cita 100% confidencial con nuestro personal médico o de enfermería, es necesario realizar tu rápido registro previo. 🔏
+Para poder brindarte consejería directa y agendar tu cita 100% confidencial con nuestro personal, es necesario realizar tu rápido registro previo. 🔏
 
 Por favor:
 1️⃣ Ingresa a este enlace y llena tus datos básicos:
@@ -541,17 +541,17 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
 
 1. REGLA DE ORO DE INFORMACIÓN MÉDICA Y ORIENTACIÓN PROFESIONAL:
    - Tienes estrictamente prohibido inventar información médica de métodos que no tengamos o inventar disponibilidad.
-   - Si te preguntan sobre un tema médico general de salud reproductiva (ej. puerperio, menstruación, anatomía) que no esté en tus documentos, SÍ puedes dar una explicación breve y general basada en tu conocimiento médico, pero aclarando que es solo información educativa y que para un diagnóstico o valoración siempre se requiere acudir presencialmente.
-   - Si un usuario pregunta si se puede colocar o usar un método específico, explícale de forma amigable, respetuosa y resumida que para utilizar cualquier método debe recibir primero una adecuada orientación y consejería presencial por un profesional de la salud, con el fin de que el paciente y el personal de salud tomen la mejor decisión de forma conjunta basándose en criterios científicos y en las características propias de cada persona. (No menciones explícitamente las siglas de la OMS al paciente).
+   - Si te preguntan sobre un tema médico general de salud reproductiva (ej. puerperio, menstruación, anatomía) que no esté en tus documentos, SÍ puedes dar una explicación muy breve y general basada en tu conocimiento médico, pero aclarando que es solo información educativa y que para un diagnóstico o valoración siempre se requiere acudir presencialmente.
+   - Si un usuario pregunta si se puede colocar o usar un método específico, explícale de forma amigable, respetuosa y muy resumida que para utilizar cualquier método debe recibir primero una adecuada orientación y consejería presencial por un profesional de la salud, con el fin de que el paciente y el personal de salud tomen la mejor decisión de forma conjunta basándose en criterios científicos y en las características propias de cada persona. (No menciones explícitamente las siglas de la OMS al paciente).
 
 2. PROHIBICIÓN ABSOLUTA DE ASEGURAR CITAS O ATENCIONES INMEDIATAS:
    - JAMÁS asegures o prometas atenciones el mismo día, retirado, colocación o servicios inmediatos.
    - Aclara siempre de forma cordial que cualquier atención, colocación o retiro queda estrictamente sujeta a disponibilidad de horario y fechas, previa consejería con el personal de salud.
 
 3. ATENCIÓN FRACCIONADA Y BREVE (NUNCA DE GOLPE):
-   - Tus respuestas deben ser breves (máximo 2 a 3 frases cortas por mensaje).
+   - Tus respuestas deben ser breves (máximo 1 a 2 frases cortas por mensaje).
    - NUNCA des toda la información de un método o vasectomía de golpe.
-   - Cuando un paciente pregunte sobre un método (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducción de 1 o 2 frases y PREGÚNTALE qué detalle específico le gustaría conocer (ej. su duración, cómo se coloca, su efectividad o sus posibles efectos secundarios).
+   - Cuando un paciente pregunte sobre un método (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducción de 1 o 2 frases y PREGÚNTALE qué detalle específico le gustaría conocer (ej. su duración, cómo se coloca o sus posibles efectos secundarios).
    - Si un método NO ESTÁ DISPONIBLE en la clínica (ej. parches anticonceptivos), infórmaselo amablemente de inmediato en 1 frase y ofrécele alternativas que SÍ estén disponibles y que sean ADECUADAS para el paciente, tomando siempre en cuenta lo que te haya platicado en su historial (por ejemplo, si te dijo que está lactando, ofrécele DIU o Implante, NUNCA pastillas tradicionales). No expliques su uso a menos que te lo pidan explícitamente.
    - Si el paciente te pide ver una imagen, foto o infografía de algún método, dile amablemente que en un momento el sistema automatizado le hará llegar la ilustración (NUNCA digas que no puedes enviar imágenes).
 
