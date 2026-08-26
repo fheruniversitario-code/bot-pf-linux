@@ -1040,10 +1040,10 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 await responderMensajeSeguro(client, msg, `👨‍⚕️ Entendido, *${pacienteExistente.nombre}*. He notificado a nuestro personal del CAISES Jaral por este chat.\n\n📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si deseas hacer más preguntas o consultar cualquier otro tema.*`);
                 return;
             } else {
-                await responderMensajeSeguro(client, msg, "⏰ Hola. Por el momento nos encontramos *fuera de nuestro horario de atención personalizada*.\n\n" +
-                    "📌 *Nuestro horario de atención en CAISES Jaral es:*\n" +
-                    "🗓️ Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n" +
-                    "Con gusto atenderemos tu solicitud personalizada en cuanto reanudemos actividades. Mientras tanto, puedes hacerme cualquier consulta sobre métodos, requisitos o servicios y con gusto te informaré.");
+                const proximo = obtenerTextoProximoHorario();
+                await responderMensajeSeguro(client, msg, `🤖 Hola. Por el momento nos encontramos *fuera de nuestro horario de atención personalizada*.\n\n` +
+                    `🕒 Nuestro personal te podrá atender **${proximo}**.\n\n` +
+                    `Mientras tanto, el asistente virtual sigue activo. Puedes hacerme cualquier consulta sobre métodos o requisitos y con gusto te informaré.`);
                 return;
             }
         }
