@@ -1066,8 +1066,13 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 if (historial.length > 20) historial.splice(0, 2); // Mantener hasta 10 idas y vueltas (20 mensajes)
 
                 let respuestaConSalida = respuestaIA;
-                if (!respuestaIA.toLowerCase().includes('asesor')) {
-                    respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
+                
+                // Solo sugerir hablar con un humano si estamos en horario laboral y no estamos en curso/vacaciones
+                const estadoVac = cargarEstadoVacaciones();
+                if (esHorarioLaboral() && !estadoVac.activo) {
+                    if (!respuestaIA.toLowerCase().includes('asesor')) {
+                        respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
+                    }
                 }
                 await responderMensajeSeguro(client, msg, respuestaConSalida);
                 console.log(`🤖 Respuesta enviada a ${remitente}`);
