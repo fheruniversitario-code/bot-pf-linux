@@ -558,7 +558,6 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
 4. SOLICITUD DE ASESOR Y AVISO DE DEMORA POR CONSULTA O PROCEDIMIENTOS:
    - Cuando el usuario pida hablar con un asesor o personal de salud, revisa si ya mando un mensaje previo con su Nombre, de lo contrario invitarlo a llenar el link de aviso de privacidad, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
    - Aclara que mientras tanto tú te mantienes activo para responder cualquier duda adicional.
-   - Al final de tus respuestas informativas, si no incluiste la palabra "asesor", recuerda al usuario de forma sutil que para agendar cita o hablar directamente con nuestro personal presencial puede escribir la palabra "asesor" en cualquier momento.
 
 A CONTINUACIÓN TIENES LA INFORMACIÓN Y DOCUMENTOS OFICIALES PARA RESPONDER:
 ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay documentos específicos cargados en el sistema.'}`;
@@ -1014,7 +1013,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
                 await responderMensajeSeguro(client, msg, "⏰ Hola. Por el momento nos encontramos *fuera de nuestro horario de atención personalizada*.\n\n" +
                     "📌 *Nuestro horario de atención en CAISES Jaral es:*\n" +
                     "🗓️ Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n" +
-                    "Con gusto atenderemos tu solicitud personalizada en cuanto reanudemos actividades. Mientras tanto, puedes hacerme cualquier consulta sobre métodos, requisitos o servicios y con gusto te informarme.");
+                    "Con gusto atenderemos tu solicitud personalizada en cuanto reanudemos actividades. Mientras tanto, puedes hacerme cualquier consulta sobre métodos, requisitos o servicios y con gusto te informaré.");
                 return;
             }
         }
@@ -1067,11 +1066,13 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
 
                 let respuestaConSalida = respuestaIA;
                 
-                // Solo sugerir hablar con un humano si estamos en horario laboral y no estamos en curso/vacaciones
+                // Manejo inteligente de la sugerencia del asesor
                 const estadoVac = cargarEstadoVacaciones();
-                if (esHorarioLaboral() && !estadoVac.activo) {
-                    if (!respuestaIA.toLowerCase().includes('asesor')) {
+                if (!respuestaIA.toLowerCase().includes('asesor')) {
+                    if (esHorarioLaboral() && !estadoVac.activo) {
                         respuestaConSalida += `\n\n_💡 Si deseas agendar una cita directa o hablar con nuestro personal, escribe la palabra *asesor* en cualquier momento._`;
+                    } else {
+                        respuestaConSalida += `\n\n_🕒 Si requieres atención presencial o agendar cita, por favor escribe la palabra *asesor* dentro de nuestro próximo horario laboral._`;
                     }
                 }
                 await responderMensajeSeguro(client, msg, respuestaConSalida);
