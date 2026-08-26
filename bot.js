@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
@@ -1029,6 +1029,12 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             if (historial.length > 0) {
                 promptConMemoria = `Historial de la conversación reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
             }
+
+            // Simular que el bot está escribiendo en WhatsApp
+            try {
+                const chat = await msg.getChat();
+                await chat.sendStateTyping();
+            } catch(e) {}
 
             for (const nombreModelo of modelosPrueba) {
                 try {
