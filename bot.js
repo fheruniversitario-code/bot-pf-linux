@@ -556,7 +556,7 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
    - Si el paciente te pide ver una imagen, foto o infografía de algún método, dile amablemente que en un momento el sistema automatizado le hará llegar la ilustración (NUNCA digas que no puedes enviar imágenes).
 
 4. SOLICITUD DE ASESOR Y AVISO DE DEMORA POR CONSULTA O PROCEDIMIENTOS:
-   - Cuando el usuario pida hablar con un asesor o personal de salud, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
+   - Cuando el usuario pida hablar con un asesor o personal de salud, revisa si ya mando un mensaje previo con su Nombre, de lo contrario invitarlo a llenar el link de aviso de privacidad, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
    - Aclara que mientras tanto tú te mantienes activo para responder cualquier duda adicional.
    - Al final de tus respuestas informativas, si no incluiste la palabra "asesor", recuerda al usuario de forma sutil que para agendar cita o hablar directamente con nuestro personal presencial puede escribir la palabra "asesor" en cualquier momento.
 
@@ -841,7 +841,16 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
         if (chatsPausados.has(remitente)) {
             const tiempoPausa = chatsPausados.get(remitente);
-            if (Date.now() - tiempoPausa < 30 * 60 * 1000) {
+            
+            // -------------------------------------------------------------
+            // ? MODIFICAR AQUI EL TIEMPO DE PAUSA POR ATENCION HUMANA ?
+            // El tiempo est en milisegundos.
+            // Ejemplo 2 horas = 2 * 60 * 60 * 1000
+            // Ejemplo 30 minutos = 30 * 60 * 1000
+            // -------------------------------------------------------------
+            const TIEMPO_DE_PAUSA = 2 * 60 * 60 * 1000; 
+
+            if (Date.now() - tiempoPausa < TIEMPO_DE_PAUSA) {
                 console.log(`⏸️ Chat ${remitente} está pausado por atención humana.`);
                 return;
             } else {
