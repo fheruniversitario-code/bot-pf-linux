@@ -139,8 +139,8 @@ function obtenerMensajeReceso(estadoVacaciones) {
         '🌴 *AVISO DE PERIODO VACACIONAL (CAISES JARAL)* 🏖️';
 
     const razon = esCurso ?
-        'Por el momento, nuestro personal de consejería presencial y agendamiento directo se encuentra en *curso de actualización y capacitación profesional* para brindarte una atención de la mejor calidad.' :
-        'Por el momento, nuestro personal de consejería presencial y agendamiento directo se encuentra en periodo de receso vacacional.';
+        'Por el momento, el personal de consejería presencial se encuentra en *curso de capacitación profesional* para brindarte una atención de la mejor calidad.' :
+        'Por el momento, nuestro personal de consejería presencial se encuentra en periodo de receso vacacional.';
 
     const detallePeriodo = estadoVacaciones && estadoVacaciones.mensaje ? `\n📌 *Nota del personal:* ${estadoVacaciones.mensaje}` : '';
     const detalleFecha = estadoVacaciones && estadoVacaciones.fechaFin ? `\n🗓️ *Fecha estimada de reanudación:* ${new Date(estadoVacaciones.fechaFin).toLocaleDateString('es-MX')}` : '';
@@ -149,12 +149,12 @@ function obtenerMensajeReceso(estadoVacaciones) {
 
 ${razon} ${detallePeriodo}${detalleFecha}
 
-*¡Sin embargo, tu atención médica y entrega de métodos no se detiene!* Te ofrecemos las siguientes alternativas presenciales:
+*¡Sin embargo, tu atención médica y entrega de métodos no se detiene!* Te ofrecemos las siguientes alternativas:
 
 🏥 *CITAS DEL DÍA (CONSULTA GENERAL EN VENTANILLA):*
 Puedes acudir directamente a la *Ventanilla de Archivo Clínico* del CAISES Jaral a solicitar una "Cita del Día". En tu módulo asignado se te brindará la consulta y la entrega de tus métodos anticonceptivos.
 
-_Mientras tanto, yo como asistente virtual sigo disponible 24/7 para responder todas tus preguntas informativas sobre métodos, horarios y requisitos._`;
+_Mientras tanto, yo como asistente virtual sigo disponible 24/7 para responder todas tus preguntas._`;
 }
 
 // Helper para buscar y enviar una infografía si existe en la carpeta 'imagenes'
