@@ -192,20 +192,23 @@ async function enviarInfografiaSiExiste(client, remitente, palabraClave, tituloP
 
 // Helper para el envío inteligente y fraccionado de infografías de inyectables
 async function procesarInfografiasInyectables(client, remitente, textoLower, msgRef = null) {
-    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía');
+    const forzar = textoLower.includes('ver') || textoLower.includes('imagen') || textoLower.includes('infografia') || textoLower.includes('infografía') || textoLower.includes('foto');
 
-    if (textoLower.includes('mensual') || textoLower.includes('mes')) {
-        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_mensual', 'Inyección Anticonceptiva Mensual', forzar, msgRef);
+    // 1. PRIMERO TRIMESTRAL (evita coincidencia errónea con la sílaba "mes")
+    if (textoLower.includes('trimestral') || textoLower.includes('tres meses') || textoLower.includes('3 meses') || textoLower.includes('trimestre') || textoLower.includes('depoprovera') || textoLower.includes('depo-provera') || textoLower.includes('medroxiprogesterona')) {
+        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_trimestral', 'Inyección Anticonceptiva Trimestral', forzar, msgRef);
         return;
     }
 
-    if (textoLower.includes('bimensual') || textoLower.includes('dos meses') || textoLower.includes('2 meses')) {
+    // 2. SEGUNDO BIMENSUAL
+    if (textoLower.includes('bimensual') || textoLower.includes('dos meses') || textoLower.includes('2 meses') || textoLower.includes('bimestral') || textoLower.includes('noristerat')) {
         await enviarInfografiaSiExiste(client, remitente, 'inyeccion_bimensual', 'Inyección Anticonceptiva Bimensual', forzar, msgRef);
         return;
     }
 
-    if (textoLower.includes('trimestral') || textoLower.includes('tres meses') || textoLower.includes('3 meses')) {
-        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_trimestral', 'Inyección Anticonceptiva Trimestral', forzar, msgRef);
+    // 3. TERCERO MENSUAL (con palabras clave que no colisionen con las anteriores)
+    if (textoLower.includes('mensual') || textoLower.includes('cada mes') || textoLower.includes('1 mes') || textoLower.includes('un mes') || textoLower.includes('mesigyna') || textoLower.includes('cyclofem') || /\bmes\b/.test(textoLower)) {
+        await enviarInfografiaSiExiste(client, remitente, 'inyeccion_mensual', 'Inyección Anticonceptiva Mensual', forzar, msgRef);
         return;
     }
 }
@@ -366,18 +369,16 @@ Elige una opción:
 _Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 }
 
-// Formulario de Registro y Aviso de Privacidad oficial para nuevos usuarios
-const MENSAJE_REGISTRO_PRIMERA_VEZ = `🏥 *Solicitud de Atención Personalizada (CAISES Jaral)* 👨🏻⚕️👩🏽⚕️
+const MENSAJE_REGISTRO_PRIMERA_VEZ = `📋 *REGISTRO Y AVISO DE PRIVACIDAD* 🔒
 
-Para poder brindarte consejería directa y agendar tu cita 100% confidencial con nuestro personal, es necesario realizar tu rápido registro previo. 🔏
+Para comunicarte con nuestro personal de salud del CAISES Jaral, completa estos 2 rápidos pasos:
 
-Por favor:
-1️⃣ Ingresa a este enlace y llena tus datos básicos:
+1️⃣ *Abre este enlace y llena tus datos (1 min):*
 👉 https://forms.gle/zJxZeXXj1TwWGF9N8
 
-2️⃣ Al terminar, escríbeme por aquí tu *NOMBRE COMPLETO* para confirmar tu registro y conectarte con el asesor de inmediato. 👍🏼
+2️⃣ *Escribe aquí tu NOMBRE COMPLETO* para confirmar tu registro y transferirte. ✍️✅
 
-¡Muchas gracias! Estamos atentos para atenderte. 🩺✨`;
+_(Tu información es 100% confidencial y protegida)_ 🏥✨`;
 
 // Helper para resolver el número telefónico real de 10 dígitos (incluso si WhatsApp envía un identificador @lid)
 async function obtenerNumeroTelefonoReal(client, msgRef, remitente) {
@@ -582,12 +583,16 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS DE RESPUESTA:
    - Tus respuestas deben ser breves (máximo 1 a 2 frases cortas por mensaje).
    - NUNCA des toda la información de un método o vasectomía de golpe.
    - Cuando un paciente pregunte sobre un método (ej. pastillas, parche, implante, DIU, inyecciones), dale una breve introducción de 1 o 2 frases y PREGÚNTALE qué detalle específico le gustaría conocer (ej. su duración, cómo se coloca o sus posibles efectos secundarios).
+   - Si un paciente pregunta de forma genérica sobre "inyecciones" o "inyectables" (sin especificar si es de 1 mes, 2 meses o 3 meses), menciónale brevemente que contamos con inyecciones de 1 mes, 2 meses y 3 meses, y pregúntale cuál de ellas le gustaría conocer para darle la información adecuada.
    - Si un método NO ESTÁ DISPONIBLE en la clínica (ej. parches anticonceptivos), infórmaselo amablemente de inmediato en 1 frase y ofrécele alternativas que SÍ estén disponibles y que sean ADECUADAS para el paciente, tomando siempre en cuenta lo que te haya platicado en su historial (por ejemplo, si te dijo que está lactando, ofrécele DIU o Implante, NUNCA pastillas tradicionales). No expliques su uso a menos que te lo pidan explícitamente.
    - Si el paciente te pide ver una imagen, foto o infografía de algún método, dile amablemente que en un momento el sistema automatizado le hará llegar la ilustración (NUNCA digas que no puedes enviar imágenes).
 
-4. SOLICITUD DE ASESOR Y AVISO DE DEMORA POR CONSULTA O PROCEDIMIENTOS:
-   - Cuando el usuario pida hablar con un asesor o personal de salud, revisa si ya mando un mensaje previo con su Nombre, de lo contrario invitarlo a llenar el link de aviso de privacidad, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando un procedimiento médico.
-   - Aclara que mientras tanto tú te mantienes activo para responder cualquier duda adicional.
+4. SOLICITUD DE ASESOR Y RECONOCIMIENTO DE HORARIOS:
+   - Toma en cuenta siempre el [ESTADO ACTUAL DEL SERVICIO] que viene al inicio del mensaje del paciente:
+     * Si estamos FUERA DE HORARIO, recuérdale que el personal le atenderá en su próximo horario laboral y NUNCA prometas atención inmediata en ese momento.
+     * Si estamos EN HORARIO LABORAL, coméntale amablemente que es posible que la respuesta demore un poco debido a que el personal se encuentra atendiendo consulta presencial o realizando algún procedimiento médico.
+   - Si no ha llenado su registro de privacidad, invítalo amablemente a completar el formulario previo.
+   - Aclara siempre que mientras tanto tú te mantienes activo 24/7 para responder cualquier duda adicional.
 
 A CONTINUACIÓN TIENES LA INFORMACIÓN Y DOCUMENTOS OFICIALES PARA RESPONDER:
 ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay documentos específicos cargados en el sistema.'}`;
@@ -789,15 +794,24 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                     return;
                 }
 
-                if (textoLower.startsWith('!registrar ')) {
+                if (textoLower.startsWith('!registrar ') || textoLower.startsWith('!nombre ') || textoLower.startsWith('!renombrar ')) {
                     const partes = texto.split(' ');
-                    const numRaw = partes[1];
-                    const nombreIngresado = partes.slice(2).join(' ') || "Paciente Registrado Directamente";
+                    let targetId = null;
+                    let nombreIngresado = "";
 
-                    const targetId = formatearNumeroWhatsApp(numRaw);
+                    // Opción A: Proporcionó un número de teléfono explícito
+                    const posibleNumero = partes[1] ? formatearNumeroWhatsApp(partes[1]) : null;
+                    if (posibleNumero) {
+                        targetId = posibleNumero;
+                        nombreIngresado = partes.slice(2).join(' ').trim() || "Paciente Registrado Directamente";
+                    } else {
+                        // Opción B: Se escribió el comando directamente dentro de un chat
+                        targetId = (msg.fromMe && msg.to && msg.to !== 'status@broadcast') ? msg.to : msg.from;
+                        nombreIngresado = partes.slice(1).join(' ').trim();
+                    }
 
-                    if (!targetId) {
-                        await responderMensajeSeguro(client, msg, "⚠️ Especifica un número válido de 10 dígitos (ej. `!registrar 4771234567 María López`).");
+                    if (!targetId || !nombreIngresado) {
+                        await responderMensajeSeguro(client, msg, "❌ *Formato incorrecto.*\n\n• En el chat del paciente: `!nombre Juan Pérez`\n• Desde cualquier chat: `!nombre 4111234567 Juan Pérez`");
                         return;
                     }
 
@@ -901,12 +915,18 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
             const estadoVacaciones = cargarEstadoVacaciones();
             if (estadoVacaciones.activo) {
-                await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro ha sido confirmado. 👍🏼`);
+                await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro ha sido confirmado. ✍️✅`);
                 await responderMensajeSeguro(client, msg, obtenerMensajeReceso(estadoVacaciones));
                 return;
             }
 
-            await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. 👍🏼\n\nNotificando al personal de salud del CAISES Jaral...\n\n📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si tienes más dudas o deseas consultar algún otro tema.*`);
+            const enHorario = esHorarioLaboral();
+            if (enHorario) {
+                await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n👨‍⚕️ He notificado a nuestro personal de salud del CAISES Jaral por este chat.\n\n📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si tienes más dudas.*`);
+            } else {
+                const proximo = obtenerTextoProximoHorario();
+                await responderMensajeSeguro(client, msg, `¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n⏰ *Fuera de horario de atención personalizada:* He dejado tu solicitud registrada. Nuestro personal revisará tus datos y te atenderá **${proximo}**.\n\n🤖 *Mientras tanto, el asistente virtual se mantiene activo por si deseas consultar métodos o requisitos.*`);
+            }
             return;
         }
 
@@ -1062,10 +1082,22 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
             }
             const historial = historialesChat.get(remitente);
             
-            // Construir el prompt con contexto
-            let promptConMemoria = msg.body;
+            // Construir el prompt con contexto y estado de horario en tiempo real
+            const enHorario = esHorarioLaboral();
+            const estadoVac = cargarEstadoVacaciones();
+            let contextoHorario = '';
+            if (estadoVac.activo) {
+                contextoHorario = `[ESTADO DEL SERVICIO: EN RECESO/CURSO. Actualmente no hay atención médica presencial.]`;
+            } else if (enHorario) {
+                contextoHorario = `[ESTADO DEL SERVICIO: HORARIO LABORAL ACTIVO (Lunes a Viernes de 2:00 PM a 8:30 PM). El personal está en clínica atendiendo.]`;
+            } else {
+                const proximo = obtenerTextoProximoHorario();
+                contextoHorario = `[ESTADO DEL SERVICIO: FUERA DE HORARIO DE ATENCIÓN PRESENCIAL. Si el paciente pregunta por hablar con un asesor o agendar, indícale amablemente que nuestro personal le atenderá ${proximo}. NUNCA prometas atención inmediata en este momento.]`;
+            }
+
+            let promptConMemoria = `${contextoHorario}\n\nMensaje del paciente: ${msg.body}`;
             if (historial.length > 0) {
-                promptConMemoria = `Historial de la conversación reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
+                promptConMemoria = `${contextoHorario}\n\nHistorial de la conversación reciente con este paciente:\n${historial.join('\n')}\n\nPaciente: ${msg.body}\nAsistente:`;
             }
 
             // Simular que el bot está escribiendo en WhatsApp
