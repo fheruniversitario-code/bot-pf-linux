@@ -1035,10 +1035,32 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         }
 
         // -------------------------------------------------------------
-        // F. SOLICITUD DE ASESOR HUMANO / AGENDAR CITA
+        // F. SOLICITUD DIRECTA DE ASESOR HUMANO / TRANSFERENCIA A PERSONAL
         // -------------------------------------------------------------
-        const palabrasAsesor = ['5', 'asesor', 'humano', 'persona', 'agente', 'enfermera', 'doctor', 'hablar con alguien', 'atencion personal', 'cita', 'citas', 'agendar'];
-        const solicitaAsesor = palabrasAsesor.some(palabra => textoLower === palabra || textoLower.includes(palabra));
+        const esOpcionCinco = textoLower === '5';
+        const esComandoAsesor = textoLower === 'asesor' || textoLower === '!asesor' || textoLower === 'humano' || textoLower === 'agente';
+
+        const frasesDirectasAsesor = [
+            'hablar con alguien', 'hablar con un asesor', 'hablar con una persona', 'hablar con un humano',
+            'atencion personal', 'atención personal', 'atencion personalizada', 'atención personalizada',
+            'comunicar con asesor', 'comunicarme con asesor', 'comunicarme con alguien', 'comunicar con alguien',
+            'pasame a un asesor', 'pásame a un asesor', 'pasame con un asesor', 'pásame con un asesor',
+            'quiero hablar con una enfermera', 'quiero hablar con un doctor', 'quiero un asesor', 'necesito un asesor',
+            'pedir asesor', 'solicitar asesor', 'solicito asesor', 'transferir con asesor', 'transferirme'
+        ];
+
+        const pideAsesorDirecto = esOpcionCinco || esComandoAsesor || frasesDirectasAsesor.some(f => textoLower.includes(f));
+
+        // Detectar si el mensaje es una pregunta o consulta informativa amplia (para no secuestrar preguntas médicas o de requisitos)
+        const palabrasPreguntaOInformacion = [
+            'que', 'qué', 'como', 'cómo', 'donde', 'dónde', 'cuando', 'cuándo', 'cuanto', 'cuánto',
+            'requisito', 'requisitos', 'papel', 'papeles', 'documento', 'documentos', 'informacion', 'información',
+            'vencido', 'retirar', 'retiro', 'colocar', 'poner', 'duele', 'sirve', 'tienen', 'hay', 'costo', 'precio', 'gratis'
+        ];
+        const esConsultaInformativa = palabrasPreguntaOInformacion.some(p => textoLower.includes(p));
+
+        // Solo activar el traspaso de asesor si NO es una consulta que la IA deba responder
+        const solicitaAsesor = pideAsesorDirecto && (!esConsultaInformativa || esOpcionCinco || esComandoAsesor);
 
         if (solicitaAsesor) {
             const estadoVacaciones = cargarEstadoVacaciones();
