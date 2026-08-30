@@ -39,6 +39,27 @@ let procesandoCola = false;
 let botPausadoGlobal = false; // Pausa global indefinida (!pausa / !reactivar)
 let ultimoEnvioBotTimestamp = 0; // Timestamp para evitar carreras en el evento message_create
 
+// Helpers de Fecha y Hora con zona horaria estricta de México (America/Mexico_City / GMT-6)
+function obtenerHoraMexico() {
+    return new Date().toLocaleTimeString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+}
+
+function obtenerFechaMexico(fecha = new Date()) {
+    const d = typeof fecha === 'string' || typeof fecha === 'number' ? new Date(fecha) : fecha;
+    return d.toLocaleDateString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+}
+
 // Helper para formatear números de WhatsApp (@c.us)
 function formatearNumeroWhatsApp(numeroRaw) {
     let num = numeroRaw.toString().trim().replace(/[^0-9]/g, '');
@@ -143,7 +164,7 @@ function obtenerMensajeReceso(estadoVacaciones) {
         'Por el momento, nuestro personal de consejería presencial se encuentra en periodo de receso vacacional.';
 
     const detallePeriodo = estadoVacaciones && estadoVacaciones.mensaje ? `\n📌 *Nota del personal:* ${estadoVacaciones.mensaje}` : '';
-    const detalleFecha = estadoVacaciones && estadoVacaciones.fechaFin ? `\n🗓️ *Fecha estimada de reanudación:* ${new Date(estadoVacaciones.fechaFin).toLocaleDateString('es-MX')}` : '';
+    const detalleFecha = estadoVacaciones && estadoVacaciones.fechaFin ? `\n🗓️ *Fecha estimada de reanudación:* ${obtenerFechaMexico(estadoVacaciones.fechaFin)}` : '';
 
     return `🤖 ${titulo}
 
@@ -496,7 +517,7 @@ async function notificarAlertaVasectomia(client, remitente, nombrePaciente, mens
         `👤 *Paciente:* ${nombrePaciente}\n` +
         `📱 *WhatsApp:* ${numeroFormateado}\n` +
         `💬 *Consulta:* "${mensajeUsuario}"\n` +
-        `⏰ *Hora:* ${new Date().toLocaleTimeString('es-MX')}\n\n` +
+        `⏰ *Hora:* ${obtenerHoraMexico()}\n\n` +
         `ℹ️ *Nota:* El bot sigue respondiendo sus dudas normalmente sin pausarse. Puedes ingresar a su chat cuando gustes para agendar su cita personal.`;
 
     for (const adminNum of listaAdmins) {
@@ -527,7 +548,7 @@ async function responderMensajeSeguro(client, msg, contenido) {
         chatsAtendidosBot.set(remitente, {
             id: remitente,
             mensajeUltimo: msg.body,
-            hora: new Date().toLocaleTimeString('es-MX')
+            hora: obtenerHoraMexico()
         });
 
         return sent;
@@ -731,7 +752,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                         await responderMensajeSeguro(client, msg, 
                             `🌴 *MODO VACACIONES ACTIVADO CON ÉXITO.*\n\n` +
                             `📌 Nota opcional: ${estado.mensaje ? estado.mensaje : 'En receso vacacional'}\n` +
-                            `🗓️ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
+                            `🗓️ Fecha fin: ${estado.fechaFin ? obtenerFechaMexico(estado.fechaFin) : 'Indefinido'}`
                         );
                         return;
                     }
@@ -779,7 +800,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                             `🎓 *MODO CURSO / CAPACITACIÓN ACTIVADO CON ÉXITO.*\n\n` +
                             `📌 Tipo: Curso de Actualización Profesional\n` +
                             `📌 Nota opcional: ${estado.mensaje ? estado.mensaje : 'En curso de capacitación'}\n` +
-                            `🗓️ Fecha fin: ${estado.fechaFin ? new Date(estado.fechaFin).toLocaleDateString('es-MX') : 'Indefinido'}`
+                            `🗓️ Fecha fin: ${estado.fechaFin ? obtenerFechaMexico(estado.fechaFin) : 'Indefinido'}`
                         );
                         return;
                     }
