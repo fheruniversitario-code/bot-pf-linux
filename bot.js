@@ -17,14 +17,38 @@ const pdfParse = require('pdf-parse');
 const ARCHIVO_PACIENTES = path.join(__dirname, 'pacientes.json');
 const ARCHIVO_VACACIONES = path.join(__dirname, 'vacaciones.json');
 const ARCHIVO_INFOGRAFIAS = path.join(__dirname, 'infografias_enviadas.json');
+const ARCHIVO_PAUSAS = path.join(__dirname, 'pausas.json');
 const CARPETA_IMAGENES = path.join(__dirname, 'imagenes');
 
 if (!fs.existsSync(CARPETA_IMAGENES)) {
     fs.mkdirSync(CARPETA_IMAGENES, { recursive: true });
 }
 
+// Cargar y guardar pausas humanas en pausas.json
+function cargarPausas() {
+    try {
+        if (fs.existsSync(ARCHIVO_PAUSAS)) {
+            const data = fs.readFileSync(ARCHIVO_PAUSAS, 'utf-8');
+            const obj = JSON.parse(data);
+            return new Map(Object.entries(obj));
+        }
+    } catch (err) {
+        console.error('Error al leer pausas.json:', err.message);
+    }
+    return new Map();
+}
+
+function guardarPausas() {
+    try {
+        const obj = Object.fromEntries(chatsPausados);
+        fs.writeFileSync(ARCHIVO_PAUSAS, JSON.stringify(obj, null, 2), 'utf-8');
+    } catch (err) {
+        console.error('Error al guardar pausas.json:', err.message);
+    }
+}
+
 // Mapas y variables de estado en memoria
-const chatsPausados = new Map();
+const chatsPausados = cargarPausas();
 const historialesChat = new Map(); // Memoria conversacional por usuario
 const ultimasSolicitudesAdmin = new Map();
 const pendientesRegistro = new Map(); // Para rastrear a quién se le envió el aviso de privacidad
@@ -669,24 +693,36 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
 
     // Procesador universal de mensajes de WhatsApp
     async function procesarMensaje(msg) {
-        if (!msg || !msg.body || msg.from === 'status@broadcast' || msg.from.endsWith('@g.us')) return;
+        if (!msg || msg.from === 'status@broadcast' || msg.from.endsWith('@g.us')) return;
 
-        // Evitar procesar mensajes generados por las respuestas automáticas del bot
+        // 1. Descartar mensajes antiguos (más de 2 minutos) que WhatsApp entrega al reconectar o reiniciar
+        if (msg.timestamp) {
+            const antiguedadSegundos = (Date.now() / 1000) - msg.timestamp;
+            if (antiguedadSegundos > 120) {
+                console.log(`⏳ Omitiendo mensaje antiguo (${Math.round(antiguedadSegundos)}s de antigüedad) de ${msg.from}`);
+                return;
+            }
+        }
+
+        // 2. Evitar procesar mensajes generados por las respuestas automáticas del bot
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         const remitente = msg.from;
+
+        // 3. FILTRO DE AUDIOS / NOTAS DE VOZ (se procesa antes de validar texto para que no sea ignorado)
+        if (msg.type === 'ptt' || msg.type === 'audio' || msg.type === 'voice') {
+            console.log(`🎙️ [AUDIO RECIBIDO] De: ${remitente} | Tipo: ${msg.type}`);
+            await responderMensajeSeguro(client, msg, "🎙️ *Hola. Por el momento mi sistema de Inteligencia Artificial solo puede leer mensajes de texto.*\n\nPor favor, escríbeme tu duda o consulta por escrito para poder ayudarte.");
+            return;
+        }
+
+        // 4. Validar que tenga texto para el resto de los módulos
+        if (!msg.body || typeof msg.body !== 'string' || !msg.body.trim()) return;
+
         const texto = msg.body.trim();
         const textoLower = texto.toLowerCase();
 
         console.log(`💬 [MENSAJE RECIBIDO] De: ${remitente} | Tipo: ${msg.type} | Texto: "${texto}"`);
-
-        // -------------------------------------------------------------
-        // FILTRO DE AUDIOS (NO PERMITIDOS)
-        // -------------------------------------------------------------
-        if (msg.type === 'ptt' || msg.type === 'audio') {
-            await responderMensajeSeguro(client, msg, "🎙️ *Hola. Por el momento mi sistema de Inteligencia Artificial solo puede leer mensajes de texto.*\n\nPor favor, escríbeme tu duda o consulta por escrito para poder ayudarte.");
-            return;
-        }
 
         // -------------------------------------------------------------
         // EXCEPCIÓN PARA TELÉFONOS ADMINISTRADORES SECUNDARIOS Y COMANDOS (!)
@@ -854,7 +890,8 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                     const targetId = formatearNumeroWhatsApp(numRaw);
                     if (targetId) {
                         chatsPausados.set(targetId, Date.now());
-                        await responderMensajeSeguro(client, msg, `⏸️ Chat +${targetId.replace('@c.us', '')} pausado por 30 minutos.`);
+                        guardarPausas();
+                        await responderMensajeSeguro(client, msg, `⏸️ Chat +${targetId.replace('@c.us', '')} pausado por 2 horas.`);
                     } else {
                         await responderMensajeSeguro(client, msg, "⚠️ Especifica un número válido de 10 dígitos o escribe `!pausa` solo para pausar todo de forma indefinida.");
                     }
@@ -873,6 +910,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                     // Desactivar pausas globales e individuales
                     botPausadoGlobal = false;
                     chatsPausados.clear();
+                    guardarPausas();
 
                     await responderMensajeSeguro(client, msg, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han desactivado las vacaciones/curso y todas las pausas. El bot reanuda la atención normal.");
                     return;
@@ -919,6 +957,7 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                 return;
             } else {
                 chatsPausados.delete(remitente);
+                guardarPausas();
             }
         }
 
@@ -1252,6 +1291,7 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
 
                 // Solo si fue escrito manualmente por un humano en el teléfono principal a un paciente
                 chatsPausados.set(msg.to, Date.now());
+                guardarPausas();
                 console.log(`⏸️ Pausa automática activada en chat ${msg.to} por mensaje manual enviado desde el teléfono principal.`);
 
                 const textoTrim = msg.body ? msg.body.trim() : '';
