@@ -655,12 +655,9 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
                 '--no-first-run',
                 '--no-zygote',
                 '--disable-gpu',
-                '--js-flags="--max-old-space-size=256"',
-                '--disable-extensions',
-                '--disable-component-update',
-                '--disable-background-networking',
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
                 '--disable-breakpad',
                 '--disable-client-side-phishing-detection',
                 '--disable-default-apps',
@@ -676,20 +673,57 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         }
     });
 
+    let tiempoInicioLoading99 = null;
+    let botConectadoEstado = false;
+
     client.on('loading_screen', (percent, message) => {
         console.log(`⏳ Cargando WhatsApp... ${percent}% - ${message}`);
+        if (percent === 99 || percent === '99') {
+            if (!tiempoInicioLoading99) tiempoInicioLoading99 = Date.now();
+            // Guardián: Si WhatsApp se queda atrapado en 99% por más de 2.5 minutos, forzar recarga de página
+            if (Date.now() - tiempoInicioLoading99 > 150000) {
+                console.warn("⚠️ ALERTA: WhatsApp Web atrapado en 99% por más de 2.5 minutos. Forzando recarga de página interna...");
+                tiempoInicioLoading99 = null;
+                if (client.pupPage && !client.pupPage.isClosed()) {
+                    client.pupPage.reload({ waitUntil: 'networkidle0' }).catch(() => {});
+                }
+            }
+        } else {
+            tiempoInicioLoading99 = null;
+        }
     });
 
     client.on('qr', (qr) => {
         qrcode.generate(qr, { small: true });
+        botConectadoEstado = false;
+        tiempoInicioLoading99 = null;
         console.log('📲 Escanea el código QR anterior en tu aplicación de WhatsApp.');
     });
 
     client.on('ready', () => {
         const admins = obtenerNumerosAdmin();
+        botConectadoEstado = true;
+        tiempoInicioLoading99 = null;
         console.log('🚀 ¡Conectado con éxito! El bot de CAISES Jaral está en ejecución...');
         console.log(`👑 Administradores registrados para alertas de Vasectomía (${admins.length}):`, admins.join(', '));
     });
+
+    client.on('disconnected', (reason) => {
+        botConectadoEstado = false;
+        tiempoInicioLoading99 = null;
+        console.log('❌ El bot de WhatsApp se ha desconectado:', reason);
+    });
+
+    // Guardián Keep-Alive periódico cada 2 minutos para mantener despierto el WebSocket de Chromium en madrugadas
+    setInterval(async () => {
+        try {
+            if (botConectadoEstado && client.pupPage && !client.pupPage.isClosed()) {
+                await client.pupPage.evaluate(() => {
+                    return window.Store && window.Store.AppState ? true : false;
+                }).catch(() => {});
+            }
+        } catch (e) {}
+    }, 120000);
 
     // Procesador universal de mensajes de WhatsApp
     async function procesarMensaje(msg) {
