@@ -1206,7 +1206,13 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
         // -------------------------------------------------------------
         try {
             let respuestaIA = null;
-            const modelosPrueba = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-flash-latest"];
+            const modelosPrueba = [
+                "gemini-flash-latest",
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-pro"
+            ];
             let ultimoError = null;
 
             // Obtener o crear historial para el usuario
@@ -1326,29 +1332,46 @@ _💡 Si deseas agendar cita directa o atención personal, escribe la palabra *a
     client.on('message_create', async (msg) => {
         try {
             if (msg.fromMe && msg.to && msg.to !== 'status@broadcast') {
-                // Ignorar mensajes salientes automáticos del bot (aumentado a 15 segundos por si tardan en subir las fotos)
-                if (Date.now() - ultimoEnvioBotTimestamp < 15000) {
+                const txt = msg.body ? msg.body.trim() : '';
+                
+                // 1. Si es un comando de administrador (!), procesarlo de inmediato
+                if (txt.startsWith('!')) {
+                    await procesarMensaje(msg);
                     return;
                 }
 
-                if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) {
+                // 2. Si el mensaje contiene el emoji del bot 🤖 o coincide con respuestas automáticas, NUNCA pausar
+                if (txt.includes('🤖') || 
+                    txt.includes('¡Hola, muy buenos días!') || 
+                    txt.includes('Hola, disculpa la molestia') ||
+                    txt.includes('MÉTODOS ANTICONCEPTIVOS') ||
+                    txt.includes('HORARIOS DE ATENCIÓN') ||
+                    txt.includes('UBICACIÓN Y DOMICILIO') ||
+                    txt.includes('REPORTE DE AUSENCIA') ||
+                    txt.includes('INTERÉS EN VASECTOMÍA') ||
+                    txt.includes('¡Muchas gracias,')) {
                     return;
                 }
 
-                // Si fue enviado por el administrador secundario desde un chat admin, no pausar
+                // 3. Ignorar mensajes si el bot acaba de enviar uno en los últimos 30 segundos
+                if (Date.now() - ultimoEnvioBotTimestamp < 30000) {
+                    return;
+                }
+
+                // 4. Si el ID ya fue registrado por el bot
+                if (msg.id && (idsMensajesEnviadosBot.has(msg.id._serialized) || idsMensajesEnviadosBot.has(msg.id.id))) {
+                    return;
+                }
+
+                // 5. Si fue enviado a un administrador, no pausar
                 if (esNumeroAdmin(msg.to)) {
                     return;
                 }
 
-                // Solo si fue escrito manualmente por un humano en el teléfono principal a un paciente
+                // Solo si fue escrito manualmente por un humano en el teclado
                 chatsPausados.set(msg.to, Date.now());
                 guardarPausas();
                 console.log(`⏸️ Pausa automática activada en chat ${msg.to} por mensaje manual enviado desde el teléfono principal.`);
-
-                const textoTrim = msg.body ? msg.body.trim() : '';
-                if (textoTrim.startsWith('!')) {
-                    await procesarMensaje(msg);
-                }
             }
         } catch (err) {
             console.error("Error en evento message_create:", err.message);
