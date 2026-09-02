@@ -689,14 +689,21 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
     client.on('loading_screen', (percent, message) => {
         console.log(`⏳ Cargando WhatsApp... ${percent}% - ${message}`);
         
-        // Guardián Universal: Si se queda en CUALQUIER porcentaje por más de 2 minutos sin avanzar, forzar recarga
+        // Si el bot YA está conectado y en ejecución, las sincronizaciones de fondo (50%, 99%) son normales y no deben recargar la página
+        if (botConectadoEstado) {
+            tiempoInicioLoading = null;
+            ultimoPorcentaje = null;
+            return;
+        }
+
+        // Guardián Universal: Si se queda en CUALQUIER porcentaje antes de 'ready' por más de 2.5 minutos sin avanzar, forzar recarga
         if (ultimoPorcentaje !== percent) {
             tiempoInicioLoading = Date.now();
             ultimoPorcentaje = percent;
         }
 
-        if (tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 120000)) {
-            console.warn(`⚠️ ALERTA: WhatsApp Web atascado en ${percent}% por más de 2 minutos. Forzando recarga de página interna...`);
+        if (tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 150000)) {
+            console.warn(`⚠️ ALERTA: WhatsApp Web atascado en ${percent}% durante el inicio por más de 2.5 minutos. Forzando recarga de página interna...`);
             tiempoInicioLoading = null;
             ultimoPorcentaje = null;
             if (client.pupPage && !client.pupPage.isClosed()) {
@@ -732,9 +739,9 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
     // Guardián Activo y Keep-Alive periódico cada 60 segundos
     setInterval(async () => {
         try {
-            // Si el proceso de carga lleva más de 2.5 minutos atascado en cualquier porcentaje sin eventos
-            if (tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 150000)) {
-                console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga lleva más de 2.5 minutos atascado en ${ultimoPorcentaje}%. Forzando recarga...`);
+            // El watchdog de carga solo aplica si el bot NO ha logrado conectarse
+            if (!botConectadoEstado && tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 180000)) {
+                console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga inicial lleva más de 3 minutos atascado en ${ultimoPorcentaje}%. Forzando recarga...`);
                 tiempoInicioLoading = null;
                 ultimoPorcentaje = null;
                 if (client.pupPage && !client.pupPage.isClosed()) {
