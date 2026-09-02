@@ -703,12 +703,10 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         }
 
         if (tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 150000)) {
-            console.warn(`⚠️ ALERTA: WhatsApp Web atascado en ${percent}% durante el inicio por más de 2.5 minutos. Forzando recarga de página interna...`);
+            console.warn(`⚠️ ALERTA: WhatsApp Web atascado en ${percent}% durante el inicio por más de 2.5 minutos. Reiniciando proceso limpio con PM2...`);
             tiempoInicioLoading = null;
             ultimoPorcentaje = null;
-            if (client.pupPage && !client.pupPage.isClosed()) {
-                client.pupPage.reload({ waitUntil: 'networkidle0' }).catch(() => {});
-            }
+            process.exit(1);
         }
     });
 
@@ -741,12 +739,10 @@ ${conocimientoDocumentos ? conocimientoDocumentos : 'Actualmente no hay document
         try {
             // El watchdog de carga solo aplica si el bot NO ha logrado conectarse
             if (!botConectadoEstado && tiempoInicioLoading && (Date.now() - tiempoInicioLoading > 180000)) {
-                console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga inicial lleva más de 3 minutos atascado en ${ultimoPorcentaje}%. Forzando recarga...`);
+                console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga inicial lleva más de 3 minutos atascado en ${ultimoPorcentaje}%. Reiniciando proceso limpio con PM2...`);
                 tiempoInicioLoading = null;
                 ultimoPorcentaje = null;
-                if (client.pupPage && !client.pupPage.isClosed()) {
-                    client.pupPage.reload({ waitUntil: 'networkidle0' }).catch(() => {});
-                }
+                process.exit(1);
             }
 
             // Mantener despierto el WebSocket de Chromium en madrugadas
