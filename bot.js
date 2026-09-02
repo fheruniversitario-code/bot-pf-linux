@@ -30,7 +30,16 @@ function cargarPausas() {
         if (fs.existsSync(ARCHIVO_PAUSAS)) {
             const data = fs.readFileSync(ARCHIVO_PAUSAS, 'utf-8');
             const obj = JSON.parse(data);
-            return new Map(Object.entries(obj));
+            const mapa = new Map();
+            const TIEMPO_MAX = 2 * 60 * 60 * 1000;
+            const ahora = Date.now();
+            for (const [jid, timestamp] of Object.entries(obj)) {
+                const numTime = Number(timestamp);
+                if (numTime && (ahora - numTime < TIEMPO_MAX)) {
+                    mapa.set(jid, numTime);
+                }
+            }
+            return mapa;
         }
     } catch (err) {
         console.error('Error al leer pausas.json:', err.message);
