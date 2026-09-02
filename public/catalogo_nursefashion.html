@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Oficial | Nurse Medical Fashion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+        .pink-gradient { background: linear-gradient(135deg, #ec4899 0%, #db2777 50%, #9333ea 100%); }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-pink-500 selection:text-white">
+
+    <!-- Top Announcement Bar -->
+    <div class="bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 text-white text-xs font-semibold py-2 px-4 text-center tracking-wide flex items-center justify-center space-x-2 shadow-md">
+        <span>✨ Más de 15 años vistiendo al sector salud con la más alta calidad</span>
+        <span class="hidden md:inline">• 📍 Sucursal en Jaral del Progreso, GTO • 📦 Envíos a todo México</span>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3.5 transition-all">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Logo & Brand -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="filtrarCategoria('todos')">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/25">
+                    <i class="fa-solid fa-user-nurse text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black text-white tracking-tight flex items-center space-x-1.5">
+                        <span>NURSE</span>
+                        <span class="text-pink-400 font-extrabold">FASHION</span>
+                    </h1>
+                    <p class="text-[10px] text-pink-300 font-semibold tracking-wider uppercase">Medical & Healthcare Apparel</p>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="hidden md:flex flex-1 max-w-md relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="input-busqueda" oninput="buscarProductos(this.value)" placeholder="Buscar por modelo, taller (Amber, Enfermedic), calzado..." class="w-full pl-9 pr-4 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 transition">
+            </div>
+
+            <!-- Header Actions (WhatsApp & Cart Button) -->
+            <div class="flex items-center space-x-3">
+                <a href="https://wa.me/5214111120637?text=Hola%20Nurse%20Fashion,%20deseo%20asesoría%20personalizada" target="_blank" class="hidden sm:flex items-center space-x-2 px-3.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold transition">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>Asesoría en Vivo</span>
+                </a>
+
+                <!-- Carrito Button Trigger -->
+                <button onclick="abrirCarrito()" class="relative flex items-center space-x-2.5 px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-lg shadow-pink-600/20 transition transform active:scale-95">
+                    <i class="fa-solid fa-cart-shopping text-sm"></i>
+                    <span class="hidden sm:inline">Mi Pedido</span>
+                    <span id="badge-contador-carrito" class="bg-white text-pink-600 text-[11px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="mt-3 md:hidden">
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" oninput="buscarProductos(this.value)" placeholder="Buscar prendas, marcas o accesorios..." class="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-8">
+
+        <!-- Hero Showroom Banner -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-pink-950/40 border border-slate-800 p-6 sm:p-10 shadow-2xl">
+            <div class="relative z-10 max-w-2xl space-y-4">
+                <div class="inline-flex items-center space-x-2 px-3 py-1 bg-pink-500/10 border border-pink-500/20 rounded-full text-pink-400 text-xs font-semibold">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Prendas Médicas de Alta Confección y Distribución Directa</span>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                    Elige tus modelos favoritos y <span class="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">cotiza directo a WhatsApp</span>
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Agrega los conjuntos, filipinas y calzado que te gusten a tu carrito. Al enviar tu pedido, nuestra <b>Asesora Inteligente</b> calculará tu presupuesto exacto al instante con las tallas y colores de tu preferencia.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <span class="text-xs text-slate-400 flex items-center space-x-1.5"><i class="fa-solid fa-check text-emerald-400"></i><span>Sin pasarelas de pago engorrosas</span></span>
+                    <span class="text-xs text-slate-400 flex items-center space-x-1.5"><i class="fa-solid fa-check text-emerald-400"></i><span>Apartado con 50% de anticipo</span></span>
+                    <span class="text-xs text-slate-400 flex items-center space-x-1.5"><i class="fa-solid fa-check text-emerald-400"></i><span>Precios especiales para estudiantes</span></span>
+                </div>
+            </div>
+            <!-- Decorative Icon Background -->
+            <i class="fa-solid fa-stethoscope absolute right-4 -bottom-6 text-9xl text-pink-500/5 pointer-events-none"></i>
+        </div>
+
+        <!-- Category Filter Tabs -->
+        <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+            <button onclick="filtrarCategoria('todos', this)" class="btn-categoria active px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-pink-600 text-white shadow-md shadow-pink-600/20 flex items-center space-x-2">
+                <i class="fa-solid fa-border-all"></i>
+                <span>Ver Todo</span>
+            </button>
+            <button onclick="filtrarCategoria('amber', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-vest-patches text-pink-400"></i>
+                <span>Línea Amber</span>
+            </button>
+            <button onclick="filtrarCategoria('enfermedic', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-shirt text-purple-400"></i>
+                <span>Línea Enfermedic</span>
+            </button>
+            <button onclick="filtrarCategoria('sublimados', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                <span>Sublimados 360 & Jumpsuits</span>
+            </button>
+            <button onclick="filtrarCategoria('calzado', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-shoe-prints text-teal-400"></i>
+                <span>Calzado Clínico</span>
+            </button>
+            <button onclick="filtrarCategoria('estetos', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-stethoscope text-rose-400"></i>
+                <span>Estetoscopios & Equipos</span>
+            </button>
+            <button onclick="filtrarCategoria('graduaciones', this)" class="btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                <span>Kits de Graduación & Lámparas</span>
+            </button>
+        </div>
+
+        <!-- Product Grid Section -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 id="titulo-seccion-productos" class="text-lg font-bold text-white">Catálogo Completo</h3>
+                    <p class="text-xs text-slate-400">Selecciona tu talla y color antes de agregar al pedido</p>
+                </div>
+                <span id="contador-productos" class="text-xs text-slate-400 font-semibold">Cargando prendas...</span>
+            </div>
+
+            <div id="grid-productos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Se llena dinámicamente con JavaScript -->
+            </div>
+        </div>
+
+        <!-- Sucursal & Confianza Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-800/80">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex items-start space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white mb-1">Única Sucursal Oficial</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Melchor Ocampo #402, Zona Centro, Jaral del Progreso, GTO. Lunes a Viernes 1-6pm, Domingos 12-3pm.</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex items-start space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-lg flex-shrink-0">
+                    <i class="fa-solid fa-truck-fast"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white mb-1">Envíos a Todo México</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Guías rastreables por paqueterías líderes (DHL, FedEx, Estafeta) con opción a sucursal Ocurre.</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex items-start space-x-4">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg flex-shrink-0">
+                    <i class="fa-solid fa-shield-heart"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-white mb-1">Atención Asistida por IA</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Cotizaciones en tiempo real 24/7 con disponibilidad de confección y stock al instante.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 px-4 text-center text-xs text-slate-500 space-y-2">
+        <p class="font-semibold text-slate-400">© 2026 Nurse Medical Fashion. Todos los derechos reservados.</p>
+        <p>Prendas médicas de alta confección • Jaral del Progreso, Guanajuato</p>
+    </footer>
+
+    <!-- ==================================================================== -->
+    <!-- SLIDE-OVER / DRAWER DEL CARRITO COTIZADOR -->
+    <!-- ==================================================================== -->
+    <div id="drawer-carrito" class="hidden fixed inset-0 z-50 overflow-hidden">
+        <!-- Backdrop -->
+        <div onclick="cerrarCarrito()" class="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"></div>
+
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col">
+                
+                <!-- Drawer Header -->
+                <div class="px-6 py-5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-xl bg-pink-600/20 text-pink-400 flex items-center justify-center">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Tu Lista de Cotización</h3>
+                            <p class="text-xs text-slate-400" id="drawer-items-count">0 prendas seleccionadas</p>
+                        </div>
+                    </div>
+                    <button onclick="cerrarCarrito()" class="text-slate-400 hover:text-white transition p-2">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Items List -->
+                <div id="drawer-lista-items" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <!-- Dinámico -->
+                </div>
+
+                <!-- Drawer Footer & WhatsApp Button -->
+                <div class="p-6 bg-slate-950 border-t border-slate-800 space-y-4">
+                    
+                    <!-- Form Datos Cliente -->
+                    <div class="space-y-2.5">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-300 uppercase">Tu Nombre (Opcional)</label>
+                            <input type="text" id="cart-nombre-cliente" placeholder="Ej: Dra. Claudia López" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-300 uppercase">Tipo de Entrega</label>
+                            <select id="cart-tipo-entrega" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500">
+                                <option value="Recoger en Sucursal (Jaral del Progreso)">🏬 Recoger en Sucursal (Jaral del Progreso)</option>
+                                <option value="Envío a Domicilio por Paquetería">📦 Envío por Paquetería a Domicilio</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="enviarPedidoWhatsApp()" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2 transform active:scale-98">
+                        <i class="fa-brands fa-whatsapp text-base"></i>
+                        <span>Enviar Cotización a WhatsApp (+52 411 112 0637)</span>
+                    </button>
+                    
+                    <p class="text-[10px] text-slate-400 text-center leading-tight">
+                        Al enviar tu cotización, nuestra asesora IA en WhatsApp confirmará stock, tiempo de confección y total de tu pedido.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Sticky Cart Button (Mobile) -->
+    <button onclick="abrirCarrito()" id="btn-flotante-carrito" class="fixed bottom-6 right-6 z-30 flex items-center space-x-3 px-5 py-3.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-full font-bold shadow-2xl shadow-pink-600/40 transform hover:scale-105 transition">
+        <i class="fa-solid fa-cart-shopping text-base"></i>
+        <span class="text-xs">Cotizar Pedido</span>
+        <span id="badge-contador-flotante" class="bg-white text-pink-600 text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">0</span>
+    </button>
+
+    <!-- ==================================================================== -->
+    <!-- LOGICA JAVASCRIPT DEL SHOWROOM Y CARRITO COTIZADOR -->
+    <!-- ==================================================================== -->
+    <script>
+        // Catálogo Base de Nurse Fashion
+        const CATALOGO_NURSE = [
+            {
+                id: 'amber-01',
+                nombre: 'Conjunto Quirúrgico Amber Stretch',
+                categoria: 'amber',
+                taller: 'Amber',
+                tipo: 'Sobre Pedido',
+                descripcion: 'Conjunto de alta gama, tela stretch antifluidos con filipina cuello V y pantalón jogger con bolsas cargo.',
+                colores: ['Vino', 'Azul Marino', 'Palo de Rosa', 'Negro', 'Verde Militar', 'Gris Oxford'],
+                tallas: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQVD4zO-s3fa9zKx2sjqDd953dNwJdvz9GjQYBS8k85dH5oy_NhPJjcASAx1nEXXtLLkvkJWYL9ScY2UEkJfW4d_DXRxHvGFdwkujPQ4JmHZJaxtZztpojsyzoPcRuoAANAvqAzszxAJGPYtCin3DwXrnCPjppkOBpsH3lKOvGmnHsJt2osIqO7ZrcPMHuM=w600'
+            },
+            {
+                id: 'amber-02',
+                nombre: 'Filipina Amber Modelo Princesa',
+                categoria: 'amber',
+                taller: 'Amber',
+                tipo: 'Sobre Pedido',
+                descripcion: 'Corte estilizado que realza la silueta, bolsas delanteras profundas y costuras reforzadas.',
+                colores: ['Palo de Rosa', 'Azul Cielo', 'Blanco', 'Fiusha', 'Verde Menta'],
+                tallas: ['XS', 'S', 'M', 'L', 'XL'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQWWu3do0mWLLPQ7xCXDJdle_6ukm5l7abpbuTcPthpSgy25UQkTwYXx9zU_9f3ZHHmN3y7bH9Y1UsM1hXNhmosMGPgjvJGJRooa-0yNsEwJduHql-zoUbjMGHJKO2J5l6ZCkpTrr5iJMK8kZ_ggm2UfR3VGxOJqEr6mOq9HyUav2SzoPYY8XtHj8kJdh-c=w600'
+            },
+            {
+                id: 'enfermedic-01',
+                nombre: 'Conjunto Clínico Enfermedic Confort',
+                categoria: 'enfermedic',
+                taller: 'Enfermedic',
+                tipo: 'En Tienda',
+                descripcion: 'Clásico conjunto clínico resistente a lavados continuos. Tela ligera, fresca y transpirable.',
+                colores: ['Blanco Clínico', 'Azul Rey', 'Verde Quirófano', 'Azul Marino'],
+                tallas: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQWBh904I6nv73f75U1ZfrsWeMHunEeoDEqwxrL2odQkF3s_VWsuKGajlUAB6JpeO4D5oHfq0K9Xj1EgWbJQiU1wr1tz_cV28xdBUkhHbObJZsrsWe6Pq1JQMOXKBMOkhmclo_OC-2BFhd9jDgGtZtnHm4I55PmjHf4Y3zKX-PVUwo-f2PtCN8w-aaYlA_s=w600'
+            },
+            {
+                id: 'sublimado-01',
+                nombre: 'Jumpsuit Médico Sublimado 360',
+                categoria: 'sublimados',
+                taller: 'Sublimados 360',
+                tipo: 'Sobre Pedido',
+                descripcion: 'Jumpsuit de una sola pieza con estampados médicos 360°. Cintura ajustable con jareta y máxima comodidad.',
+                colores: ['Odontología Rosa', 'Pediatría Ositos', 'Veterinaria Huellitas', 'Enfermería Corazones'],
+                tallas: ['XS', 'S', 'M', 'L', 'XL'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQXmRocWGfPzFxEaWfvGMND7-y4uLzuKtwLr8xLxnY63iY61GJv9PjTM1K7TpiafTWPkKeQIQi1JxOmKIlS4TmpfKnnNDvIgxl74CyXv5fAxGp1muzdQXjxAWX6Qn_X3_AFzqVDMyYwVqJS7nWmSGgddvLn-5yxZmKOFeqdet-0igSCyR2BllHy1-j_TBOc=w600'
+            },
+            {
+                id: 'sublimado-02',
+                nombre: 'Filipina Sublimada Temática 360',
+                categoria: 'sublimados',
+                taller: 'Sublimados 360',
+                tipo: 'Sobre Pedido',
+                descripcion: 'Filipinas con estampados HD de especialidades médicas (Pediatría, Odontología, Medicina General).',
+                colores: ['Fondo Negro', 'Fondo Azul', 'Fondo Rosa', 'Fondo Blanco'],
+                tallas: ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQXxkRYo-mch9R-oUtYblLVcYhE8dlH9sfkwHlCQazUuX9vAJw4qovTh7f2tJ4hS5bhNGPAyaRPx3ZNTyByZF0ioyHxVT1AoJMKdN6dmjYDBYeHPG48UeIb7No1IRXV2V4YGP7-6STV7flfShhe3nGOmsxJ7zSleLO79Cj2ms27FPkX2m3iH_lG3GzUFRJV_wsI0R2CCXZIfaJ3Y85IOU3ath86PaZTXfP402izeB-g=w600'
+            },
+            {
+                id: 'calzado-01',
+                nombre: 'Calzado Clínico Ergonómico Antifatiga',
+                categoria: 'calzado',
+                taller: 'Calzado Especializado',
+                tipo: 'En Tienda',
+                descripcion: 'Zapatos ergonómicos de piel suave y suela antiderrapante con amortiguación para largas jornadas hospitalarias.',
+                colores: ['Blanco Puro', 'Negro Mate'],
+                tallas: ['22', '22.5', '23', '23.5', '24', '24.5', '25', '25.5', '26', '27'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQW57yEUOzWVUrU6gfOwU5Q7-HdY5pz5q0G594DUEp3bGwOvgKYA6PVbKjZblKwqUvHhiXOlVrV2gSvQ53X4MLXCw8xtYRMoi3LoeDEjUxDlXzbBuIBbZaXWJyI5H-ItjGN_5Mc8207Ew4IuRqIKhZXXVEx0HsRuipZ4aIyUKeM9C6-Soc9CrpLUCUVPwPYufG-VIgD24eseVFcmExm5aByITZu5FPQSTJ6dIjCUGkQ=w600'
+            },
+            {
+                id: 'esteto-01',
+                nombre: 'Estetoscopio Profesional Doble Campana',
+                categoria: 'estetos',
+                taller: 'Diagnóstico Médico',
+                tipo: 'En Tienda',
+                descripcion: 'Excelente acústica para auscultación cardiaca y pulmonar. Olivas suaves ergonómicas.',
+                colores: ['Negro Elegante', 'Azul Metal', 'Rosa Gold', 'Morado Amatista'],
+                tallas: ['Adulto', 'Pediátrico'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQU_69oaBxcdq5hiDiRauMV81uTCGfz4c23vXVXFIz3Dz2Z_3zVYq61Yk25lb_PBVBlTr2nxFW5IQJVZ95jttF_43dNX4qTST0i8xoO_Lo9ufnoeO3-Y7QNPGlXle_be9RA7OwVG2RiYEs8xT847q-uqTKj5jHYug9UbOpVVNxl1O3qnMe_v69W8FmnQSUw=w600'
+            },
+            {
+                id: 'kit-grad-01',
+                nombre: 'Kit Graduación: Lámpara de Imposición + Charola',
+                categoria: 'graduaciones',
+                taller: 'Graduaciones NMF',
+                tipo: 'En Tienda',
+                descripcion: 'Tradicional lámpara de enfermería para pase de luz / graduación. Incluye charola de acero y opción a grabado.',
+                colores: ['Dorado Brillante', 'Plateado Espejo'],
+                tallas: ['Estándar con Mecha', 'Modelo LED'],
+                imagen: 'https://lh3.googleusercontent.com/sitesv/AG8ngQW8sf4MwZhDg7_-GzIFHTSIFBjhIFOKNWx0TYCliXwKN9Qhf_72GwQ8mhdAkzY3duVO5W0AmUh9w4KpW6xVJfanMQPGSOTupVbHvL5ft5bzgKO24_8CE2mS4AaldY_Xopzq-gFUUmkaoQWCHQMr6pmDWELfZAmll8dQSmvt4qvUqvSWTikF3jLwpYeM=w600'
+            }
+        ];
+
+        // Estado del Carrito en LocalStorage
+        let carrito = JSON.parse(localStorage.getItem('nursefashion_cart') || '[]');
+        let categoriaActiva = 'todos';
+        let queryBusqueda = '';
+
+        // Renderizado de Productos
+        function renderizarProductos() {
+            const grid = document.getElementById('grid-productos');
+            grid.innerHTML = '';
+
+            const filtrados = CATALOGO_NURSE.filter(p => {
+                const coincideCat = categoriaActiva === 'todos' || p.categoria === categoriaActiva;
+                const coincideBusq = p.nombre.toLowerCase().includes(queryBusqueda.toLowerCase()) || 
+                                     p.taller.toLowerCase().includes(queryBusqueda.toLowerCase()) ||
+                                     p.descripcion.toLowerCase().includes(queryBusqueda.toLowerCase());
+                return coincideCat && coincideBusq;
+            });
+
+            document.getElementById('contador-productos').textContent = `${filtrados.length} modelos mostrados`;
+
+            if (filtrados.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-500 space-y-2">
+                        <i class="fa-solid fa-magnifying-glass text-3xl text-slate-600"></i>
+                        <p class="text-sm font-semibold">No se encontraron modelos con ese criterio de búsqueda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtrados.forEach(prod => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-800/90 rounded-3xl overflow-hidden flex flex-col justify-between hover:border-pink-500/40 transition-all duration-300 group shadow-lg";
+                
+                const badgeTipoClass = prod.tipo === 'En Tienda' 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                    : 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+
+                card.innerHTML = `
+                    <div>
+                        <!-- Imagen con Badges -->
+                        <div class="relative h-60 w-full overflow-hidden bg-slate-950">
+                            <img src="${prod.imagen}" alt="${prod.nombre}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                            <div class="absolute top-3 left-3 flex flex-col gap-1.5">
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border backdrop-blur-md ${badgeTipoClass}">
+                                    ${prod.tipo}
+                                </span>
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-slate-950/80 text-slate-300 border border-slate-800 backdrop-blur-md">
+                                    ${prod.taller}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="p-5 space-y-3.5">
+                            <h4 class="text-sm font-bold text-white group-hover:text-pink-400 transition leading-snug">${prod.nombre}</h4>
+                            <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">${prod.descripcion}</p>
+
+                            <!-- Selectores de Talla y Color -->
+                            <div class="space-y-2 pt-1">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Color Deseado:</label>
+                                    <select id="color-${prod.id}" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500">
+                                        ${prod.colores.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Talla / Medida:</label>
+                                    <select id="talla-${prod.id}" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-pink-500">
+                                        ${prod.tallas.map(t => `<option value="${t}">Talla ${t}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botón Agregar -->
+                    <div class="p-5 pt-0">
+                        <button onclick="agregarAlCarrito('${prod.id}')" class="w-full py-2.5 bg-slate-800 hover:bg-gradient-to-r hover:from-pink-600 hover:to-purple-600 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-md">
+                            <i class="fa-solid fa-cart-plus"></i>
+                            <span>+ Agregar a Mi Pedido</span>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Filtros
+        function filtrarCategoria(cat, btn) {
+            categoriaActiva = cat;
+            document.querySelectorAll('.btn-categoria').forEach(b => {
+                b.className = "btn-categoria px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center space-x-2";
+            });
+            if (btn) {
+                btn.className = "btn-categoria active px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap bg-pink-600 text-white shadow-md shadow-pink-600/20 flex items-center space-x-2";
+            }
+            const titulos = {
+                todos: 'Catálogo Completo',
+                amber: 'Línea y Filipinas Amber',
+                enfermedic: 'Línea de Uniformes Enfermedic',
+                sublimados: 'Sublimados 360 & Jumpsuits Temáticos',
+                calzado: 'Calzado Clínico & Ergonómico',
+                estetos: 'Estetoscopios & Instrumentos de Diagnóstico',
+                graduaciones: 'Lámparas y Kits de Graduación'
+            };
+            document.getElementById('titulo-seccion-productos').textContent = titulos[cat] || 'Catálogo';
+            renderizarProductos();
+        }
+
+        function buscarProductos(texto) {
+            queryBusqueda = texto;
+            renderizarProductos();
+        }
+
+        // Carrito Functions
+        function agregarAlCarrito(idProd) {
+            const prod = CATALOGO_NURSE.find(p => p.id === idProd);
+            if (!prod) return;
+
+            const colorSel = document.getElementById(`color-${prod.id}`).value;
+            const tallaSel = document.getElementById(`talla-${prod.id}`).value;
+
+            // Revisar si ya existe con esa talla y color
+            const existente = carrito.find(item => item.id === prod.id && item.color === colorSel && item.talla === tallaSel);
+            if (existente) {
+                existente.cantidad += 1;
+            } else {
+                carrito.push({
+                    id: prod.id,
+                    nombre: prod.nombre,
+                    taller: prod.taller,
+                    tipo: prod.tipo,
+                    color: colorSel,
+                    talla: tallaSel,
+                    imagen: prod.imagen,
+                    cantidad: 1
+                });
+            }
+
+            guardarCarrito();
+            actualizarBadgesCarrito();
+            
+            // Animación y abrir drawer
+            abrirCarrito();
+        }
+
+        function modificarCantidad(index, delta) {
+            carrito[index].cantidad += delta;
+            if (carrito[index].cantidad <= 0) {
+                carrito.splice(index, 1);
+            }
+            guardarCarrito();
+            actualizarBadgesCarrito();
+            renderizarDrawerItems();
+        }
+
+        function eliminarItem(index) {
+            carrito.splice(index, 1);
+            guardarCarrito();
+            actualizarBadgesCarrito();
+            renderizarDrawerItems();
+        }
+
+        function guardarCarrito() {
+            localStorage.setItem('nursefashion_cart', JSON.stringify(carrito));
+        }
+
+        function actualizarBadgesCarrito() {
+            const total = carrito.reduce((acc, item) => acc + item.cantidad, 0);
+            document.getElementById('badge-contador-carrito').textContent = total;
+            document.getElementById('badge-contador-flotante').textContent = total;
+            document.getElementById('drawer-items-count').textContent = `${total} prendas seleccionadas`;
+        }
+
+        function abrirCarrito() {
+            renderizarDrawerItems();
+            document.getElementById('drawer-carrito').classList.remove('hidden');
+        }
+
+        function cerrarCarrito() {
+            document.getElementById('drawer-carrito').classList.add('hidden');
+        }
+
+        function renderizarDrawerItems() {
+            const cont = document.getElementById('drawer-lista-items');
+            cont.innerHTML = '';
+
+            if (carrito.length === 0) {
+                cont.innerHTML = `
+                    <div class="py-16 text-center text-slate-500 space-y-3">
+                        <i class="fa-solid fa-bag-shopping text-4xl text-slate-700"></i>
+                        <p class="text-xs font-semibold">Tu lista de cotización está vacía.</p>
+                        <p class="text-[11px] text-slate-600">Explora nuestro catálogo y agrega los modelos que deseas cotizar.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            carrito.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = "flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800/80 rounded-2xl gap-3";
+                el.innerHTML = `
+                    <img src="${item.imagen}" class="w-14 h-14 rounded-xl object-cover bg-slate-900 flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h5 class="text-xs font-bold text-white truncate">${item.nombre}</h5>
+                        <p class="text-[11px] text-pink-400 font-semibold">${item.color} • Talla ${item.talla}</p>
+                        <span class="text-[10px] text-slate-500 uppercase">${item.taller} (${item.tipo})</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center border border-slate-800 rounded-lg overflow-hidden bg-slate-900">
+                            <button onclick="modificarCantidad(${idx}, -1)" class="px-2 py-1 text-xs text-slate-400 hover:text-white">-</button>
+                            <span class="px-2 py-1 text-xs font-bold text-white">${item.cantidad}</span>
+                            <button onclick="modificarCantidad(${idx}, 1)" class="px-2 py-1 text-xs text-slate-400 hover:text-white">+</button>
+                        </div>
+                        <button onclick="eliminarItem(${idx})" class="text-slate-500 hover:text-rose-400 transition p-1.5">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                cont.appendChild(el);
+            });
+        }
+
+        // WhatsApp Checkout
+        function enviarPedidoWhatsApp() {
+            if (carrito.length === 0) {
+                alert("Por favor agrega al menos un modelo a tu pedido.");
+                return;
+            }
+
+            const nombre = document.getElementById('cart-nombre-cliente').value.trim() || 'Cliente Web';
+            const entrega = document.getElementById('cart-tipo-entrega').value;
+
+            let mensaje = `¡Hola Nurse Fashion! 🥼✨ Mi nombre es *${nombre}* y me gustaría cotizar los siguientes modelos que seleccioné en su catálogo:\n\n`;
+
+            carrito.forEach((item, i) => {
+                mensaje += `${i + 1}. *${item.nombre}*\n`;
+                mensaje += `   • Color: ${item.color}\n`;
+                mensaje += `   • Talla: ${item.talla}\n`;
+                mensaje += `   • Cantidad: ${item.cantidad} pieza(s)\n`;
+                mensaje += `   • Taller / Marca: ${item.taller} (${item.tipo})\n\n`;
+            });
+
+            mensaje += `📍 *Método de Entrega:* ${entrega}\n\n`;
+            mensaje += `¿Me podrían confirmar el costo total y tiempo de entrega? ¡Muchas gracias!`;
+
+            const numeroWhatsApp = "5214111120637";
+            const urlWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`;
+
+            window.open(urlWhatsApp, '_blank');
+        }
+
+        // Inicialización
+        renderizarProductos();
+        actualizarBadgesCarrito();
+    </script>
+</body>
+</html>

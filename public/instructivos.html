@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Guías e Instructivos | OmniBot SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="h-20 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8 flex-shrink-0">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white shadow">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-white">Centro de Instructivos y Conexiones Google</h1>
+                <p class="text-xs text-slate-400">Guías oficiales para configurar tu cuenta de Google con tu Asistente de IA</p>
+            </div>
+        </div>
+
+        <a href="/" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center space-x-2">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Volver al Panel</span>
+        </a>
+    </header>
+
+    <!-- Contenido -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-8 space-y-8 overflow-y-auto">
+
+        <!-- Banner Introductorio -->
+        <div class="bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/20 rounded-3xl p-8 shadow-xl">
+            <h2 class="text-xl font-black text-white mb-2">🚀 Conecta tus servicios de Google con 1 Clic</h2>
+            <p class="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                Tu bot inteligente se nutre directamente de las herramientas que ya utilizas todos los días en tu cuenta de Gmail: hojas de cálculo para inventarios, calendario de Google para citas médicas y la inteligencia artificial oficial de Google Gemini.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- 1. Google Gemini API Key -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base">1. Clave de IA (Google Gemini)</h3>
+                            <span class="text-[10px] text-emerald-400 font-bold uppercase">100% Gratuito</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <p><b>Paso 1:</b> Entra a Google AI Studio con tu correo de Gmail.</p>
+                    <p><b>Paso 2:</b> Presiona el botón azul <b>"Get API Key"</b> o <b>"Create API key"</b>.</p>
+                    <p><b>Paso 3:</b> Selecciona <b>"Create API key in new project"</b>.</p>
+                    <p><b>Paso 4:</b> Copia la clave (empieza con <code>AIzaSy...</code>) y pégala en la pestaña <b>Conocimiento IA</b> de tu panel.</p>
+                </div>
+
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                    <span>Abrir Google AI Studio</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+
+            <!-- 2. Google Sheets -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-table-cells"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base">2. Google Sheets (Inventario en Vivo)</h3>
+                            <span class="text-[10px] text-slate-400 font-medium">Precios y Stock en Tiempo Real</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <p><b>Paso 1:</b> Crea una hoja en Google Sheets con columnas: <code>Producto | Talla | Precio | Stock</code>.</p>
+                    <p><b>Paso 2:</b> Haz clic en el botón verde <b>"Compartir"</b> arriba a la derecha.</p>
+                    <p><b>Paso 3:</b> Cambia el acceso a <b>"Cualquier persona con el enlace"</b> (Lector).</p>
+                    <p><b>Paso 4:</b> Copia el enlace y pégalo en la pestaña <b>Conocimiento IA</b>.</p>
+                </div>
+
+                <a href="https://sheets.google.com" target="_blank" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                    <span>Abrir Google Sheets</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+
+            <!-- 3. Google Calendar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base">3. Google Calendar (Agenda)</h3>
+                            <span class="text-[10px] text-slate-400 font-medium">Citas y Consultas Médicas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <p><b>Paso 1:</b> Entra a Google Calendar y haz clic en el icono de engranaje ⚙️ (Configuración).</p>
+                    <p><b>Paso 2:</b> Selecciona tu calendario principal y busca <b>"Integrar el calendario"</b>.</p>
+                    <p><b>Paso 3:</b> Copia el enlace público o tu dirección iCal.</p>
+                    <p><b>Paso 4:</b> Pégalo en la pestaña <b>Agenda de Citas</b> de tu panel.</p>
+                </div>
+
+                <a href="https://calendar.google.com" target="_blank" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                    <span>Abrir Google Calendar</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+
+            <!-- 4. Instagram / Linktree -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center text-lg">
+                            <i class="fa-brands fa-instagram"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-white text-base">4. Enlace en Biografía de Instagram</h3>
+                            <span class="text-[10px] text-slate-400 font-medium">Redes Sociales y WhatsApp</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-300 space-y-2.5 leading-relaxed bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <p><b>Paso 1:</b> En la pestaña <b>Página de Enlaces</b>, presiona <b>"Copiar Enlace para Instagram"</b>.</p>
+                    <p><b>Paso 2:</b> Abre Instagram en tu celular > <b>Editar perfil</b> > <b>Enlaces</b>.</p>
+                    <p><b>Paso 3:</b> Pega la dirección web y ponle de título <i>"WhatsApp y Citas Oficiales"</i>.</p>
+                    <p><b>Paso 4:</b> Guarda los cambios para que tus seguidores hagan clic directo.</p>
+                </div>
+
+                <a href="https://instagram.com" target="_blank" class="w-full py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2">
+                    <span>Abrir Instagram</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Maestro SuperAdmin | OmniBot Agency</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex flex-col font-sans">
+
+    <!-- Header Principal -->
+    <header class="h-20 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8 flex-shrink-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-11 h-11 bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <i class="fa-solid fa-crown text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white tracking-tight">Torre de Control SuperAdmin</h1>
+                <p class="text-xs text-slate-400">Administración de clientes, bots activos, planes y suspensiones por pago</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <a href="/" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center space-x-2">
+                <i class="fa-solid fa-gauge"></i>
+                <span>Ir al Panel de Bot</span>
+            </a>
+            <button onclick="cerrarSesion()" class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-bold transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Cerrar Sesión</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-8 space-y-8 overflow-y-auto">
+
+        <!-- Métricas Rápidas -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total de Clientes / Bots</div>
+                <div id="stat-total-clientes" class="text-3xl font-black text-white">0</div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Bots Activos / Pagados</div>
+                <div id="stat-activos" class="text-3xl font-black text-emerald-400">0</div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Suspendidos por Pago</div>
+                <div id="stat-suspendidos" class="text-3xl font-black text-rose-400">0</div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                <div class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">Ingreso Mensual Estimado</div>
+                <div id="stat-ingresos" class="text-3xl font-black text-indigo-400">$0 MXN</div>
+            </div>
+        </div>
+
+        <!-- Tabla y Acciones -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Listado de Clientes y Licencias</h2>
+                    <p class="text-xs text-slate-400">Aquí creas las cuentas para tus clientes y controlas el acceso a sus bots</p>
+                </div>
+
+                <button onclick="abrirModalNuevoCliente()" class="px-5 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-90 text-white rounded-2xl text-xs font-bold shadow-lg shadow-indigo-600/20 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>+ Dar de Alta Nuevo Cliente / Bot</span>
+                </button>
+            </div>
+
+            <!-- Tabla de Clientes -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="text-xs uppercase text-slate-500 border-b border-slate-800 pb-3">
+                        <tr>
+                            <th class="pb-3 font-semibold">Cliente / Negocio</th>
+                            <th class="pb-3 font-semibold">Usuario de Acceso</th>
+                            <th class="pb-3 font-semibold">Plan</th>
+                            <th class="pb-3 font-semibold">Estado del Servicio</th>
+                            <th class="pb-3 font-semibold">Próximo Vencimiento</th>
+                            <th class="pb-3 font-semibold text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-clientes-body" class="divide-y divide-slate-800/60">
+                        <tr><td colspan="6" class="py-8 text-center text-slate-500 text-xs">Cargando clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL NUEVO CLIENTE -->
+    <div id="modal-nuevo-cliente" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Alta de Nuevo Cliente</h3>
+                    <p class="text-xs text-slate-400">Crea las credenciales de acceso para tu nuevo cliente</p>
+                </div>
+                <button onclick="cerrarModalNuevoCliente()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="form-nuevo-cliente" onsubmit="guardarNuevoCliente(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Nombre del Negocio o Doctor</label>
+                    <input type="text" id="cli-nombre" required placeholder="Ej. Clínica Dental Sonrisas" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Usuario</label>
+                        <input type="text" id="cli-username" required placeholder="ej. dental_sonrisas" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Contraseña Inicial</label>
+                        <input type="password" id="cli-password" required placeholder="••••••••" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Plan Asignado</label>
+                        <select id="cli-plan" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                            <option value="Pro Ilimitado">Pro Ilimitado ($1,500/mes)</option>
+                            <option value="Básico">Básico ($800/mes)</option>
+                            <option value="Enterprise">Enterprise ($3,000/mes)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Fecha de Vencimiento</label>
+                        <input type="date" id="cli-fecha" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-3">
+                    <button type="button" onclick="cerrarModalNuevoCliente()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition">Crear Cuenta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('omnibot_token');
+        if (!token) window.location.href = '/login.html';
+
+        async function cargarClientes() {
+            try {
+                const res = await fetch('/api/superadmin/clientes', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const clientes = await res.json();
+                renderTabla(clientes);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderTabla(clientes) {
+            const tbody = document.getElementById('tabla-clientes-body');
+            tbody.innerHTML = '';
+
+            let activos = 0;
+            let suspendidos = 0;
+
+            clientes.forEach(c => {
+                if (c.estado === 'activo') activos++;
+                else suspendidos++;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-850/40 transition";
+                
+                const badgeEstado = c.estado === 'activo'
+                    ? `<span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold border border-emerald-500/20">Activo / Al día</span>`
+                    : `<span class="px-2.5 py-1 bg-rose-500/10 text-rose-400 rounded-full text-xs font-bold border border-rose-500/20">Suspendido</span>`;
+
+                tr.innerHTML = `
+                    <td class="py-4 font-bold text-white">${c.nombre || c.username}</td>
+                    <td class="py-4 font-mono text-xs text-indigo-400">${c.username}</td>
+                    <td class="py-4 text-xs font-semibold text-slate-300">${c.plan || 'Pro Ilimitado'}</td>
+                    <td class="py-4">${badgeEstado}</td>
+                    <td class="py-4 text-xs text-slate-400">${c.fecha_vencimiento || '---'}</td>
+                    <td class="py-4 text-right space-x-2">
+                        <button onclick="cambiarEstado(${c.id}, '${c.estado === 'activo' ? 'suspendido' : 'activo'}')" class="px-3 py-1.5 ${c.estado === 'activo' ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30'} border rounded-xl text-xs font-bold transition">
+                            ${c.estado === 'activo' ? 'Apagar / Suspender' : 'Reactivar'}
+                        </button>
+                        <button onclick="resetearClave(${c.id}, '${c.username}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition" title="Cambiar Contraseña">
+                            <i class="fa-solid fa-key"></i>
+                        </button>
+                        ${c.username !== 'admin' ? `
+                            <button onclick="eliminarCliente(${c.id})" class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('stat-total-clientes').textContent = clientes.length;
+            document.getElementById('stat-activos').textContent = activos;
+            document.getElementById('stat-suspendidos').textContent = suspendidos;
+            document.getElementById('stat-ingresos').textContent = `$${(activos * 1500).toLocaleString('es-MX')} MXN`;
+        }
+
+        function abrirModalNuevoCliente() {
+            document.getElementById('modal-nuevo-cliente').classList.remove('hidden');
+        }
+
+        function cerrarModalNuevoCliente() {
+            document.getElementById('modal-nuevo-cliente').classList.add('hidden');
+        }
+
+        async function guardarNuevoCliente(e) {
+            e.preventDefault();
+            try {
+                const nombre = document.getElementById('cli-nombre').value.trim();
+                const username = document.getElementById('cli-username').value.trim();
+                const password = document.getElementById('cli-password').value;
+                const plan = document.getElementById('cli-plan').value;
+                const fecha_vencimiento = document.getElementById('cli-fecha').value;
+
+                const res = await fetch('/api/superadmin/clientes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nombre, username, password, plan, fecha_vencimiento })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error al crear cliente');
+
+                alert("¡Cliente dado de alta con éxito!");
+                cerrarModalNuevoCliente();
+                document.getElementById('form-nuevo-cliente').reset();
+                cargarClientes();
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        async function cambiarEstado(id, nuevoEstado) {
+            if (!confirm(`¿Deseas cambiar el estado a "${nuevoEstado}"?`)) return;
+            try {
+                await fetch(`/api/superadmin/clientes/${id}/estado`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+                cargarClientes();
+            } catch (err) {
+                alert("Error al cambiar estado: " + err.message);
+            }
+        }
+
+        async function resetearClave(id, username) {
+            const nueva = prompt(`Ingresa la nueva contraseña para "${username}":`);
+            if (!nueva) return;
+            try {
+                await fetch(`/api/superadmin/clientes/${id}/reset-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nuevo_password: nueva })
+                });
+                alert(`¡Contraseña de "${username}" actualizada correctamente!`);
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        }
+
+        async function eliminarCliente(id) {
+            if (!confirm("¿Seguro que deseas eliminar a este cliente y su bot?")) return;
+            try {
+                await fetch(`/api/superadmin/clientes/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                cargarClientes();
+            } catch (err) {
+                alert("Error al eliminar: " + err.message);
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem('omnibot_token');
+            localStorage.removeItem('omnibot_user');
+            window.location.href = '/login.html';
+        }
+
+        cargarClientes();
+    </script>
+</body>
+</html>

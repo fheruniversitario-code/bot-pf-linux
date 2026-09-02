@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión | OmniBot AI Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
+    <div class="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-indigo-950/50">
+        <!-- Logo & Titulo con Icono Moderno de Agente IA -->
+        <div class="flex flex-col items-center mb-8">
+            <div class="w-16 h-16 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-4 transform hover:scale-105 transition duration-300">
+                <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    <circle cx="12" cy="12" r="4" fill="currentColor" class="text-white opacity-40"/>
+                    <path d="m12 9 1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z" fill="white"/>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">OmniBot AI Agent</h1>
+            <p class="text-slate-400 text-sm mt-1">Plataforma de IA Comercial para WhatsApp</p>
+        </div>
+
+        <!-- Formulario -->
+        <form id="loginForm" class="space-y-5">
+            <div id="errorBox" class="hidden p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-sm text-center"></div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Usuario</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-user"></i>
+                    </span>
+                    <input type="text" id="username" required placeholder="Ingresa tu usuario..." class="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Contraseña</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-lock"></i>
+                    </span>
+                    <input type="password" id="password" required placeholder="••••••••" class="w-full pl-10 pr-4 py-3 bg-slate-950/80 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                </div>
+            </div>
+
+            <button type="submit" id="btnSubmit" class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-90 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition duration-200 flex items-center justify-center space-x-2">
+                <span>Ingresar al Panel</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const errorBox = document.getElementById('errorBox');
+            errorBox.classList.add('hidden');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Ingresando...</span>';
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+
+                localStorage.setItem('omnibot_token', data.token);
+                localStorage.setItem('omnibot_user', JSON.stringify(data.usuario));
+                window.location.href = '/';
+            } catch (err) {
+                errorBox.textContent = err.message;
+                errorBox.classList.remove('hidden');
+                btn.innerHTML = '<span>Ingresar al Panel</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+            }
+        });
+    </script>
+</body>
+</html>
