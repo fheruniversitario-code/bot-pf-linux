@@ -1564,6 +1564,44 @@ async function eliminarInfografiaImagen(nombre) {
     }
 }
 
+// Gestión de Modo Claro / Oscuro (Light & Dark Mode)
+function aplicarTema(tema) {
+    const body = document.getElementById('app-body');
+    const icon = document.getElementById('theme-icon');
+    const btn = document.getElementById('btn-theme-toggle');
+    if (!body) return;
+
+    if (tema === 'light') {
+        body.classList.add('light-theme');
+        if (icon) {
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
+        }
+        if (btn) btn.title = "Cambiar a Modo Oscuro";
+        localStorage.setItem('omnibot_theme', 'light');
+    } else {
+        body.classList.remove('light-theme');
+        if (icon) {
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+        if (btn) btn.title = "Cambiar a Modo Claro";
+        localStorage.setItem('omnibot_theme', 'dark');
+    }
+}
+
+function alternarTema() {
+    const body = document.getElementById('app-body');
+    const esLight = body && body.classList.contains('light-theme');
+    aplicarTema(esLight ? 'dark' : 'light');
+}
+
+// Inicializar tema guardado al cargar
+(function() {
+    const temaGuardado = localStorage.getItem('omnibot_theme') || 'dark';
+    aplicarTema(temaGuardado);
+})();
+
 // Escuchar actualizaciones de estado de control en tiempo real vía Socket.io
 socket.on('estado_control_actualizado', () => {
     cargarEstadoControlBot();
