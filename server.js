@@ -230,19 +230,303 @@ app.get('/api/stats', autenticarToken, async (req, res) => {
     }
 });
 
-// Lista de Conversaciones (Live Chat)
+// Helper para calcular y formatear tiempo transcurrido en lenguaje natural
+function formatearTiempoRelativo(timestampMs) {
+    if (!timestampMs) return { texto: 'Sin mensajes', dias: 0, meses: 0, fecha: '---' };
+    const ahora = Date.now();
+    const difMs = Math.max(0, ahora - timestampMs);
+    const difMins = Math.floor(difMs / (1000 * 60));
+    const difHoras = Math.floor(difMins / 60);
+    const difDias = Math.floor(difHoras / 24);
+    const difMeses = Math.floor(difDias / 30);
+
+    const fechaObj = new Date(timestampMs);
+    const fechaFormateada = fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    let texto = '';
+    if (difMins < 1) texto = 'hace un momento';
+    else if (difMins < 60) texto = `hace ${difMins} min`;
+    else if (difHoras < 24) texto = `hace ${difHoras} h`;
+    else if (difDias === 1) texto = `hace 1 día (${fechaFormateada})`;
+    else if (difDias < 30) texto = `hace ${difDias} días (${fechaFormateada})`;
+    else if (difMeses === 1) texto = `hace 1 mes (${fechaFormateada})`;
+    else if (difMeses < 12) texto = `hace ${difMeses} meses (${fechaFormateada})`;
+    else texto = `hace más de 1 año (${fechaFormateada})`;
+
+    return { texto, dias: difDias, meses: difMeses, fecha: fechaFormateada };
+}
+
+// Lista de Conversaciones Mejorada (Live Chat con Etiquetas y Tiempo Relativo)
 app.get('/api/conversaciones', autenticarToken, async (req, res) => {
     try {
         const chats = await allQuery(`
-            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.etiquetas, c.es_ignorado, c.ultimo_contacto,
+            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.es_ignorado, c.ultimo_contacto,
                    (SELECT cuerpo FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as ultimo_mensaje,
                    (SELECT timestamp FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as hora_ultimo_mensaje,
                    (SELECT es_ia FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as ultimo_fue_ia
             FROM contactos c
             ORDER BY c.ultimo_contacto DESC
-            LIMIT 50
+            LIMIT 100
         `);
-        res.json(chats);
+
+        // Obtener etiquetas asignadas para cada contacto
+        const resultado = await Promise.all(chats.map(async (c) => {
+            const tags = await allQuery(`
+                SELECT e.id, e.nombre, e.color, ce.asignado_en
+                FROM etiquetas e
+                INNER JOIN contactos_etiquetas ce ON e.id = ce.etiqueta_id
+                WHERE ce.jid = ?
+            `, [c.jid]);
+
+            const infoTiempo = formatearTiempoRelativo(c.ultimo_contacto || c.hora_ultimo_mensaje);
+
+            return {
+                ...c,
+                etiquetas_lista: tags || [],
+                tiempo_relativo: infoTiempo.texto,
+                dias_sin_contacto: infoTiempo.dias,
+                meses_sin_contacto: infoTiempo.meses,
+                fecha_ultimo_contacto: infoTiempo.fecha
+            };
+        }));
+
+        res.json(resultado);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------------------
+// GESTIÓN DE ETIQUETAS / LISTAS DE WHATSAPP (LABELS & CRM TAGS)
+// ------------------------------------------------------------------------------
+app.get('/api/etiquetas', autenticarToken, async (req, res) => {
+    try {
+        const etiquetas = await allQuery(`
+            SELECT e.*, COUNT(ce.jid) as total_contactos
+            FROM etiquetas e
+            LEFT JOIN contactos_etiquetas ce ON e.id = ce.etiqueta_id
+            GROUP BY e.id
+            ORDER BY e.id ASC
+        `);
+        res.json(etiquetas);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/etiquetas', autenticarToken, async (req, res) => {
+    try {
+        const { nombre, color } = req.body;
+        if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre de la etiqueta es requerido' });
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [nombre.trim(), color || '#6366f1', Date.now()]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/etiquetas/:id', autenticarToken, async (req, res) => {
+    try {
+        const { nombre, color } = req.body;
+        await runQuery("UPDATE etiquetas SET nombre = ?, color = ? WHERE id = ?", [nombre.trim(), color, req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/etiquetas/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM contactos_etiquetas WHERE etiqueta_id = ?", [req.params.id]);
+        await runQuery("DELETE FROM reglas_seguimiento WHERE etiqueta_id = ?", [req.params.id]);
+        await runQuery("DELETE FROM etiquetas WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Asignar / Desasignar Etiquetas a un Contacto
+app.get('/api/contactos/:jid/etiquetas', autenticarToken, async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        const tags = await allQuery(`
+            SELECT e.*, ce.asignado_en
+            FROM etiquetas e
+            INNER JOIN contactos_etiquetas ce ON e.id = ce.etiqueta_id
+            WHERE ce.jid = ?
+        `, [jid]);
+        res.json(tags);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/contactos/:jid/etiquetas', autenticarToken, async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        const { etiqueta_id, accion } = req.body; // accion: 'asignar' o 'quitar'
+        if (accion === 'quitar') {
+            await runQuery("DELETE FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [jid, etiqueta_id]);
+        } else {
+            await runQuery("INSERT OR REPLACE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jid, etiqueta_id, Date.now()]);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------------------
+// MOTOR UNIVERSAL DE SEGUIMIENTOS Y RECORDATORIOS PROGRAMADOS
+// ------------------------------------------------------------------------------
+app.get('/api/seguimientos/reglas', autenticarToken, async (req, res) => {
+    try {
+        const reglas = await allQuery(`
+            SELECT r.*, e.nombre as etiqueta_nombre, e.color as etiqueta_color
+            FROM reglas_seguimiento r
+            LEFT JOIN etiquetas e ON r.etiqueta_id = e.id
+            ORDER BY r.id ASC
+        `);
+        res.json(reglas);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/seguimientos/reglas', autenticarToken, async (req, res) => {
+    try {
+        const { nombre, etiqueta_id, dias_espera, mensaje_plantilla, hora_envio, activo, modo_envio } = req.body;
+        if (!nombre || !mensaje_plantilla) return res.status(400).json({ error: 'Nombre y mensaje de plantilla requeridos' });
+
+        await runQuery(`
+            INSERT INTO reglas_seguimiento (nombre, etiqueta_id, dias_espera, mensaje_plantilla, hora_envio, activo, modo_envio, creado_en)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [nombre.trim(), etiqueta_id || null, parseInt(dias_espera, 10) || 90, mensaje_plantilla.trim(), hora_envio || '10:30', activo !== undefined ? activo : 1, modo_envio || 'automatico', Date.now()]);
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/seguimientos/reglas/:id', autenticarToken, async (req, res) => {
+    try {
+        const { nombre, etiqueta_id, dias_espera, mensaje_plantilla, hora_envio, activo, modo_envio } = req.body;
+        await runQuery(`
+            UPDATE reglas_seguimiento SET
+                nombre = ?, etiqueta_id = ?, dias_espera = ?, mensaje_plantilla = ?, hora_envio = ?, activo = ?, modo_envio = ?
+            WHERE id = ?
+        `, [nombre.trim(), etiqueta_id || null, parseInt(dias_espera, 10) || 90, mensaje_plantilla.trim(), hora_envio || '10:30', activo !== undefined ? activo : 1, modo_envio || 'automatico', req.params.id]);
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/seguimientos/reglas/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM reglas_seguimiento WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Bandeja de Pacientes/Clientes con Seguimiento Pendiente o Próximo
+app.get('/api/seguimientos/pendientes', autenticarToken, async (req, res) => {
+    try {
+        const reglas = await allQuery("SELECT * FROM reglas_seguimiento WHERE activo = 1");
+        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'Planificación Familiar';
+        const listaPendientes = [];
+
+        for (const r of reglas) {
+            let contactosCandidatos = [];
+            if (r.etiqueta_id) {
+                contactosCandidatos = await allQuery(`
+                    SELECT c.jid, c.telefono, c.nombre, c.pushname, c.ultimo_contacto, ce.asignado_en
+                    FROM contactos c
+                    INNER JOIN contactos_etiquetas ce ON c.jid = ce.jid
+                    WHERE ce.etiqueta_id = ? AND c.es_ignorado = 0
+                `, [r.etiqueta_id]);
+            } else {
+                contactosCandidatos = await allQuery(`
+                    SELECT jid, telefono, nombre, pushname, ultimo_contacto, ultimo_contacto as asignado_en
+                    FROM contactos
+                    WHERE es_ignorado = 0
+                `);
+            }
+
+            for (const c of contactosCandidatos) {
+                const fechaBase = c.asignado_en || c.ultimo_contacto || Date.now();
+                const difDias = Math.floor((Date.now() - fechaBase) / (1000 * 60 * 60 * 24));
+
+                // Verificar si ya se envió este seguimiento
+                const yaEnviado = await getQuery("SELECT id, fecha_enviado FROM historial_seguimientos WHERE jid = ? AND regla_id = ? AND estado = 'enviado'", [c.jid, r.id]);
+
+                const nombreLimpio = c.nombre || c.pushname || 'Estimado(a)';
+                const mensajePersonalizado = r.mensaje_plantilla
+                    .replace(/{nombre}/gi, nombreLimpio)
+                    .replace(/{negocio}/gi, nombreNegocio)
+                    .replace(/{dias}/gi, r.dias_espera);
+
+                if (!yaEnviado && difDias >= r.dias_espera) {
+                    listaPendientes.push({
+                        jid: c.jid,
+                        telefono: c.telefono,
+                        nombre: nombreLimpio,
+                        regla_id: r.id,
+                        regla_nombre: r.nombre,
+                        dias_espera_regla: r.dias_espera,
+                        dias_transcurridos: difDias,
+                        mensaje_preparado: mensajePersonalizado,
+                        modo_envio: r.modo_envio,
+                        estado: 'listo_para_enviar'
+                    });
+                }
+            }
+        }
+
+        res.json(listaPendientes);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Enviar Seguimiento Manualmente con 1 Clic
+app.post('/api/seguimientos/enviar', autenticarToken, async (req, res) => {
+    try {
+        const { jid, regla_id, mensaje } = req.body;
+        if (!jid || !mensaje || !client) return res.status(400).json({ error: 'Faltan parámetros o WhatsApp no está conectado' });
+
+        const contacto = await getQuery("SELECT nombre, pushname, telefono FROM contactos WHERE jid = ?", [jid]);
+        const nombreCliente = contacto?.nombre || contacto?.pushname || 'Cliente';
+
+        await client.sendMessage(jid, mensaje);
+
+        // Registrar en historial de seguimientos y en mensajes
+        await runQuery(`
+            INSERT INTO historial_seguimientos (jid, regla_id, telefono, nombre, mensaje_enviado, fecha_programada, fecha_enviado, timestamp, estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'enviado')
+        `, [jid, regla_id || null, contacto?.telefono || jid, nombreCliente, mensaje, new Date().toISOString(), new Date().toLocaleDateString('es-MX'), Date.now()]);
+
+        await runQuery(
+            "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 1, 1, ?)",
+            [jid, 'bot', 'Seguimiento Automático', mensaje, Date.now()]
+        );
+
+        io.emit('nuevo_mensaje', {
+            chat_id: jid,
+            emisor: 'bot',
+            emisor_nombre: 'Seguimiento Automático',
+            cuerpo: mensaje,
+            es_mio: 1,
+            es_ia: 1,
+            timestamp: Date.now()
+        });
+
+        res.json({ success: true, message: 'Recordatorio de seguimiento enviado con éxito' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1780,6 +2064,92 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
         console.error("Error no fatal en procesamiento de mensaje:", errGlobalMsg.message);
     }
 }
+
+// ------------------------------------------------------------------------------
+// WORKER CRON SEGURO: PROCESAMIENTO AUTOMÁTICO DE SEGUIMIENTOS DIARIOS
+// ------------------------------------------------------------------------------
+async function procesarSeguimientosAutomaticos() {
+    try {
+        if (!wsClienteConectado || !client) return;
+
+        const ahoraMX = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+        const horaActual = `${String(ahoraMX.getHours()).padStart(2, '0')}:${String(ahoraMX.getMinutes()).padStart(2, '0')}`;
+        const fechaHoyStr = ahoraMX.toLocaleDateString('es-MX');
+
+        // Buscar reglas automáticas activas
+        const reglas = await allQuery("SELECT * FROM reglas_seguimiento WHERE activo = 1 AND modo_envio = 'automatico'");
+        if (!reglas || reglas.length === 0) return;
+
+        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'Planificación Familiar';
+
+        for (const r of reglas) {
+            const horaRegla = r.hora_envio || '10:30';
+            const [hRegla, mRegla] = horaRegla.split(':').map(Number);
+            const [hActual, mActual] = horaActual.split(':').map(Number);
+            
+            const minDiff = Math.abs((hActual * 60 + mActual) - (hRegla * 60 + mRegla));
+            if (minDiff > 25) continue; // Solo procesar en la ventana horaria
+
+            let candidatos = [];
+            if (r.etiqueta_id) {
+                candidatos = await allQuery(`
+                    SELECT c.jid, c.telefono, c.nombre, c.pushname, c.ultimo_contacto, ce.asignado_en
+                    FROM contactos c
+                    INNER JOIN contactos_etiquetas ce ON c.jid = ce.jid
+                    WHERE ce.etiqueta_id = ? AND c.es_ignorado = 0
+                `, [r.etiqueta_id]);
+            } else {
+                candidatos = await allQuery(`
+                    SELECT jid, telefono, nombre, pushname, ultimo_contacto, ultimo_contacto as asignado_en
+                    FROM contactos
+                    WHERE es_ignorado = 0
+                `);
+            }
+
+            for (const c of candidatos) {
+                const fechaBase = c.asignado_en || c.ultimo_contacto || Date.now();
+                const difDias = Math.floor((Date.now() - fechaBase) / (1000 * 60 * 60 * 24));
+
+                if (difDias < r.dias_espera) continue;
+
+                // Verificar si ya se envió este seguimiento
+                const yaEnviado = await getQuery("SELECT id FROM historial_seguimientos WHERE jid = ? AND regla_id = ? AND estado = 'enviado'", [c.jid, r.id]);
+                if (yaEnviado) continue;
+
+                const nombreLimpio = c.nombre || c.pushname || 'Estimado(a)';
+                const mensajePersonalizado = r.mensaje_plantilla
+                    .replace(/{nombre}/gi, nombreLimpio)
+                    .replace(/{negocio}/gi, nombreNegocio)
+                    .replace(/{dias}/gi, r.dias_espera);
+
+                try {
+                    console.log(`📨 [Seguimiento Automático]: Enviando recordatorio a ${nombreLimpio} (${c.jid})...`);
+                    await client.sendMessage(c.jid, mensajePersonalizado);
+
+                    await runQuery(`
+                        INSERT INTO historial_seguimientos (jid, regla_id, telefono, nombre, mensaje_enviado, fecha_programada, fecha_enviado, timestamp, estado)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'enviado')
+                    `, [c.jid, r.id, c.telefono || c.jid, nombreLimpio, mensajePersonalizado, new Date().toISOString(), fechaHoyStr, Date.now()]);
+
+                    await runQuery(
+                        "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 1, 1, ?)",
+                        [c.jid, 'bot', 'Seguimiento Automático', mensajePersonalizado, Date.now()]
+                    );
+
+                    // Pausa de 15 segundos entre envíos para proteger WhatsApp
+                    await delay(15000);
+                } catch (errEnvio) {
+                    console.error(`Error enviando seguimiento a ${c.jid}:`, errEnvio.message);
+                }
+            }
+        }
+    } catch (errWorker) {
+        console.error("Error en worker de seguimientos:", errWorker.message);
+    }
+}
+
+// Ejecutar worker cada 15 minutos
+setInterval(procesarSeguimientosAutomaticos, 15 * 60 * 1000);
 
 client.on('message', async (msg) => {
     try {

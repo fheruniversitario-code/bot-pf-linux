@@ -155,7 +155,7 @@ async function inicializarBD() {
         )
     `);
 
-    // 8. Respuestas Rápidas Preconfiguradas
+    // 9. Respuestas Rápidas Preconfiguradas
     await runQuery(`
         CREATE TABLE IF NOT EXISTS respuestas_rapidas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,6 +164,86 @@ async function inicializarBD() {
             contenido TEXT
         )
     `);
+
+    // 10. Etiquetas / Listas de WhatsApp (Labels con Colores)
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS etiquetas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT UNIQUE,
+            color TEXT DEFAULT '#6366f1', -- Color hex (ej: #10b981 verde, #3b82f6 azul, #f59e0b amarillo, #8b5cf6 morado, #ef4444 rojo)
+            creado_en INTEGER
+        )
+    `);
+
+    // 11. Relación Contactos <-> Etiquetas
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS contactos_etiquetas (
+            jid TEXT,
+            etiqueta_id INTEGER,
+            asignado_en INTEGER,
+            PRIMARY KEY(jid, etiqueta_id)
+        )
+    `);
+
+    // 12. Motor Universal de Reglas de Seguimiento y Recordatorios Programados
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS reglas_seguimiento (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT, -- ej: "Seguimiento 3 Meses (Vasectomía)" o "Satisfacción Post-Venta (7 días)" o "Mantenimiento Preventivo (30 días)"
+            etiqueta_id INTEGER, -- Etiqueta disparadora (o null para todos los clientes)
+            dias_espera INTEGER DEFAULT 90, -- Días a transcurrir desde la asignación de etiqueta o fecha de atención
+            mensaje_plantilla TEXT, -- Plantilla con {nombre}, {negocio}, {dias}
+            hora_envio TEXT DEFAULT '10:30', -- Hora diaria de envío
+            activo INTEGER DEFAULT 1, -- 1 activo, 0 inactivo
+            modo_envio TEXT DEFAULT 'automatico', -- 'automatico' o 'manual_aprobacion'
+            creado_en INTEGER
+        )
+    `);
+
+    // 13. Historial de Seguimientos Programados y Enviados
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS historial_seguimientos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            jid TEXT,
+            regla_id INTEGER,
+            telefono TEXT,
+            nombre TEXT,
+            mensaje_enviado TEXT,
+            fecha_programada TEXT,
+            fecha_enviado TEXT,
+            timestamp INTEGER,
+            estado TEXT DEFAULT 'pendiente' -- 'pendiente', 'enviado', 'cancelado'
+        )
+    `);
+
+    // Seed Inicial de Etiquetas Universales si no existen
+    const totalEtiquetas = (await getQuery("SELECT COUNT(*) as total FROM etiquetas"))?.total || 0;
+    if (totalEtiquetas === 0) {
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES ('Vasectomía', '#10b981', ?)", [Date.now()]);
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES ('Implante / DIU', '#8b5cf6', ?)", [Date.now()]);
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES ('Cita Agendada', '#3b82f6', ?)", [Date.now()]);
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES ('Seguimiento Pendiente', '#f59e0b', ?)", [Date.now()]);
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES ('Cliente Frecuente', '#ec4899', ?)", [Date.now()]);
+    }
+
+    // Seed Inicial de Regla de Seguimiento Universal
+    const totalReglas = (await getQuery("SELECT COUNT(*) as total FROM reglas_seguimiento"))?.total || 0;
+    if (totalReglas === 0) {
+        const etqVasectomia = await getQuery("SELECT id FROM etiquetas WHERE nombre = 'Vasectomía'");
+        await runQuery(`
+            INSERT INTO reglas_seguimiento (nombre, etiqueta_id, dias_espera, mensaje_plantilla, hora_envio, activo, modo_envio, creado_en)
+            VALUES (
+                'Seguimiento 3 Meses (Espermatoconteo / Revisión)',
+                ?,
+                90,
+                '🏥 Hola, *{nombre}*. Te saludamos del equipo de *{negocio}*. Han transcurrido {dias} días desde tu atención médica. Te recordamos que es momento de programar tu estudio de control para darte tu alta médica definitiva. ✍️✅ ¿Te gustaría que te agendemos o tienes alguna duda?',
+                '10:30',
+                1,
+                'automatico',
+                ?
+            )
+        `, [etqVasectomia ? etqVasectomia.id : null, Date.now()]);
+    }
 
     // Crear usuario administrador por defecto si no existe (admin / admin123)
     const userAdmin = await getQuery("SELECT * FROM usuarios WHERE username = 'admin'");
