@@ -125,7 +125,7 @@ function cambiarTab(tabId) {
 
     // Cargar datos de la pestaña
     if (tabId === 'ventas') cargarVentasYCRM();
-    if (tabId === 'conversaciones') cargarListaConversaciones();
+    if (tabId === 'conversaciones') { cargarListaConversaciones(); cargarSolicitudesAsesor(); }
     if (tabId === 'citas') cargarAgendaCitas();
     if (tabId === 'linktree') cargarLinktreeConfig();
     if (tabId === 'conocimiento' || tabId === 'configuracion') cargarConfiguracion();
@@ -188,6 +188,7 @@ async function cargarVentasYCRM() {
             `;
             tbody.appendChild(tr);
         });
+        cargarSolicitudesAsesor();
     } catch (e) {
         console.error("Error cargando CRM:", e);
     }
@@ -202,6 +203,114 @@ async function cambiarEstadoPedido(id, nuevoEstado) {
         cargarVentasYCRM();
     } catch (e) {
         alert("Error al actualizar estado: " + e.message);
+    }
+}
+
+// ------------------------------------------------------------------------------
+// 3.1 GESTIÓN DE SOLICITUDES DE ASESOR FUERA DE HORARIO
+// ------------------------------------------------------------------------------
+let listaSolicitudesAsesorMem = [];
+
+async function cargarSolicitudesAsesor() {
+    try {
+        const solicitudes = await apiFetch('/api/solicitudes-asesor');
+        listaSolicitudesAsesorMem = solicitudes || [];
+
+        const pendientes = listaSolicitudesAsesorMem.filter(s => s.estado === 'pendiente');
+        const countBadge = document.getElementById('count-pendientes-asesor');
+        if (countBadge) countBadge.textContent = pendientes.length;
+
+        const tbody = document.getElementById('tabla-solicitudes-asesor-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!solicitudes || solicitudes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500 text-xs">No hay solicitudes de asesor pendientes.</td></tr>`;
+            return;
+        }
+
+        solicitudes.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-850/40 transition";
+            const esPendiente = s.estado === 'pendiente';
+
+            tr.innerHTML = `
+                <td class="py-4">
+                    <div class="font-bold text-white flex items-center space-x-2">
+                        <span class="w-6 h-6 rounded-full ${esPendiente ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'} flex items-center justify-center text-[10px] font-bold">
+                            ${(s.nombre || 'P').charAt(0).toUpperCase()}
+                        </span>
+                        <span>${s.nombre || 'Paciente'}</span>
+                    </div>
+                </td>
+                <td class="py-4 text-xs font-mono text-slate-300">
+                    <a href="https://wa.me/${(s.telefono || '').replace(/[^0-9]/g, '')}" target="_blank" class="hover:text-emerald-400 flex items-center space-x-1">
+                        <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                        <span>+${s.telefono || ''}</span>
+                    </a>
+                </td>
+                <td class="py-4 text-xs text-slate-200 max-w-xs truncate" title="${s.motivo || ''}">${s.motivo || 'Solicitud de Asesor'}</td>
+                <td class="py-4 text-xs text-slate-400">${s.fecha_hora || new Date(s.timestamp).toLocaleString('es-MX')}</td>
+                <td class="py-4">
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${esPendiente ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'}">
+                        ${esPendiente ? '⏳ Pendiente' : '✅ Atendido'}
+                    </span>
+                </td>
+                <td class="py-4 text-right space-x-2">
+                    <button onclick="abrirChatDirecto('${s.jid || (s.telefono + '@c.us')}')" class="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold transition" title="Abrir en Chat">
+                        <i class="fa-solid fa-comments mr-1"></i>Chat
+                    </button>
+                    <button onclick="cambiarEstadoSolicitudAsesor(${s.id}, '${esPendiente ? 'atendido' : 'pendiente'}')" class="px-2.5 py-1 ${esPendiente ? 'bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'} border rounded-lg text-xs font-semibold transition" title="${esPendiente ? 'Marcar como atendido' : 'Marcar como pendiente'}">
+                        <i class="fa-solid ${esPendiente ? 'fa-check' : 'fa-rotate-left'}"></i>
+                    </button>
+                    <button onclick="eliminarSolicitudAsesor(${s.id})" class="text-slate-500 hover:text-rose-400 text-xs transition" title="Eliminar registro">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch(e) {
+        console.error("Error al cargar solicitudes de asesor:", e);
+    }
+}
+
+async function cambiarEstadoSolicitudAsesor(id, nuevoEstado) {
+    try {
+        await apiFetch(`/api/solicitudes-asesor/${id}/estado`, {
+            method: 'POST',
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+        cargarSolicitudesAsesor();
+    } catch (e) {
+        alert("Error al actualizar estado: " + e.message);
+    }
+}
+
+async function eliminarSolicitudAsesor(id) {
+    if (!confirm("¿Deseas eliminar este registro de solicitud?")) return;
+    try {
+        await apiFetch(`/api/solicitudes-asesor/${id}`, {
+            method: 'DELETE'
+        });
+        cargarSolicitudesAsesor();
+    } catch (e) {
+        alert("Error al eliminar solicitud: " + e.message);
+    }
+}
+
+async function filtrarChatsPendientesAsesor() {
+    cambiarTab('conversaciones');
+    await cargarSolicitudesAsesor();
+    const pendientes = listaSolicitudesAsesorMem.filter(s => s.estado === 'pendiente');
+    if (pendientes.length === 0) {
+        alert("ℹ️ No hay solicitudes de asesor pendientes actualmente.");
+        return;
+    }
+    // Seleccionar el primer chat pendiente
+    const primero = pendientes[0];
+    if (primero && primero.jid) {
+        seleccionarChat(primero.jid, primero.nombre || primero.telefono);
     }
 }
 

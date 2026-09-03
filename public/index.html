@@ -281,6 +281,41 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Tabla de Solicitudes de Asesor Pendientes (Fuera de Horario) -->
+                <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-bell text-amber-400"></i>
+                                <span>Solicitudes de Asesor en Espera (Fuera de Horario / Vacaciones)</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Pacientes y clientes que pidieron hablar con una persona para darles seguimiento al iniciar labores</p>
+                        </div>
+                        <button onclick="cargarSolicitudesAsesor()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-rotate text-xs"></i>
+                            <span>Actualizar</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="text-xs uppercase text-slate-500 border-b border-slate-800 pb-3">
+                                <tr>
+                                    <th class="pb-3 font-semibold">Paciente / Cliente</th>
+                                    <th class="pb-3 font-semibold">WhatsApp</th>
+                                    <th class="pb-3 font-semibold">Mensaje / Motivo</th>
+                                    <th class="pb-3 font-semibold">Fecha y Hora</th>
+                                    <th class="pb-3 font-semibold">Estado</th>
+                                    <th class="pb-3 font-semibold text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-solicitudes-asesor-body" class="divide-y divide-slate-800/60">
+                                <tr><td colspan="6" class="py-8 text-center text-slate-500">Cargando solicitudes...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- ============================================================ -->
@@ -289,8 +324,14 @@
             <div id="view-conversaciones" class="tab-view hidden h-[calc(100vh-10rem)] flex space-x-6">
                 <!-- Lista Izquierda de Chats -->
                 <div class="w-80 bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden">
-                    <div class="p-4 border-b border-slate-800/80">
-                        <h2 class="font-bold text-white text-base mb-3">Conversaciones</h2>
+                    <div class="p-4 border-b border-slate-800/80 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-bold text-white text-base">Conversaciones</h2>
+                            <span id="badge-pendientes-asesor" onclick="filtrarChatsPendientesAsesor()" class="cursor-pointer px-2.5 py-1 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition" title="Filtrar clientes que pidieron asesor">
+                                <i class="fa-solid fa-bell"></i>
+                                <span><span id="count-pendientes-asesor">0</span> pendientes</span>
+                            </span>
+                        </div>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">
                                 <i class="fa-solid fa-magnifying-glass"></i>

@@ -474,6 +474,35 @@ app.put('/api/contactos/:jid/nombre', autenticarToken, async (req, res) => {
     }
 });
 
+// Gestión de Solicitudes de Asesor / Clientes en Espera
+app.get('/api/solicitudes-asesor', autenticarToken, async (req, res) => {
+    try {
+        const solicitudes = await allQuery("SELECT * FROM solicitudes_asesor ORDER BY id DESC");
+        res.json(solicitudes);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/solicitudes-asesor/:id/estado', autenticarToken, async (req, res) => {
+    try {
+        const { estado } = req.body; // 'atendido' o 'pendiente'
+        await runQuery("UPDATE solicitudes_asesor SET estado = ? WHERE id = ?", [estado || 'atendido', req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/solicitudes-asesor/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM solicitudes_asesor WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Subida de Logo de la Empresa
 app.post('/api/upload/logo', autenticarToken, uploadLogo.single('logo'), async (req, res) => {
     try {
@@ -1294,6 +1323,20 @@ async function procesarMensajeEntrante(msg) {
         const sent = await client.sendMessage(remitente, msjConfirmado);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
+        // Si fue fuera de horario o en receso, registrar en solicitudes pendientes de asesor
+        if (!estadoHorario.enHorario || estadoHorario.enReceso) {
+            try {
+                const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
+                const yaExiste = await getQuery("SELECT id FROM solicitudes_asesor WHERE jid = ? AND estado = 'pendiente'", [remitente]);
+                if (!yaExiste) {
+                    await runQuery(
+                        "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
+                        [remitente, telLimpio, nombreLimpio, 'Solicitud de Asesor (Formulario Confirmado)', obtenerFechaHoraLocal(), Date.now()]
+                    );
+                }
+            } catch(eSol) {}
+        }
+
         await runQuery(
             "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [remitente, 'bot', 'Registro Paciente', msjConfirmado, 1, 1, Date.now()]
@@ -1386,6 +1429,21 @@ async function procesarMensajeEntrante(msg) {
 
         const sent = await client.sendMessage(remitente, msjTransferido);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+        // Si fue fuera de horario o en receso, registrar en solicitudes pendientes de asesor
+        if (!estadoHorario.enHorario || estadoHorario.enReceso) {
+            try {
+                const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
+                const yaExiste = await getQuery("SELECT id FROM solicitudes_asesor WHERE jid = ? AND estado = 'pendiente'", [remitente]);
+                if (!yaExiste) {
+                    await runQuery(
+                        "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
+                        [remitente, telLimpio, nombreContacto || 'Paciente', texto, obtenerFechaHoraLocal(), Date.now()]
+                    );
+                }
+            } catch(eSol) {}
+        }
+
         return;
     }
 

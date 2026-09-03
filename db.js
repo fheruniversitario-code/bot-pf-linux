@@ -141,6 +141,20 @@ async function inicializarBD() {
         )
     `);
 
+    // 8. Solicitudes de Asesor Humano en Espera (Fuera de Horario / Vacaciones)
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS solicitudes_asesor (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            jid TEXT,
+            telefono TEXT,
+            nombre TEXT,
+            motivo TEXT,
+            fecha_hora TEXT,
+            timestamp INTEGER,
+            estado TEXT DEFAULT 'pendiente'
+        )
+    `);
+
     // 8. Respuestas Rápidas Preconfiguradas
     await runQuery(`
         CREATE TABLE IF NOT EXISTS respuestas_rapidas (
