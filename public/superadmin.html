@@ -64,6 +64,29 @@
             </div>
         </div>
 
+        <!-- Monitor en Vivo de Bots del Servidor (Oracle Cloud) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-xl">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-server text-emerald-400"></i>
+                        <span>Monitor en Vivo de Bots en Oracle Cloud</span>
+                    </h2>
+                    <p class="text-xs text-slate-400">Estado de salud, puertos y acceso directo de todos los bots que corren en tu servidor</p>
+                </div>
+                <button onclick="cargarMonitorBots()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl flex items-center space-x-2 transition">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Refrescar</span>
+                </button>
+            </div>
+
+            <div id="grid-monitor-bots" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl text-center text-xs text-slate-500 py-8">
+                    Cargando estado de los bots en el servidor...
+                </div>
+            </div>
+        </div>
+
         <!-- Tabla y Acciones -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-xl">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -306,13 +329,55 @@
             }
         }
 
-        function cerrarSesion() {
-            localStorage.removeItem('omnibot_token');
-            localStorage.removeItem('omnibot_user');
-            window.location.href = '/login.html';
+        async function cargarMonitorBots() {
+            const grid = document.getElementById('grid-monitor-bots');
+            try {
+                const res = await fetch('/api/superadmin/monitor-servidor', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error("No se pudo obtener estado de los bots");
+                const bots = await res.json();
+                grid.innerHTML = '';
+
+                bots.forEach(b => {
+                    const div = document.createElement('div');
+                    div.className = "p-5 bg-slate-950 border border-slate-800 rounded-2xl space-y-4 hover:border-slate-700 transition";
+                    
+                    const badgeOnline = b.online
+                        ? `<span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span>Online</span></span>`
+                        : `<span class="px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full text-xs font-bold flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-rose-400"></span><span>Apagado</span></span>`;
+
+                    const estadoOperativo = b.ausenciaActiva 
+                        ? `<span class="text-amber-400 font-semibold"><i class="fa-solid fa-umbrella-beach mr-1"></i>En Modo Ausencia</span>`
+                        : (b.botPausadoGlobal ? `<span class="text-rose-400 font-semibold"><i class="fa-solid fa-pause mr-1"></i>Pausado Globalmente</span>` : `<span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Atendiendo Clientes</span>`);
+
+                    div.innerHTML = `
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h3 class="font-bold text-white text-sm">${b.nombre}</h3>
+                                <p class="text-[11px] text-slate-400">${b.tipo} • Puerto ${b.puerto}</p>
+                            </div>
+                            ${badgeOnline}
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-900 text-xs text-slate-400">
+                            <div>Estado: ${estadoOperativo}</div>
+                            <a href="http://${window.location.hostname}:${b.puerto}" target="_blank" class="px-3.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1.5">
+                                <span>Abrir Panel</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </div>
+                    `;
+                    grid.appendChild(div);
+                });
+            } catch (err) {
+                grid.innerHTML = `<div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-rose-400 text-xs col-span-2">Error al conectar con los bots del servidor: ${err.message}</div>`;
+            }
         }
 
         cargarClientes();
+        cargarMonitorBots();
+        setInterval(cargarMonitorBots, 10000);
     </script>
 </body>
 </html>

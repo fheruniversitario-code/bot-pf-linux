@@ -229,6 +229,39 @@ app.delete('/api/superadmin/clientes/:id', autenticarToken, async (req, res) => 
     }
 });
 
+// Monitor de Instancias y Bots del Servidor en Tiempo Real
+app.get('/api/superadmin/monitor-servidor', autenticarToken, async (req, res) => {
+    try {
+        const listaBots = [
+            { id: 'nursefashion', nombre: 'Nurse Fashion (Boutique y Uniformes)', puerto: 3000, tipo: 'Comercio / Tienda Web' },
+            { id: 'caises', nombre: 'CAISES Jaral (Salud Reproductiva)', puerto: 3001, tipo: 'Salud Pública / Clínica' }
+        ];
+
+        const resultado = await Promise.all(listaBots.map(async (b) => {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1200);
+                const resp = await fetch(`http://127.0.0.1:${b.puerto}/api/bot/estado-control`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    return {
+                        ...b,
+                        online: true,
+                        botPausadoGlobal: data.botPausadoGlobal || false,
+                        ausenciaActiva: data.ausenciaActiva || false
+                    };
+                }
+            } catch (e) {}
+            return { ...b, online: false, botPausadoGlobal: false, ausenciaActiva: false };
+        }));
+
+        res.json(resultado);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Estadísticas y Métricas (KPIs de Ventas y CRM)
 app.get('/api/stats', autenticarToken, async (req, res) => {
     try {
