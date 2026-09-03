@@ -594,8 +594,42 @@ app.delete('/api/imagenes/:nombre', autenticarToken, (req, res) => {
 let cacheModelosValidos = [];
 let ultimoFetchModelos = 0;
 
+// Sistema de Respaldo Local Inteligente ante caídas o saturación (503) de Google AI
+function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
+    const txt = (textoUsuario || '').toLowerCase();
+    const icono = config.icono_asistente || '🤖';
+    const negocio = config.nombre_negocio || 'nuestro establecimiento';
+
+    if (txt.includes('donde') || txt.includes('dónde') || txt.includes('ubicacion') || txt.includes('ubicación') || txt.includes('direccion') || txt.includes('dirección') || txt.includes('llegar')) {
+        let resp = `${icono} 📍 *UBICACIÓN DE ${negocio.toUpperCase()}*\n\n${config.ubicacion_direccion || 'Consulta con nuestro personal para indicaciones exactas.'}`;
+        if (config.ubicacion_maps_link) resp += `\n\n🗺️ *Ver en Google Maps:*\n${config.ubicacion_maps_link}`;
+        return resp;
+    }
+
+    if (txt.includes('horario') || txt.includes('hora') || txt.includes('abren') || txt.includes('cierran') || txt.includes('atienden') || txt.includes('dias') || txt.includes('días')) {
+        return `${icono} ⏰ *HORARIOS DE ATENCIÓN*\n\n${config.horario_sucursal_fisica || 'Lunes a Viernes en horario de atención habitual.'}`;
+    }
+
+    if (txt.includes('costo') || txt.includes('precio') || txt.includes('cobran') || txt.includes('gratis') || txt.includes('pagar')) {
+        let resp = `${icono} 💰 *INFORMACIÓN DE COSTOS / SERVICIOS*\n\n`;
+        if (config.catalogo_servicios) resp += `${config.catalogo_servicios}\n\n`;
+        if (config.datos_bancarios) resp += `💳 *Métodos de pago:* ${config.datos_bancarios}`;
+        return resp.trim();
+    }
+
+    if (txt.includes('requisito') || txt.includes('papel') || txt.includes('documento') || txt.includes('ine') || txt.includes('curp')) {
+        return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención médica gratuita, presenta:\n• Copia de INE o identificación oficial con fotografía\n• Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
+    }
+
+    return `${icono} 🏥 *¡Hola!* En este momento la red de servidores de Google AI está experimentando una saturación temporal de alta demanda (503).\n\n` +
+        `Para ayudarte de inmediato:\n` +
+        `• Envía *Menú* para explorar todas nuestras opciones disponibles.\n` +
+        `• Envía *5* para solicitar atención personalizada con un asesor.\n\n` +
+        `_En breve el motor de IA responderá tus preguntas con total normalidad._ ✨`;
+}
+
 async function obtenerModelosDisponibles(apiKey) {
-    if (!apiKey) return ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+    if (!apiKey) return ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-pro'];
     if (cacheModelosValidos.length > 0 && (Date.now() - ultimoFetchModelos < 3600000)) {
         return cacheModelosValidos;
     }
@@ -606,17 +640,18 @@ async function obtenerModelosDisponibles(apiKey) {
         const data = await resp.json();
         
         if (data && data.models && Array.isArray(data.models)) {
-            // Filtrar modelos compatibles con generateContent, preferir Flash (bajo costo y máxima velocidad)
+            // Filtrar modelos compatibles con generateContent, preferir Flash estables (bajo costo y máxima velocidad)
             const modelosSoportados = data.models
                 .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
                 .map(m => m.name.replace('models/', ''))
                 .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('1.5') && !name.includes('2.0') && !name.includes('2.5'));
 
-            // Priorizar modelos Flash (bajo costo) y ordenar de mayor a menor versión
-            const flashModels = modelosSoportados.filter(name => name.includes('flash'));
-            const otherModels = modelosSoportados.filter(name => !name.includes('flash'));
+            // Priorizar modelos Flash y Pro estables (no experimentales -exp que sufren más 503)
+            const flashEstables = modelosSoportados.filter(name => name.includes('flash') && !name.includes('-exp'));
+            const proEstables = modelosSoportados.filter(name => name.includes('pro') && !name.includes('-exp'));
+            const otrosModelos = modelosSoportados.filter(name => !flashEstables.includes(name) && !proEstables.includes(name));
 
-            const listaFinal = Array.from(new Set([...flashModels, ...otherModels]));
+            const listaFinal = Array.from(new Set([...flashEstables, ...proEstables, ...otrosModelos]));
             if (listaFinal.length > 0) {
                 cacheModelosValidos = listaFinal;
                 ultimoFetchModelos = Date.now();
@@ -1711,7 +1746,9 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
             ...modelosDisponibles,
             'gemini-3.6-flash',
             'gemini-3.5-flash',
-            'gemini-flash-latest'
+            'gemini-flash-latest',
+            'gemini-3.5-pro',
+            'gemini-pro-latest'
         ])).filter(Boolean);
 
         let respuestaIA = null;
@@ -1727,6 +1764,9 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
                 }
             } catch (errModel) {
                 console.warn(`[Modelo ${modName} no disponible]:`, errModel.message);
+                if (errModel.message && (errModel.message.includes('503') || errModel.message.includes('429'))) {
+                    await delay(800);
+                }
             }
         }
 
@@ -1735,8 +1775,19 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
             console.log(`🤖 [Auto-Reparación IA]: Modelo actualizado dinámicamente a: ${modeloExitoso}`);
         }
 
+        // Si todos los servidores de Gemini están saturados o caídos (503/429/Offline), activar Respaldo Inteligente Local
         if (!respuestaIA) {
-            console.error("⚠️ Ningún modelo de Gemini respondió. Posible causa: Clave API inválida o sin cuota en Google AI Studio.");
+            console.warn("⚠️ Google AI experimentó saturación (503). Entregando respuesta local de contingencia...");
+            const configObj = {
+                icono_asistente: iconoAsistente,
+                nombre_negocio: nombreNegocio,
+                ubicacion_direccion: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_direccion'"))?.valor || '',
+                ubicacion_maps_link: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '',
+                horario_sucursal_fisica: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '',
+                catalogo_servicios: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'catalogo_servicios'"))?.valor || '',
+                datos_bancarios: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'datos_bancarios'"))?.valor || ''
+            };
+            respuestaIA = generarRespuestaEmergencia(texto, configObj, estadoHorario);
         }
 
         if (respuestaIA) {
