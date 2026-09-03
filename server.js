@@ -69,6 +69,8 @@ let ultimoQrCode = null;
 let botPausadoGlobal = false;
 const chatsPausados = new Map(); // JID -> Timestamp de inicio de pausa
 const idsMensajesEnviadosBot = new Set();
+const idsMensajesRecibidos = new Set(); // Para deduplicación estricta de mensajes entrantes
+const chatsEnProceso = new Set(); // Bloqueo de concurrencia para evitar respuestas dobles
 const colasProcesamiento = new Map();
 
 // ------------------------------------------------------------------------------
@@ -1454,18 +1456,39 @@ async function procesarMensajeEntrante(msg) {
         if (!msg || msg.from === 'status@broadcast') return;
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
-    // 1. Descartar mensajes antiguos (más de 2 minutos) que WhatsApp entrega al reconectar o reiniciar
-    if (msg.timestamp) {
-        const antiguedadSegundos = (Date.now() / 1000) - msg.timestamp;
-        if (antiguedadSegundos > 120) {
-            console.log(`⏳ Omitiendo mensaje antiguo (${Math.round(antiguedadSegundos)}s de antigüedad) de ${msg.from}`);
-            return;
+        // Deduplicación estricta por ID de mensaje de WhatsApp
+        if (msg.id && msg.id._serialized) {
+            if (idsMensajesRecibidos.has(msg.id._serialized)) {
+                return;
+            }
+            idsMensajesRecibidos.add(msg.id._serialized);
+            if (idsMensajesRecibidos.size > 3000) {
+                const prim = idsMensajesRecibidos.values().next().value;
+                idsMensajesRecibidos.delete(prim);
+            }
         }
-    }
 
-    const esGrupo = msg.from.endsWith('@g.us');
-    const remitente = msg.from;
-    const texto = msg.body ? msg.body.trim() : '';
+        // 1. Descartar mensajes antiguos (más de 2 minutos) que WhatsApp entrega al reconectar o reiniciar
+        if (msg.timestamp) {
+            const antiguedadSegundos = (Date.now() / 1000) - msg.timestamp;
+            if (antiguedadSegundos > 120) {
+                console.log(`⏳ Omitiendo mensaje antiguo (${Math.round(antiguedadSegundos)}s de antigüedad) de ${msg.from}`);
+                return;
+            }
+        }
+
+        const esGrupo = msg.from.endsWith('@g.us');
+        const remitente = msg.from;
+        const texto = msg.body ? msg.body.trim() : '';
+
+        // Bloqueo de concurrencia para evitar que el bot mande 2 respuestas al mismo tiempo
+        if (!esGrupo) {
+            if (chatsEnProceso.has(remitente)) {
+                console.log(`⏳ Ya hay una respuesta procesándose para ${remitente}. Omitiendo ejecución concurrente.`);
+                return;
+            }
+            chatsEnProceso.add(remitente);
+        }
 
     // En grupos normales, el bot se mantiene 100% sordo y mudo
     if (esGrupo) {
@@ -1723,9 +1746,31 @@ function limpiarNombreParaSaludo(nombre) {
     const contactoBD = await getQuery("SELECT es_ignorado FROM contactos WHERE jid = ?", [remitente]);
     if (contactoBD && contactoBD.es_ignorado === 1) return;
 
-    if (chatsPausados.has(remitente)) {
+    // --------------------------------------------------------------------------
+    // VERIFICACIÓN DE PAUSA INDIVIDUAL POR INTERVENCIÓN HUMANA
+    // --------------------------------------------------------------------------
+    let estaPausado = chatsPausados.has(remitente);
+    let tiempoPausa = chatsPausados.get(remitente) || 0;
+
+    // Buscar si está pausado bajo su número limpio (si remitente es @lid o viceversa)
+    if (!estaPausado && telefonoReal && telefonoReal.length >= 10) {
+        for (const [pJid, pTime] of chatsPausados.entries()) {
+            if (pJid.includes(telefonoReal) || remitente.includes(pJid.replace(/[^0-9]/g, ''))) {
+                estaPausado = true;
+                tiempoPausa = pTime;
+                break;
+            }
+        }
+    }
+
+    if (estaPausado) {
         const minsPausa = parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'tiempo_pausa_humano_mins'"))?.valor || '30', 10);
-        if (Date.now() - chatsPausados.get(remitente) < minsPausa * 60 * 1000) return;
+        const transcurrido = Date.now() - tiempoPausa;
+        if (transcurrido < minsPausa * 60 * 1000) {
+            const minutosRestantes = Math.ceil(((minsPausa * 60 * 1000) - transcurrido) / 60000);
+            console.log(`⏸️ Chat ${remitente} (Tel: ${telefonoReal}) en PAUSA por intervención humana (quedan ${minutosRestantes} mins). Silencio total.`);
+            return;
+        }
         chatsPausados.delete(remitente);
     }
 
@@ -2392,7 +2437,6 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
             if (iconoAsistente && !textoRespuestaFinal.startsWith(iconoAsistente)) {
                 textoRespuestaFinal = `${iconoAsistente} ${textoRespuestaFinal}`;
             }
-
             // Simulación de escritura humana anti-ban
             await simularEscribiendoSeguro(msg, Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500));
 
@@ -2401,8 +2445,8 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
 
             // Guardar respuesta de IA en base de datos
             await runQuery(
-                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [remitente, 'bot', 'Asistente IA', textoRespuestaFinal, 1, 1, Date.now()]
+                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 1, ?)",
+                [remitente, 'bot', 'Asistente IA', textoRespuestaFinal, Date.now()]
             );
 
             io.emit('nuevo_mensaje', {
@@ -2410,6 +2454,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
                 emisor: 'bot',
                 emisor_nombre: 'Asistente IA',
                 cuerpo: textoRespuestaFinal,
+                tipo: 'chat',
                 es_mio: 1,
                 es_ia: 1,
                 timestamp: Date.now()
@@ -2420,6 +2465,8 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
     }
     } catch (errGlobalMsg) {
         console.error("Error no fatal en procesamiento de mensaje:", errGlobalMsg.message);
+    } finally {
+        if (remitente) chatsEnProceso.delete(remitente);
     }
 }
 
@@ -2448,29 +2495,30 @@ async function procesarSeguimientosAutomaticos() {
             const minDiff = Math.abs((hActual * 60 + mActual) - (hRegla * 60 + mRegla));
             if (minDiff > 25) continue; // Solo procesar en la ventana horaria
 
-            let candidatos = [];
+            let contactosCandidatos = [];
             if (r.etiqueta_id) {
-                candidatos = await allQuery(`
+                contactosCandidatos = await allQuery(`
                     SELECT c.jid, c.telefono, c.nombre, c.pushname, c.ultimo_contacto, ce.asignado_en
                     FROM contactos c
                     INNER JOIN contactos_etiquetas ce ON c.jid = ce.jid
                     WHERE ce.etiqueta_id = ? AND c.es_ignorado = 0
                 `, [r.etiqueta_id]);
             } else {
-                candidatos = await allQuery(`
+                contactosCandidatos = await allQuery(`
                     SELECT jid, telefono, nombre, pushname, ultimo_contacto, ultimo_contacto as asignado_en
                     FROM contactos
                     WHERE es_ignorado = 0
                 `);
             }
 
-            for (const c of candidatos) {
+            for (const c of contactosCandidatos) {
                 const fechaBase = c.asignado_en || c.ultimo_contacto || Date.now();
                 const difDias = Math.floor((Date.now() - fechaBase) / (1000 * 60 * 60 * 24));
 
+                // Si aún no cumple los días requeridos, ignorar
                 if (difDias < r.dias_espera) continue;
 
-                // Verificar si ya se envió este seguimiento
+                // Verificar si ya se envió hoy o anteriormente
                 const yaEnviado = await getQuery("SELECT id FROM historial_seguimientos WHERE jid = ? AND regla_id = ? AND estado = 'enviado'", [c.jid, r.id]);
                 if (yaEnviado) continue;
 
@@ -2481,18 +2529,29 @@ async function procesarSeguimientosAutomaticos() {
                     .replace(/{dias}/gi, r.dias_espera);
 
                 try {
-                    console.log(`📨 [Seguimiento Automático]: Enviando recordatorio a ${nombreLimpio} (${c.jid})...`);
                     await client.sendMessage(c.jid, mensajePersonalizado);
 
+                    // Registrar en historial y en mensajes
                     await runQuery(`
                         INSERT INTO historial_seguimientos (jid, regla_id, telefono, nombre, mensaje_enviado, fecha_programada, fecha_enviado, timestamp, estado)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'enviado')
                     `, [c.jid, r.id, c.telefono || c.jid, nombreLimpio, mensajePersonalizado, new Date().toISOString(), fechaHoyStr, Date.now()]);
 
                     await runQuery(
-                        "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 1, 1, ?)",
+                        "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 1, ?)",
                         [c.jid, 'bot', 'Seguimiento Automático', mensajePersonalizado, Date.now()]
                     );
+
+                    io.emit('nuevo_mensaje', {
+                        chat_id: c.jid,
+                        emisor: 'bot',
+                        emisor_nombre: 'Seguimiento Automático',
+                        cuerpo: mensajePersonalizado,
+                        tipo: 'chat',
+                        es_mio: 1,
+                        es_ia: 1,
+                        timestamp: Date.now()
+                    });
 
                     // Pausa de 15 segundos entre envíos para proteger WhatsApp
                     await delay(15000);
