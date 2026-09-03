@@ -528,31 +528,29 @@ async function guardarIdentidadNegocio() {
     }
 }
 
-// Guardar Horarios Semanales Detallados (7 Días con Doble Turno)
+function aplicarPlantillaHorario(texto) {
+    const txtArea = document.getElementById('config-horario-fisico');
+    if (txtArea) {
+        txtArea.value = texto;
+        txtArea.focus();
+    }
+}
+
+// Guardar Horarios de Atención del Negocio (Texto Libre y Flexible)
 async function guardarHorariosDetallados() {
     try {
-        const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-        const scheduleObj = {};
-        dias.forEach(d => {
-            const abierto = document.getElementById(`chk-dia-${d}`)?.checked || false;
-            const t1Inicio = document.getElementById(`dia-${d}-t1-inicio`)?.value || '08:00';
-            const t1Fin = document.getElementById(`dia-${d}-t1-fin`)?.value || '14:00';
-            const t2Activo = document.getElementById(`chk-dia-${d}-t2`)?.checked || false;
-            const t2Inicio = document.getElementById(`dia-${d}-t2-inicio`)?.value || '16:00';
-            const t2Fin = document.getElementById(`dia-${d}-t2-fin`)?.value || '18:00';
-            scheduleObj[d] = { abierto, t1Inicio, t1Fin, t2Activo, t2Inicio, t2Fin };
-        });
+        const horarioTexto = document.getElementById('config-horario-fisico').value;
+        const msgFuera = document.getElementById('config-mensaje-fuera-horario').value;
 
         await apiFetch('/api/configuracion', {
             method: 'POST',
             body: JSON.stringify({
-                horario_sucursal_fisica: document.getElementById('config-horario-fisico').value,
-                horario_asesor_en_linea: document.getElementById('config-horario-online').value,
-                mensaje_fuera_horario: document.getElementById('config-mensaje-fuera-horario').value,
-                horarios_semanales_json: JSON.stringify(scheduleObj)
+                horario_sucursal_fisica: horarioTexto,
+                horario_asesor_en_linea: horarioTexto,
+                mensaje_fuera_horario: msgFuera
             })
         });
-        alert("✅ Horarios de atención semanales guardados con éxito.");
+        alert("✅ Horarios de atención guardados con éxito.");
     } catch (e) {
         alert("Error al guardar horarios: " + e.message);
     }
