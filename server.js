@@ -371,7 +371,95 @@ app.post('/api/contactos/:jid/etiquetas', autenticarToken, async (req, res) => {
         } else {
             await runQuery("INSERT OR REPLACE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jid, etiqueta_id, Date.now()]);
         }
+
+        // Sincronización hacia WhatsApp Business en vivo (si la cuenta vinculada es Business)
+        if (client && wsClienteConectado) {
+            try {
+                const etiquetaBD = await getQuery("SELECT nombre FROM etiquetas WHERE id = ?", [etiqueta_id]);
+                if (etiquetaBD) {
+                    const labelsWA = await client.getLabels();
+                    const matchWA = labelsWA.find(l => l.name.toLowerCase() === etiquetaBD.nombre.toLowerCase());
+                    if (matchWA && accion === 'asignar') {
+                        await client.addOrRemoveLabels([matchWA.id], [jid]);
+                    }
+                }
+            } catch (errWA) {}
+        }
+
         res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Sincronizar / Importar Etiquetas y Asignaciones desde WhatsApp Business
+app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res) => {
+    try {
+        if (!client || !wsClienteConectado) {
+            return res.status(400).json({ error: 'El bot no está conectado a WhatsApp en este momento. Escanea el código QR primero.' });
+        }
+
+        let labelsWA = [];
+        try {
+            labelsWA = await client.getLabels();
+        } catch (errLabels) {
+            return res.status(400).json({ 
+                error: 'No se pudieron consultar las etiquetas de WhatsApp. Asegúrate de que el número vinculado sea una cuenta de WhatsApp Business. Detalle: ' + errLabels.message 
+            });
+        }
+
+        if (!labelsWA || labelsWA.length === 0) {
+            return res.json({ success: true, message: 'No se encontraron etiquetas creadas en WhatsApp Business.', total_etiquetas: 0, total_asignaciones: 0 });
+        }
+
+        let importadas = 0;
+        let asignacionesTotal = 0;
+
+        for (const l of labelsWA) {
+            const colorHex = l.hexColor || '#10b981';
+            let etiquetaBD = await getQuery("SELECT id FROM etiquetas WHERE nombre = ?", [l.name]);
+
+            if (!etiquetaBD) {
+                const r = await runQuery("INSERT INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [l.name, colorHex, Date.now()]);
+                etiquetaBD = { id: r.id };
+                importadas++;
+            } else {
+                await runQuery("UPDATE etiquetas SET color = ? WHERE id = ?", [colorHex, etiquetaBD.id]);
+            }
+
+            // Consultar chats vinculados a esta etiqueta en WhatsApp
+            try {
+                const chatsConEtiqueta = await l.getChats();
+                if (chatsConEtiqueta && chatsConEtiqueta.length > 0) {
+                    for (const ch of chatsConEtiqueta) {
+                        const jidChat = ch.id._serialized;
+                        const userTel = ch.id.user;
+                        const nombreChat = ch.name || ch.pushname || 'Cliente';
+
+                        await runQuery(`
+                            INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
+                            VALUES (?, ?, ?, ?, ?)
+                            ON CONFLICT(jid) DO NOTHING
+                        `, [jidChat, userTel, nombreChat, ch.pushname || '', Date.now()]);
+
+                        const yaAsignada = await getQuery("SELECT id FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [jidChat, etiquetaBD.id]);
+                        if (!yaAsignada) {
+                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jidChat, etiquetaBD.id, Date.now()]);
+                            asignacionesTotal++;
+                        }
+                    }
+                }
+            } catch (eChats) {
+                console.error(`Error obteniendo chats para la etiqueta ${l.name}:`, eChats.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: `¡Sincronización completada! Se detectaron ${labelsWA.length} etiquetas en WhatsApp Business y se importaron ${asignacionesTotal} asignaciones de clientes.`,
+            total_etiquetas: labelsWA.length,
+            total_asignaciones: asignacionesTotal
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

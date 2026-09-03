@@ -1711,6 +1711,38 @@ async function eliminarInfografiaImagen(nombre) {
 // ==============================================================================
 // GESTIÓN DE ETIQUETAS DE CONTACTO (MODAL & CRM)
 // ==============================================================================
+async function sincronizarEtiquetasWhatsApp() {
+    try {
+        const btn = event?.currentTarget;
+        let originalHtml = '';
+        if (btn) {
+            originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[9px]"></i> <span>Importando...</span>';
+            btn.disabled = true;
+        }
+
+        const res = await apiFetch('/api/etiquetas/sincronizar-whatsapp', { method: 'POST' });
+        if (res.success) {
+            alert("✅ " + res.message);
+            await cargarEtiquetasFiltro();
+            await cargarListaConversaciones();
+            if (chatActivoJid) {
+                const nomElem = document.getElementById('chat-nombre-cliente');
+                seleccionarChat(chatActivoJid, nomElem ? nomElem.textContent : '');
+            }
+        } else {
+            alert("Aviso: " + (res.error || 'No se pudo sincronizar'));
+        }
+
+        if (btn) {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        alert("Error de sincronización con WhatsApp: " + e.message);
+    }
+}
+
 async function abrirModalEtiquetasContacto() {
     if (!chatActivoJid) return alert("Selecciona un chat primero");
     const nomElem = document.getElementById('chat-nombre-cliente');

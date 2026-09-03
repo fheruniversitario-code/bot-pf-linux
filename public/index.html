@@ -417,11 +417,17 @@
                         <!-- Filtros por Etiqueta / Listas de WhatsApp -->
                         <div class="space-y-1.5">
                             <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Lista / Etiqueta:</span>
-                                <button type="button" onclick="abrirModalNuevaEtiqueta()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1 transition">
-                                    <i class="fa-solid fa-plus text-[9px]"></i>
-                                    <span>Nueva Lista</span>
-                                </button>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Lista:</span>
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" onclick="sincronizarEtiquetasWhatsApp()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center space-x-1 transition" title="Importar etiquetas y clientes de WhatsApp Business">
+                                        <i class="fa-solid fa-arrows-rotate text-[9px]"></i>
+                                        <span>Importar de WhatsApp</span>
+                                    </button>
+                                    <button type="button" onclick="abrirModalNuevaEtiqueta()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1 transition">
+                                        <i class="fa-solid fa-plus text-[9px]"></i>
+                                        <span>Nueva Lista</span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs scrollbar-none" id="lista-filtros-etiquetas">
                                 <button onclick="filtrarPorEtiqueta('todas')" class="etiqueta-filtro-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px] whitespace-nowrap active shadow-sm" data-etiqueta="todas">
