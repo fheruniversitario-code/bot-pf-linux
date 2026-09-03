@@ -16,9 +16,11 @@ const { db, runQuery, getQuery, allQuery, inicializarBD, DB_PATH } = require('./
 
 const DIR_UPLOADS = path.join(__dirname, 'public', 'uploads');
 const DIR_DOCS = path.join(__dirname, 'documentos');
+const DIR_IMAGENES = path.join(__dirname, 'imagenes');
 
 if (!fs.existsSync(DIR_UPLOADS)) fs.mkdirSync(DIR_UPLOADS, { recursive: true });
 if (!fs.existsSync(DIR_DOCS)) fs.mkdirSync(DIR_DOCS, { recursive: true });
+if (!fs.existsSync(DIR_IMAGENES)) fs.mkdirSync(DIR_IMAGENES, { recursive: true });
 
 const uploadLogo = multer({
     storage: multer.diskStorage({
@@ -30,6 +32,16 @@ const uploadLogo = multer({
 const uploadDoc = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => cb(null, DIR_DOCS),
+        filename: (req, file, cb) => {
+            const cleanName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+            cb(null, cleanName);
+        }
+    })
+});
+
+const uploadImagen = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, DIR_IMAGENES),
         filename: (req, file, cb) => {
             const cleanName = Buffer.from(file.originalname, 'latin1').toString('utf8');
             cb(null, cleanName);
@@ -49,6 +61,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(DIR_UPLOADS));
+app.use('/imagenes', express.static(DIR_IMAGENES));
 
 // Estado de WhatsApp Web en Memoria
 let wsClienteConectado = false;
@@ -491,6 +504,44 @@ app.post('/api/documentos/upload', autenticarToken, uploadDoc.single('documento'
 app.delete('/api/documentos/:nombre', autenticarToken, (req, res) => {
     try {
         const filePath = path.join(DIR_DOCS, req.params.nombre);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Gestión de Galería de Imágenes e Infografías (.png, .jpg, .webp)
+app.get('/api/imagenes', autenticarToken, (req, res) => {
+    try {
+        if (!fs.existsSync(DIR_IMAGENES)) return res.json([]);
+        const files = fs.readdirSync(DIR_IMAGENES).map(f => {
+            const stats = fs.statSync(path.join(DIR_IMAGENES, f));
+            return {
+                nombre: f,
+                url: '/imagenes/' + f,
+                tamano: (stats.size / 1024).toFixed(1) + ' KB',
+                fecha: stats.mtime.toLocaleDateString('es-MX')
+            };
+        });
+        res.json(files);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/imagenes/upload', autenticarToken, uploadImagen.single('imagen'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
+        res.json({ success: true, filename: req.file.filename, url: '/imagenes/' + req.file.filename });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/imagenes/:nombre', autenticarToken, (req, res) => {
+    try {
+        const filePath = path.join(DIR_IMAGENES, req.params.nombre);
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         res.json({ success: true });
     } catch (e) {
@@ -1016,13 +1067,65 @@ async function procesarMensajeEntrante(msg) {
     } catch (errMenu) {}
 
     // --------------------------------------------------------------------------
-    // 2. EVALUACIÓN DE INFOGRAFÍAS / PALABRAS CLAVE
+    // 2. EVALUACIÓN Y ENVÍO AUTOMÁTICO DE INFOGRAFÍAS Y FOTOGRAFÍAS (.png, .jpg)
     // --------------------------------------------------------------------------
+    const textoLowerNorm = texto.toLowerCase();
+    const infografiasEnviadasMemoria = global.infografiasEnviadasMemoria || (global.infografiasEnviadasMemoria = new Set());
+
+    async function enviarImagenSiExiste(palabraClave, captionTitulo) {
+        const claveTracking = `${remitente}_${palabraClave}`;
+        const pideExplicito = textoLowerNorm.includes('ver') || textoLowerNorm.includes('imagen') || textoLowerNorm.includes('foto') || textoLowerNorm.includes('infografia') || textoLowerNorm.includes('infografía');
+        if (infografiasEnviadasMemoria.has(claveTracking) && !pideExplicito) return false;
+
+        const extensiones = ['.png', '.jpg', '.jpeg', '.webp'];
+        for (const ext of extensiones) {
+            const ruta = path.join(DIR_IMAGENES, `${palabraClave}${ext}`);
+            if (fs.existsSync(ruta)) {
+                try {
+                    const media = MessageMedia.fromFilePath(ruta);
+                    const sent = await client.sendMessage(remitente, media, { caption: captionTitulo || `🖼️ *${palabraClave.toUpperCase()}*` });
+                    if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                    infografiasEnviadasMemoria.add(claveTracking);
+                    return true;
+                } catch(e) {
+                    console.error("Error al enviar imagen:", e.message);
+                }
+            }
+        }
+        return false;
+    }
+
+    // Auto-detección por palabras clave de salud / productos / promociones
+    if (textoLowerNorm.includes('implante')) {
+        await enviarImagenSiExiste('implante', '🖼️ *Infografía: Implante Subdérmico*');
+    } else if (textoLowerNorm.includes('vasectomia') || textoLowerNorm.includes('vasectomía') || textoLowerNorm.includes('sin bisturi')) {
+        await enviarImagenSiExiste('vasectomia', '🖼️ *Infografía: Vasectomía sin Bisturí*');
+    } else if (textoLowerNorm.includes('cobre') || textoLowerNorm.includes('t de cobre')) {
+        await enviarImagenSiExiste('diu_cobre', '🖼️ *Infografía: DIU de Cobre*');
+    } else if (textoLowerNorm.includes('medicado') || textoLowerNorm.includes('mirena') || textoLowerNorm.includes('levonorgestrel')) {
+        await enviarImagenSiExiste('diu_medicado', '🖼️ *Infografía: DIU Medicado (Mirena)*');
+    } else if (textoLowerNorm.includes('trimestral') || textoLowerNorm.includes('3 meses') || textoLowerNorm.includes('depo')) {
+        await enviarImagenSiExiste('inyeccion_trimestral', '🖼️ *Infografía: Inyección Trimestral*');
+    } else if (textoLowerNorm.includes('bimensual') || textoLowerNorm.includes('2 meses') || textoLowerNorm.includes('noristerat')) {
+        await enviarImagenSiExiste('inyeccion_bimensual', '🖼️ *Infografía: Inyección Bimensual*');
+    } else if (textoLowerNorm.includes('mensual') || textoLowerNorm.includes('cada mes') || textoLowerNorm.includes('mesigyna') || textoLowerNorm.includes('cyclofem')) {
+        await enviarImagenSiExiste('inyeccion_mensual', '🖼️ *Infografía: Inyección Mensual*');
+    } else if (textoLowerNorm.includes('pastilla') || textoLowerNorm.includes('pastillas')) {
+        await enviarImagenSiExiste('pastillas', '🖼️ *Infografía: Pastillas Anticonceptivas*');
+    } else if (textoLowerNorm.includes('parche') || textoLowerNorm.includes('parches')) {
+        await enviarImagenSiExiste('parche', '🖼️ *Infografía: Parches Anticonceptivos*');
+    } else if (textoLowerNorm.includes('emergencia') || textoLowerNorm.includes('postday') || textoLowerNorm.includes('dia siguiente')) {
+        await enviarImagenSiExiste('emergencia', '🖼️ *Infografía: Pastilla de Emergencia*');
+    } else if (textoLowerNorm.includes('metodos') || textoLowerNorm.includes('métodos') || textoLowerNorm.includes('catalogo') || textoLowerNorm.includes('catálogo')) {
+        await enviarImagenSiExiste('metodos', '🖼️ *Catálogo de Métodos Anticonceptivos*');
+    } else if (textoLowerNorm.includes('promocion') || textoLowerNorm.includes('promociones') || textoLowerNorm.includes('promo') || textoLowerNorm.includes('descuento')) {
+        await enviarImagenSiExiste('promociones', '🎉 *Nuestras Promociones y Descuentos*');
+    }
+
     try {
         const infografiasRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'infografias_config'"))?.valor;
         if (infografiasRaw) {
             const infografias = JSON.parse(infografiasRaw);
-            const textoLowerNorm = texto.toLowerCase();
             const infoEncontrada = infografias.find(item => 
                 item.palabras && item.palabras.some(p => textoLowerNorm.includes(p.toLowerCase().trim()))
             );
