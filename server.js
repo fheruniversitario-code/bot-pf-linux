@@ -1526,20 +1526,22 @@ async function procesarMensajeEntrante(msg) {
         }
     }
 
-// Función para limpiar nombres y evitar saludos con códigos alfanuméricos, fechas o IDs técnicos
+// Función para limpiar nombres y evitar saludos con códigos alfanuméricos, fechas, emojis o IDs técnicos
 function limpiarNombreParaSaludo(nombre) {
     if (!nombre) return '';
     const n = nombre.trim();
+    // Extraer únicamente letras humanas (elimina emojis como 😈🖤😋🐺, símbolos y números)
+    const soloLetras = n.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '').trim();
     if (
+        soloLetras.length < 2 ||
         n.toLowerCase() === 'cliente' ||
         n.toLowerCase().includes('usuario desconocido') ||
         n.toLowerCase().startsWith('paciente') ||
-        /\d{2,}/.test(n) ||
-        n.length < 2
+        /\d{2,}/.test(n)
     ) {
         return '';
     }
-    return n.split(' ')[0];
+    return soloLetras.split(' ')[0];
 }
 
     // Registrar o actualizar Contacto en la Base de Datos
@@ -1936,7 +1938,8 @@ function limpiarNombreParaSaludo(nombre) {
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
         } else if (!estadoHorario.enHorario) {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                `⏰ *Fuera de horario de atención personalizada:* He dejado tu solicitud registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
+                `⏰ *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
+                `📌 *Aviso importante:* Toda atención médica en la unidad es EXCLUSIVAMENTE MEDIANTE CITA PREVIA. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este chat, ya que no se podrá atender sin espacio reservado.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
         } else {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
@@ -2057,9 +2060,10 @@ function limpiarNombreParaSaludo(nombre) {
                 `🗓️ Tu solicitud ha quedado registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder todas tus preguntas sobre métodos y requisitos._`;
         } else if (!estadoHorario.enHorario) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *FUERA DE HORARIO DE ATENCIÓN PERSONALIZADA*\n\n` +
-                `${saludoPersonal} Por el momento nos encontramos fuera de nuestro horario de atención presencial.\n\n` +
-                `🕒 Tu solicitud ha quedado registrada. Nuestro personal revisará tu chat y te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *FUERA DE HORARIO DE ATENCIÓN EN LÍNEA*\n\n` +
+                `${saludoPersonal} Por el momento nos encontramos fuera de nuestro horario de atención por este chat.\n\n` +
+                `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
+                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder cualquier consulta sobre métodos o requisitos._`;
         } else {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
@@ -2332,26 +2336,30 @@ async function obtenerContenidoGoogleSheets(url) {
             reglaHorarioIA = `
 🔴 ESTADO DE RECESO / VACACIONES:
 - Actualmente el personal humano se encuentra en receso/vacaciones debido a: "${estadoHorario.motivoReceso}".
-- REGLA ESTRICTA: NO ofrezcas "hablar con un asesor" o "pasar con un asesor ahora mismo". Si el cliente requiere atención personalizada o cita presencial, indícale amablemente que su solicitud será atendida prioritariamente ${estadoHorario.proximoTexto}, o invítalo a resolver sus dudas contigo directamente (asistente virtual 24/7).`;
+- REGLA ESTRICTA: NO ofrezcas atención presencial ni "pasar con un asesor ahora mismo". Si el cliente requiere atención médica o cita presencial, indícale amablemente que su solicitud será atendida en línea por este chat ${estadoHorario.proximoTexto}, o invítalo a resolver sus dudas contigo directamente (asistente virtual 24/7).`;
         } else if (!estadoHorario.enHorario) {
             reglaHorarioIA = `
-🔴 ESTADO DE HORARIO DE ATENCIÓN (FUERA DE HORARIO LABORAL):
+🔴 ESTADO DE HORARIO DE ATENCIÓN (FUERA DE HORARIO DE ATENCIÓN POR CHAT):
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
-- Actualmente estamos FUERA del horario de atención del personal humano. El personal atenderá nuevamente: ${estadoHorario.proximoTexto}.
-- REGLA ESTRICTA DE HORARIO: En este momento es de noche / fuera de turno. NUNCA ofrezcas "hablar con un asesor" como si fuera a contestar de inmediato.
-- Si el tema requiere cita médica o atención humana indispensable, aclara explícitamente que nuestro personal humano labora ${estadoHorario.proximoTexto}, pero que puede escribir 'asesor' para dejar su solicitud registrada en la bandeja de pendientes para mañana, o bien resolver todas sus preguntas de salud/servicios contigo directamente en este instante (tú estás activo 24/7).`;
+- Actualmente estamos FUERA del horario en que el personal humano responde mensajes por este chat. El personal responderá mensajes y coordinará citas por WhatsApp: ${estadoHorario.proximoTexto}.
+- REGLAS ESTRICTAS DE HORARIO Y CITAS (NO CONFUNDIR ATENCIÓN EN LÍNEA CON ATENCIÓN FÍSICA):
+  1. NUNCA le digas al paciente "te esperamos a las 2:00 PM", ni "nuestro personal te atenderá a las 2:00 PM", ni ninguna frase que le haga pensar que debe presentarse físicamente en la clínica a esa hora.
+  2. Aclara SIEMPRE que el horario (ej: lunes a viernes de 2:00 PM a 8:30 PM) es de ATENCIÓN EN LÍNEA POR WHATSAPP para responder dudas y agendar citas.
+  3. Para cualquier procedimiento médico presencial (retiro o colocación de implante subdérmico, DIU, vasectomía, revisiones, etc.), la atención en la clínica es EXCLUSIVAMENTE CON CITA PREVIA CONFIRMADA.
+  4. Adviértele con amabilidad pero firmeza que NO acuda a la unidad sin una cita confirmada, ya que no se brinda atención médica sin un espacio previamente agendado.
+  5. Puede escribir la palabra 'asesor' si desea dejar su solicitud registrada para agendar una cita cuando inicie el turno en línea.`;
         } else {
             reglaHorarioIA = `
-🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO LABORAL):
+🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO DE CHAT):
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
-- Actualmente el personal humano de salud está EN TURNO en las instalaciones.
-- Puedes invitar al usuario a escribir 'asesor' si desea atención humana o agendar su cita presencial.`;
+- Actualmente el personal humano de salud está EN TURNO atendiendo mensajes por este chat.
+- REGLA DE ATENCIÓN MÉDICA: La atención médica presencial (retiro o colocación de implante, vasectomía, DIU, etc.) es EXCLUSIVAMENTE MEDIANTE CITA PREVIA. Puedes invitar al usuario a escribir 'asesor' si desea que el personal en turno le agende su cita.`;
         }
 
         const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
         const instruccionNombre = nomLimpioIA
             ? `- Nombre del cliente/paciente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
-            : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
+            : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
 
         const systemInstruction = `
 ${configPrompt}
@@ -2371,12 +2379,17 @@ ${textoDocumentosAdicionales}
 INFORMACIÓN DE UBICACIÓN Y HORARIOS:
 - Ubicación física: ${ubicacion}
 - Google Maps: ${mapsLink}
-- Horario de Sucursal: ${horarioFisico}
+- Horario de Atención en Línea (WhatsApp): ${horarioFisico}
 
 INFORMACIÓN DE PAGOS / BANCOS:
 ${datosBancos}
 
-INSTRUCCIONES CLAVE DE ATENCIÓN:
+INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
+- REGLA DE ORO DE CITAS Y ATENCIÓN PRESENCIAL:
+  1. Toda atención médica presencial (retiro o colocación de implante subdérmico, vasectomía, DIU, procedimientos) es ESTRICTAMENTE CON CITA PREVIA AGENDADA Y CONFIRMADA.
+  2. NUNCA le digas a un paciente que acuda a la clínica a las 2:00 PM ni le des a entender que puede llegar sin cita.
+  3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.
+  4. ADVIERTE SIEMPRE: "Recuerda que toda atención presencial en la unidad es exclusivamente con cita previa. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este medio, ya que no es posible atenderte sin un espacio reservado en la agenda."
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
 - REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
 - Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
