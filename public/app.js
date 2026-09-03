@@ -478,6 +478,13 @@ function renderizarListaConversaciones(chats) {
     });
 }
 
+async function refrescarChatActivo() {
+    if (!chatActivoJid) return;
+    const btn = document.getElementById('btn-refrescar-chat');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i> <span>Sincronizando...</span>';
+    await seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
+}
+
 async function seleccionarChat(jid, nombre) {
     chatActivoJid = jid;
     document.getElementById('chat-nombre-cliente').textContent = nombre;
@@ -510,11 +517,15 @@ async function seleccionarChat(jid, nombre) {
             `).join('');
         }
 
-        // Botón de Ignorar / Reactivar Contacto en 1 Clic
+        // Botón de Sincronizar, Etiquetas e Ignorar / Reactivar Contacto en 1 Clic
         const accionesCont = document.getElementById('chat-acciones');
         if (accionesCont) {
             const esIgnorado = data.contacto && data.contacto.es_ignorado === 1;
             accionesCont.innerHTML = `
+                <button id="btn-refrescar-chat" onclick="refrescarChatActivo()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Sincronizar mensajes de WhatsApp">
+                    <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>
+                    <span>Sincronizar</span>
+                </button>
                 <button id="btn-gestionar-etiquetas" onclick="abrirModalEtiquetasContacto()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Asignar Etiquetas / Listas">
                     <i class="fa-solid fa-tags text-indigo-400"></i>
                     <span>Etiquetas</span>
@@ -1296,8 +1307,12 @@ socket.on('estado_whatsapp', ({ conectado }) => {
 socket.on('nuevo_mensaje', (msg) => {
     if (currentTab === 'conversaciones') {
         cargarListaConversaciones();
-        if (chatActivoJid === msg.chat_id) {
-            seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
+        if (chatActivoJid) {
+            const numActivo = chatActivoJid.replace(/[^0-9]/g, '');
+            const numMsg = (msg.chat_id || '').replace(/[^0-9]/g, '');
+            if (chatActivoJid === msg.chat_id || (numActivo && numMsg && (numActivo.includes(numMsg) || numMsg.includes(numActivo)))) {
+                seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
+            }
         }
     } else {
         const badge = document.getElementById('badge-mensajes-nuevos');

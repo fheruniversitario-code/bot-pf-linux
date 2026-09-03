@@ -694,45 +694,52 @@ app.post('/api/seguimientos/enviar', autenticarToken, async (req, res) => {
     }
 });
 
-// Mensajes de un Chat específico (con carga histórica desde WhatsApp si está vacía)
+// Mensajes de un Chat específico (con sincronización en vivo de WhatsApp y unificación de LID y teléfono)
 app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) => {
     try {
         const { jid } = req.params;
-        let mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY id ASC LIMIT 100", [jid]);
         let contacto = await getQuery("SELECT * FROM contactos WHERE jid = ?", [jid]);
+        const telLimpio = contacto?.telefono || jid.replace(/[^0-9]/g, '');
 
-        // Si la base local no tiene mensajes o tiene menos de 2, traemos los mensajes reales históricos de WhatsApp
-        if (mensajes.length <= 1 && client && wsClienteConectado) {
+        // Sincronizar mensajes recientes de WhatsApp Web para reflejar lo que envías desde el celular oficial
+        if (client && wsClienteConectado) {
             try {
-                const waChat = await client.getChatById(jid);
+                let waChat = null;
+                try {
+                    waChat = await client.getChatById(jid);
+                } catch(eChat) {
+                    if (telLimpio && telLimpio.length >= 10) {
+                        waChat = await client.getChatById(`${telLimpio}@c.us`).catch(() => null);
+                    }
+                }
+
                 if (waChat) {
                     const rawMsgs = await waChat.fetchMessages({ limit: 40 });
                     if (rawMsgs && rawMsgs.length > 0) {
                         for (const m of rawMsgs) {
                             const esMio = m.fromMe ? 1 : 0;
-                            const emisorNombre = esMio ? 'Asesor' : (waChat.name || waChat.formattedTitle || 'Cliente');
+                            const emisorNombre = esMio ? 'Asesor Humano' : (waChat.name || waChat.formattedTitle || 'Cliente');
                             const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
                             const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : '💬 (Mensaje)');
 
                             // Evitar duplicar
-                            const existe = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? AND timestamp = ?", [jid, timestampMs]);
+                            const existe = await getQuery("SELECT id FROM mensajes WHERE (chat_id = ? OR chat_id LIKE ?) AND timestamp = ?", [jid, `%${telLimpio}%`, timestampMs]);
                             if (!existe) {
                                 await runQuery(`
                                     INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
                                     VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-                                `, [jid, m.from, emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
+                                `, [jid, esMio ? 'yo' : (m.from || jid), emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
                             }
                         }
-                        mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY id ASC LIMIT 100", [jid]);
 
-                        // Actualizar nombre y último contacto si aún decía 'Cliente'
-                        if (contacto && (contacto.nombre === 'Cliente' || !contacto.nombre)) {
+                        // Actualizar nombre si aún no estaba personalizado
+                        if (contacto && (contacto.nombre === 'Cliente' || !contacto.nombre || contacto.nombre.toLowerCase().includes('usuario desconocido'))) {
                             let nomActualizado = waChat.name || waChat.formattedTitle;
                             try {
                                 const cInfo = await waChat.getContact();
                                 if (cInfo) nomActualizado = cInfo.name || cInfo.pushname || nomActualizado;
                             } catch(e) {}
-                            if (nomActualizado && nomActualizado !== 'Cliente') {
+                            if (nomActualizado && nomActualizado !== 'Cliente' && !nomActualizado.toLowerCase().includes('usuario desconocido')) {
                                 await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nomActualizado, jid]);
                                 contacto.nombre = nomActualizado;
                             }
@@ -740,11 +747,24 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                     }
                 }
             } catch (errFetch) {
-                console.error("Error trayendo historial de WhatsApp:", errFetch.message);
+                console.error("Error sincronizando mensajes de WhatsApp:", errFetch.message);
             }
         }
 
-        const pedido = await getQuery("SELECT * FROM pedidos_cotizaciones WHERE cliente_telefono LIKE ? ORDER BY id DESC LIMIT 1", [`%${jid.replace(/[^0-9]/g, '')}%`]);
+        // Obtener mensajes unificando por JID y por número telefónico
+        let mensajes = [];
+        if (telLimpio && telLimpio.length >= 10) {
+            mensajes = await allQuery(`
+                SELECT * FROM mensajes 
+                WHERE chat_id = ? OR chat_id LIKE ? 
+                ORDER BY timestamp ASC, id ASC 
+                LIMIT 150
+            `, [jid, `%${telLimpio}%`]);
+        } else {
+            mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY timestamp ASC, id ASC LIMIT 150", [jid]);
+        }
+
+        const pedido = await getQuery("SELECT * FROM pedidos_cotizaciones WHERE cliente_telefono LIKE ? ORDER BY id DESC LIMIT 1", [`%${telLimpio}%`]);
         res.json({ contacto, mensajes, pedido });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -2573,6 +2593,74 @@ client.on('message', async (msg) => {
         await procesarMensajeEntrante(msg);
     } catch (err) {
         console.error("Error en evento message:", err.message);
+    }
+});
+
+// ------------------------------------------------------------------------------
+// DETECCIÓN EN VIVO DE INTERVENCIÓN HUMANA DESDE EL TELÉFONO DEL BOT
+// ------------------------------------------------------------------------------
+client.on('message_create', async (msg) => {
+    try {
+        if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
+        if (msg.to === 'status@broadcast') return;
+
+        // Si el mensaje fue enviado automáticamente por el bot, no pausar
+        if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
+
+        // Mensaje enviado manualmente por el usuario desde el teléfono físico o WhatsApp Web
+        const targetJid = msg.to || msg.from;
+        if (!targetJid || targetJid.endsWith('@g.us')) return; // No pausar por mensajes en grupos
+
+        const minsPausa = parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'tiempo_pausa_humano_mins'"))?.valor || '30', 10);
+
+        // 1. Pausar inmediatamente el chat para este destinatario
+        chatsPausados.set(targetJid, Date.now());
+
+        // 2. Si el número tiene otros identificadores asociados (ej: @c.us y @lid), pausar ambos
+        const telClean = targetJid.replace(/[^0-9]/g, '');
+        let jidsAsociados = [targetJid];
+        if (telClean.length >= 10) {
+            try {
+                const asociados = await allQuery("SELECT jid FROM contactos WHERE telefono LIKE ? OR jid LIKE ?", [`%${telClean}%`, `%${telClean}%`]);
+                for (const a of asociados) {
+                    chatsPausados.set(a.jid, Date.now());
+                    if (!jidsAsociados.includes(a.jid)) jidsAsociados.push(a.jid);
+                }
+            } catch(e) {}
+        }
+
+        console.log(`🛑 [AUTO-PAUSA ACTIVADA] Intervención humana detectada desde el teléfono hacia ${targetJid}. Chat pausado por ${minsPausa} minutos.`);
+
+        // 3. Guardar el mensaje humano en la BD para que aparezca en el panel web
+        try {
+            const textoCuerpo = msg.body || (msg.hasMedia ? '📷 (Multimedia enviado desde teléfono)' : '');
+            const tsMs = (msg.timestamp || Math.floor(Date.now() / 1000)) * 1000;
+
+            for (const jidDestino of jidsAsociados) {
+                const yaGuardado = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? AND timestamp = ?", [jidDestino, tsMs]);
+                if (!yaGuardado) {
+                    await runQuery(
+                        "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 0, ?)",
+                        [jidDestino, 'yo', 'Asesor Humano', textoCuerpo, tsMs]
+                    );
+                }
+
+                io.emit('nuevo_mensaje', {
+                    chat_id: jidDestino,
+                    emisor: 'yo',
+                    emisor_nombre: 'Asesor Humano',
+                    cuerpo: textoCuerpo,
+                    tipo: 'chat',
+                    es_mio: 1,
+                    es_ia: 0,
+                    timestamp: tsMs
+                });
+            }
+        } catch(eMsg) {}
+
+        io.emit('chat_pausado', { jid: targetJid, pausado_hasta: Date.now() + (minsPausa * 60 * 1000) });
+    } catch (err) {
+        console.error("Error en evento message_create:", err.message);
     }
 });
 
