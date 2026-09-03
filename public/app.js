@@ -258,6 +258,18 @@ async function seleccionarChat(jid, nombre) {
         const data = await apiFetch(`/api/conversaciones/${encodeURIComponent(jid)}/mensajes`);
         stream.innerHTML = '';
 
+        // Botón de Ignorar / Reactivar Contacto en 1 Clic
+        const accionesCont = document.getElementById('chat-acciones');
+        if (accionesCont) {
+            const esIgnorado = data.contacto && data.contacto.es_ignorado === 1;
+            accionesCont.innerHTML = `
+                <button onclick="toggleIgnorarChatActual('${jid}', ${esIgnorado ? 0 : 1})" class="px-3.5 py-1.5 ${esIgnorado ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} border rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm">
+                    <i class="fa-solid ${esIgnorado ? 'fa-user-slash text-rose-400' : 'fa-user-check text-slate-400'}"></i>
+                    <span>${esIgnorado ? 'Contacto Ignorado (Click para Reactivar)' : 'Ignorar Contacto (1 Clic)'}</span>
+                </button>
+            `;
+        }
+
         if (!data.mensajes || data.mensajes.length === 0) {
             stream.innerHTML = '<div class="h-full flex items-center justify-center text-slate-500 text-xs">No hay historial para este chat.</div>';
             return;
@@ -288,6 +300,20 @@ async function seleccionarChat(jid, nombre) {
         stream.scrollTop = stream.scrollHeight;
     } catch (e) {
         console.error("Error al obtener mensajes:", e);
+    }
+}
+
+async function toggleIgnorarChatActual(jid, nuevoEstado) {
+    try {
+        await apiFetch('/api/configuracion/ignorar', {
+            method: 'POST',
+            body: JSON.stringify({ jid, es_ignorado: nuevoEstado })
+        });
+        alert(nuevoEstado === 1 ? "🚫 Contacto ignorado con éxito. El bot ya no responderá a este número." : "✅ Contacto reactivado. El bot volverá a responderle.");
+        seleccionarChat(jid, document.getElementById('chat-nombre-cliente').textContent);
+        cargarListaIgnorados();
+    } catch (e) {
+        alert("Error: " + e.message);
     }
 }
 

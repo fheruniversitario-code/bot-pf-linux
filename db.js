@@ -215,16 +215,7 @@ REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS:
     };
 
     for (const [clave, valor] of Object.entries(configInicial)) {
-        const existe = await getQuery("SELECT clave, valor FROM configuracion WHERE clave = ?", [clave]);
-        if (!existe) {
-            await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?)", [clave, valor]);
-        } else if (clave === 'nombre_negocio' && (existe.valor === 'Mi Empresa / Negocio' || !existe.valor)) {
-            // Actualizar todos los campos si tenía la plantilla genérica
-            for (const [k, v] of Object.entries(configInicial)) {
-                await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [k, v]);
-            }
-            break;
-        }
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [clave, valor]);
     }
 
     // Enlaces de muestra para Linktree
