@@ -414,17 +414,31 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
 
                 const chatsParsed = [];
                 chatsModels.forEach(c => {
-                    if (!c || c.isGroup) return; // Omitir grupos
+                    if (!c) return;
+                    const tit = c.formattedTitle || c.name || '';
+                    if (c.isGroup && tit.includes('[CONTROL-BOT]')) return; // Solo omitir grupo de control interno
+
                     const labelIds = (c.labels || []).map(id => String(id));
                     const lastMsg = c.lastMessage;
                     const contact = c.contact;
+
+                    let uTxt = '';
+                    if (lastMsg) {
+                        if (lastMsg.body) {
+                            uTxt = lastMsg.body;
+                        } else if (lastMsg.hasMedia) {
+                            uTxt = lastMsg.caption ? `📷 ${lastMsg.caption}` : '📷 (Multimedia / Archivo)';
+                        }
+                    }
+
                     chatsParsed.push({
                         jid: c.id ? c.id._serialized : null,
-                        telefono: c.id ? c.id.user : '',
-                        nombre: c.formattedTitle || c.name || (contact ? (contact.name || contact.pushname) : '') || (c.id ? c.id.user : 'Cliente'),
+                        telefono: c.isGroup ? 'Grupo' : (c.id ? c.id.user : ''),
+                        nombre: tit || (contact ? (contact.name || contact.pushname) : '') || (c.id ? c.id.user : 'Cliente'),
+                        esGrupo: c.isGroup ? 1 : 0,
                         labelIds: labelIds,
                         timestamp: (lastMsg && lastMsg.t ? lastMsg.t : c.t) || 0,
-                        ultimoTexto: lastMsg && lastMsg.body ? lastMsg.body : (lastMsg && lastMsg.hasMedia ? '📷 (Multimedia)' : ''),
+                        ultimoTexto: uTxt,
                         esMio: lastMsg && lastMsg.fromMe ? 1 : 0
                     });
                 });

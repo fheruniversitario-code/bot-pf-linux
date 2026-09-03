@@ -439,14 +439,24 @@ function renderizarListaConversaciones(chats) {
             `).join('');
         }
 
+        const esGrupo = c.jid && c.jid.endsWith('@g.us');
+        const avatarHtml = esGrupo
+            ? `<div class="w-10 h-10 rounded-full bg-pink-950/40 border border-pink-500/30 flex items-center justify-center font-bold text-xs text-pink-300 flex-shrink-0 mt-0.5 shadow-sm" title="Grupo">
+                   <i class="fa-solid fa-users text-pink-400 text-xs"></i>
+               </div>`
+            : `<div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 flex-shrink-0 mt-0.5 shadow-sm">
+                   ${(c.nombre || c.pushname || 'C').charAt(0).toUpperCase()}
+               </div>`;
+
+        const badgeGrupo = esGrupo ? '<span class="text-[9px] px-1.5 py-0.2 bg-pink-500/20 text-pink-300 rounded font-bold">Grupo</span>' : '';
+
         div.innerHTML = `
-            <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 flex-shrink-0 mt-0.5 shadow-sm">
-                ${(c.nombre || c.pushname || 'C').charAt(0).toUpperCase()}
-            </div>
+            ${avatarHtml}
             <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
                     <h4 class="font-bold text-white text-xs truncate">${c.nombre || c.pushname || c.telefono}</h4>
                     <div class="flex items-center space-x-1.5">
+                        ${badgeGrupo}
                         ${badgeIA}
                     </div>
                 </div>
