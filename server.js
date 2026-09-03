@@ -184,93 +184,25 @@ app.post('/api/perfil/cambiar-password', autenticarToken, async (req, res) => {
 });
 
 // ------------------------------------------------------------------------------
-// ENDPOINTS DE SUPERADMIN (PANEL MAESTRO)
+// ENDPOINT DE MONITOREO REMOTO PARA TORRE DE CONTROL (PUERTO 9000)
 // ------------------------------------------------------------------------------
-app.get('/api/superadmin/clientes', autenticarToken, async (req, res) => {
+app.get('/api/bot/estado-remoto', async (req, res) => {
     try {
-        const clientes = await allQuery("SELECT id, username, nombre, rol, plan, estado, fecha_vencimiento FROM usuarios ORDER BY id DESC");
-        res.json(clientes);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'OmniBot';
+        const totalMensajes = (await getQuery("SELECT COUNT(*) as total FROM mensajes"))?.total || 0;
+        const totalContactos = (await getQuery("SELECT COUNT(*) as total FROM contactos WHERE es_ignorado = 0"))?.total || 0;
+        const totalCitas = (await getQuery("SELECT COUNT(*) as total FROM citas_agenda"))?.total || 0;
 
-app.post('/api/superadmin/clientes', autenticarToken, async (req, res) => {
-    try {
-        const { username, password, nombre, plan, fecha_vencimiento } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
-
-        const passHash = bcrypt.hashSync(password, 10);
-        await runQuery(
-            "INSERT INTO usuarios (username, password_hash, nombre, rol, plan, estado, fecha_vencimiento) VALUES (?, ?, ?, 'cliente', ?, 'activo', ?)",
-            [username, passHash, nombre || username, plan || 'Pro Ilimitado', fecha_vencimiento || '']
-        );
-        res.json({ success: true, message: 'Cliente y bot dados de alta exitosamente' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/superadmin/clientes/:id/estado', autenticarToken, async (req, res) => {
-    try {
-        const { estado } = req.body; // 'activo' o 'suspendido'
-        await runQuery("UPDATE usuarios SET estado = ? WHERE id = ?", [estado, req.params.id]);
-        res.json({ success: true, message: `Servicio cambiado a ${estado}` });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/superadmin/clientes/:id/reset-password', autenticarToken, async (req, res) => {
-    try {
-        const { nuevo_password } = req.body;
-        if (!nuevo_password) return res.status(400).json({ error: 'Ingresa la nueva contraseña' });
-        const passHash = bcrypt.hashSync(nuevo_password, 10);
-        await runQuery("UPDATE usuarios SET password_hash = ? WHERE id = ?", [passHash, req.params.id]);
-        res.json({ success: true, message: 'Contraseña del cliente reseteada con éxito' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.delete('/api/superadmin/clientes/:id', autenticarToken, async (req, res) => {
-    try {
-        await runQuery("DELETE FROM usuarios WHERE id = ?", [req.params.id]);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Monitor de Instancias y Bots del Servidor en Tiempo Real
-app.get('/api/superadmin/monitor-servidor', autenticarToken, async (req, res) => {
-    try {
-        const listaBots = [
-            { id: 'nursefashion', nombre: 'Nurse Fashion (Boutique y Uniformes)', puerto: 3000, tipo: 'Comercio / Tienda Web' },
-            { id: 'caises', nombre: 'CAISES Jaral (Salud Reproductiva)', puerto: 3001, tipo: 'Salud Pública / Clínica' }
-        ];
-
-        const resultado = await Promise.all(listaBots.map(async (b) => {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 1200);
-                const resp = await fetch(`http://127.0.0.1:${b.puerto}/api/bot/estado-control`, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    return {
-                        ...b,
-                        online: true,
-                        botPausadoGlobal: data.botPausadoGlobal || false,
-                        ausenciaActiva: data.ausenciaActiva || false
-                    };
-                }
-            } catch (e) {}
-            return { ...b, online: false, botPausadoGlobal: false, ausenciaActiva: false };
-        }));
-
-        res.json(resultado);
-    } catch (e) {
+        res.json({
+            online: wsClienteConectado,
+            botPausadoGlobal,
+            nombre: nombreNegocio,
+            puerto: PORT,
+            totalMensajes,
+            totalContactos,
+            totalCitas
+        });
+    } catch(e) {
         res.status(500).json({ error: e.message });
     }
 });
