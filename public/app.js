@@ -333,6 +333,11 @@ async function cargarEtiquetasFiltro() {
         const cont = document.getElementById('lista-filtros-etiquetas');
         if (!cont) return;
 
+        // Si la etiqueta activa ya no existe, volver a 'todas'
+        if (filtroEtiquetaActiva !== 'todas' && !listaEtiquetasMem.some(e => String(e.id) === String(filtroEtiquetaActiva))) {
+            filtroEtiquetaActiva = 'todas';
+        }
+
         cont.innerHTML = `
             <button onclick="filtrarPorEtiqueta('todas')" class="etiqueta-filtro-btn px-2.5 py-1 rounded-lg text-white font-bold text-[11px] whitespace-nowrap transition ${filtroEtiquetaActiva === 'todas' ? 'bg-indigo-600 shadow-sm' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}" data-etiqueta="todas">
                 Todas (${listaConversacionesMem.length})

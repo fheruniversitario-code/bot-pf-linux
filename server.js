@@ -392,47 +392,76 @@ app.post('/api/contactos/:jid/etiquetas', autenticarToken, async (req, res) => {
     }
 });
 
-// Sincronizar / Importar Etiquetas y Asignaciones desde WhatsApp Business
+// Sincronizar / Importar Etiquetas y Asignaciones desde WhatsApp Business (Extracción Directa)
 app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res) => {
     try {
         if (!client || !wsClienteConectado) {
-            return res.status(400).json({ error: 'El bot no está conectado a WhatsApp en este momento. Escanea el código QR primero.' });
+            return res.status(400).json({ error: 'El bot no está conectado a WhatsApp en este momento. Asegúrate de que el bot esté en verde y conectado.' });
         }
 
-        let labelsWA = [];
+        let dataWA = null;
         try {
-            labelsWA = await client.getLabels();
-        } catch (errLabels) {
+            dataWA = await client.pupPage.evaluate(() => {
+                let labelsRaw = [];
+                try {
+                    labelsRaw = window.WWebJS.getLabels();
+                } catch(e) {}
+
+                let chatsModels = [];
+                try {
+                    chatsModels = window.require('WAWebCollections').Chat.getModelsArray();
+                } catch(e) {}
+
+                const chatsParsed = [];
+                chatsModels.forEach(c => {
+                    if (!c || c.isGroup) return; // Omitir grupos
+                    const labelIds = (c.labels || []).map(id => String(id));
+                    const lastMsg = c.lastMessage;
+                    const contact = c.contact;
+                    chatsParsed.push({
+                        jid: c.id ? c.id._serialized : null,
+                        telefono: c.id ? c.id.user : '',
+                        nombre: c.formattedTitle || c.name || (contact ? (contact.name || contact.pushname) : '') || (c.id ? c.id.user : 'Cliente'),
+                        labelIds: labelIds,
+                        timestamp: (lastMsg && lastMsg.t ? lastMsg.t : c.t) || 0,
+                        ultimoTexto: lastMsg && lastMsg.body ? lastMsg.body : (lastMsg && lastMsg.hasMedia ? '📷 (Multimedia)' : ''),
+                        esMio: lastMsg && lastMsg.fromMe ? 1 : 0
+                    });
+                });
+
+                return {
+                    labels: labelsRaw,
+                    chats: chatsParsed
+                };
+            });
+        } catch (errEval) {
             return res.status(400).json({ 
-                error: 'No se pudieron consultar las etiquetas de WhatsApp. Asegúrate de que el número vinculado sea una cuenta de WhatsApp Business. Detalle: ' + errLabels.message 
+                error: 'Error al consultar WhatsApp Web. Asegúrate de que el bot esté conectado a una cuenta de WhatsApp Business. Detalle: ' + errEval.message 
             });
         }
 
-        if (!labelsWA || labelsWA.length === 0) {
+        if (!dataWA || !dataWA.labels || dataWA.labels.length === 0) {
             return res.json({ success: true, message: 'No se encontraron etiquetas creadas en WhatsApp Business.', total_etiquetas: 0, total_asignaciones: 0 });
         }
 
-        // Limpiar etiquetas por defecto iniciales que no tengan contactos asociados para dar prioridad a las de WhatsApp
-        try {
-            const nombresWA = labelsWA.map(l => l.name.toLowerCase().trim());
-            const etiquetasLocales = await allQuery("SELECT id, nombre FROM etiquetas");
-            for (const etq of etiquetasLocales) {
-                if (!nombresWA.includes(etq.nombre.toLowerCase().trim())) {
-                    const tieneContactos = await getQuery("SELECT id FROM contactos_etiquetas WHERE etiqueta_id = ? LIMIT 1", [etq.id]);
-                    if (!tieneContactos) {
-                        await runQuery("DELETE FROM etiquetas WHERE id = ?", [etq.id]);
-                    }
-                }
+        // 1. Limpiar etiquetas de prueba/semilla que no correspondan a las de WhatsApp Business
+        const nombresWA = dataWA.labels.map(l => l.name.toLowerCase().trim());
+        const etiquetasLocales = await allQuery("SELECT id, nombre FROM etiquetas");
+        for (const etq of etiquetasLocales) {
+            if (!nombresWA.includes(etq.nombre.toLowerCase().trim())) {
+                await runQuery("DELETE FROM contactos_etiquetas WHERE etiqueta_id = ?", [etq.id]);
+                await runQuery("DELETE FROM etiquetas WHERE id = ?", [etq.id]);
             }
-        } catch(eClean) {}
+        }
 
+        // 2. Guardar o actualizar etiquetas en la base de datos local
+        const mapWALabelToBD = {};
         let importadas = 0;
         let asignacionesTotal = 0;
 
-        for (const l of labelsWA) {
+        for (const l of dataWA.labels) {
             const colorHex = l.hexColor || '#10b981';
             let etiquetaBD = await getQuery("SELECT id FROM etiquetas WHERE LOWER(nombre) = LOWER(?)", [l.name.trim()]);
-
             if (!etiquetaBD) {
                 const r = await runQuery("INSERT INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [l.name.trim(), colorHex, Date.now()]);
                 etiquetaBD = { id: r.id };
@@ -440,123 +469,53 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
             } else {
                 await runQuery("UPDATE etiquetas SET color = ? WHERE id = ?", [colorHex, etiquetaBD.id]);
             }
+            mapWALabelToBD[String(l.id)] = etiquetaBD.id;
+        }
 
-            // Consultar chats vinculados a esta etiqueta en WhatsApp
-            try {
-                const chatsConEtiqueta = await l.getChats();
-                if (chatsConEtiqueta && chatsConEtiqueta.length > 0) {
-                    for (const ch of chatsConEtiqueta) {
-                        const jidChat = ch.id._serialized;
-                        const userTel = ch.id.user;
+        // 3. Procesar chats con sus etiquetas, nombres y fechas reales
+        for (const ch of dataWA.chats) {
+            if (!ch.jid) continue;
+            const tReal = ch.timestamp > 0 ? ch.timestamp * 1000 : Date.now();
+            const nomLimpio = ch.nombre && ch.nombre !== 'Cliente' ? ch.nombre : (ch.telefono || 'Cliente');
 
-                        // Obtener nombre real del contacto
-                        let nombreChat = ch.name || ch.formattedTitle;
-                        let pushnameChat = '';
-                        try {
-                            const cInfo = await ch.getContact();
-                            if (cInfo) {
-                                nombreChat = cInfo.name || cInfo.pushname || nombreChat || userTel;
-                                pushnameChat = cInfo.pushname || '';
-                            }
-                        } catch(eC) {}
+            await runQuery(`
+                INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
+                VALUES (?, ?, ?, '', ?)
+                ON CONFLICT(jid) DO UPDATE SET
+                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                    ultimo_contacto = ?
+            `, [ch.jid, ch.telefono, nomLimpio, tReal, tReal]);
 
-                        if (!nombreChat || nombreChat === 'Cliente') {
-                            nombreChat = ch.formattedTitle || userTel;
-                        }
+            // Guardar último mensaje para vista previa en el panel
+            if (ch.ultimoTexto) {
+                const yaMsg = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [ch.jid]);
+                if (!yaMsg) {
+                    await runQuery(`
+                        INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
+                        VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
+                    `, [ch.jid, ch.jid, ch.esMio ? 'Asesor' : nomLimpio, ch.ultimoTexto, ch.esMio, tReal]);
+                }
+            }
 
-                        // Obtener fecha real de última interacción
-                        const tSeg = ch.lastMessage?.timestamp || ch.timestamp || 0;
-                        const tReal = tSeg > 0 ? tSeg * 1000 : Date.now();
-
-                        // Actualizar / Insertar contacto con su fecha y nombre retroactivos
-                        await runQuery(`
-                            INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
-                            VALUES (?, ?, ?, ?, ?)
-                            ON CONFLICT(jid) DO UPDATE SET
-                                nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
-                                pushname = CASE WHEN excluded.pushname != '' THEN excluded.pushname ELSE contactos.pushname END,
-                                ultimo_contacto = ?
-                        `, [jidChat, userTel, nombreChat, pushnameChat, tReal, tReal]);
-
-                        // Asignar etiqueta en la base de datos
-                        const yaAsignada = await getQuery("SELECT id FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [jidChat, etiquetaBD.id]);
+            // Asignar las etiquetas de WhatsApp Business
+            if (ch.labelIds && ch.labelIds.length > 0) {
+                for (const lid of ch.labelIds) {
+                    const bdEtqId = mapWALabelToBD[String(lid)];
+                    if (bdEtqId) {
+                        const yaAsignada = await getQuery("SELECT id FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [ch.jid, bdEtqId]);
                         if (!yaAsignada) {
-                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jidChat, etiquetaBD.id, tReal]);
+                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [ch.jid, bdEtqId, tReal]);
                             asignacionesTotal++;
-                        }
-
-                        // Guardar último mensaje para que no aparezca "Sin mensajes"
-                        let ultimoTxt = ch.lastMessage?.body;
-                        if (!ultimoTxt) {
-                            try {
-                                const ultMsgs = await ch.fetchMessages({ limit: 1 });
-                                if (ultMsgs && ultMsgs.length > 0) ultimoTxt = ultMsgs[0].body;
-                            } catch(eM) {}
-                        }
-
-                        if (ultimoTxt) {
-                            const yaMsg = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [jidChat]);
-                            if (!yaMsg) {
-                                const esMio = ch.lastMessage?.fromMe ? 1 : 0;
-                                await runQuery(`
-                                    INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
-                                    VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
-                                `, [jidChat, ch.lastMessage?.from || jidChat, esMio ? 'Asesor' : nombreChat, ultimoTxt, esMio, tReal]);
-                            }
                         }
                     }
                 }
-            } catch (eChats) {
-                console.error(`Error obteniendo chats para la etiqueta ${l.name}:`, eChats.message);
             }
         }
 
-        // Actualizar también los primeros 30 chats recientes generales para que muestren nombres y fechas reales
-        try {
-            const chatsGenerales = await client.getChats();
-            for (const ch of (chatsGenerales || []).slice(0, 30)) {
-                if (ch.isGroup) continue;
-                const jid = ch.id._serialized;
-                const userTel = ch.id.user;
-                let nom = ch.name || ch.formattedTitle || userTel;
-                let push = '';
-                try {
-                    const ci = await ch.getContact();
-                    if (ci) {
-                        nom = ci.name || ci.pushname || nom;
-                        push = ci.pushname || '';
-                    }
-                } catch(e) {}
-
-                const tSeg = ch.lastMessage?.timestamp || ch.timestamp || 0;
-                const tReal = tSeg > 0 ? tSeg * 1000 : Date.now();
-
-                await runQuery(`
-                    INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(jid) DO UPDATE SET
-                        nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
-                        pushname = CASE WHEN excluded.pushname != '' THEN excluded.pushname ELSE contactos.pushname END,
-                        ultimo_contacto = ?
-                `, [jid, userTel, nom, push, tReal, tReal]);
-
-                if (ch.lastMessage?.body) {
-                    const ya = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [jid]);
-                    if (!ya) {
-                        const esMio = ch.lastMessage.fromMe ? 1 : 0;
-                        await runQuery(`
-                            INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
-                            VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
-                        `, [jid, ch.lastMessage.from || jid, esMio ? 'Asesor' : nom, ch.lastMessage.body, esMio, tReal]);
-                    }
-                }
-            }
-        } catch(eGen) {}
-
         res.json({
             success: true,
-            message: `¡Sincronización completada! Se detectaron ${labelsWA.length} etiquetas en WhatsApp Business y se importaron ${asignacionesTotal} asignaciones de clientes con sus nombres y fechas reales.`,
-            total_etiquetas: labelsWA.length,
+            message: `¡Sincronización completada! Se importaron ${dataWA.labels.length} etiquetas reales y se vincularon ${asignacionesTotal} clientes con sus nombres y fechas históricas.`,
+            total_etiquetas: dataWA.labels.length,
             total_asignaciones: asignacionesTotal
         });
     } catch (e) {
