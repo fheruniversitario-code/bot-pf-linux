@@ -991,13 +991,17 @@ async function procesarMensajeEntrante(msg) {
             }
 
             if (textoLower === '!pendientes' || textoLower === '!resumen') {
-                const ultimos = await allQuery("SELECT nombre, pushname, telefono, jid, ultimo_contacto FROM contactos WHERE es_ignorado = 0 ORDER BY ultimo_contacto DESC LIMIT 10");
+                const ultimos = await allQuery("SELECT nombre, pushname, telefono, jid, ultimo_contacto FROM contactos WHERE es_ignorado = 0 AND telefono NOT LIKE '1660%' AND jid NOT LIKE '%@lid' ORDER BY ultimo_contacto DESC LIMIT 10");
                 let rep = `📋 *REPORTE DE CONTACTOS RECIENTES (${ultimos.length}):*\n\n`;
-                ultimos.forEach((u, i) => {
-                    const nom = u.nombre !== 'Cliente' ? u.nombre : (u.pushname || 'Cliente');
-                    const telLimpio = u.telefono && !u.telefono.startsWith('1660') ? u.telefono : u.jid.replace(/[^0-9]/g, '');
-                    rep += `${i + 1}️⃣ 👤 *${nom}*\n   📱 +${telLimpio}\n`;
-                });
+                if (ultimos.length === 0) {
+                    rep += `_Aún no hay clientes recientes registrados (los registros de prueba se han limpiado)._\n`;
+                } else {
+                    ultimos.forEach((u, i) => {
+                        const nom = u.nombre !== 'Cliente' ? u.nombre : (u.pushname || 'Cliente');
+                        const telLimpio = u.telefono && !u.telefono.startsWith('1660') ? u.telefono : u.jid.replace(/[^0-9]/g, '');
+                        rep += `${i + 1}️⃣ 👤 *${nom}*\n   📱 +${telLimpio}\n`;
+                    });
+                }
                 rep += `\n_💡 Puedes abrir sus chats en WhatsApp Web para dar seguimiento personal._`;
                 const sent = await client.sendMessage(remitente, rep);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -1336,8 +1340,12 @@ INSTRUCCIONES CLAVE:
                 respuestaIA = result.response.text();
                 if (respuestaIA) break;
             } catch (errModel) {
-                // Probar siguiente modelo de la lista
+                console.error(`[Error Modelo IA ${modName}]:`, errModel.message);
             }
+        }
+
+        if (!respuestaIA) {
+            console.error("⚠️ Ningún modelo de Gemini respondió. Posible causa: Clave API inválida o sin cuota en Google AI Studio.");
         }
 
         if (respuestaIA) {

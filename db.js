@@ -97,6 +97,9 @@ async function inicializarBD() {
         )
     `);
 
+    // Limpieza automática de registros LID temporales
+    await runQuery("DELETE FROM contactos WHERE telefono LIKE '1660%' OR jid LIKE '%@lid'");
+
     // 5. CRM de Cotizaciones y Pedidos de Venta
     await runQuery(`
         CREATE TABLE IF NOT EXISTS pedidos_cotizaciones (
@@ -159,63 +162,50 @@ async function inicializarBD() {
         console.log("👤 Usuario administrador inicial creado: admin / admin123");
     }
 
-    // Configuración Inicial por Defecto (CAISES Jaral del Progreso)
-    const promptCaises = `Eres un asistente virtual de salud del área de planificación familiar del CAISES Jaral. Tu tono debe ser empático, amable, profesional, claro y muy conversacional.
-
-REGLAS DE ATENCIÓN E INSTRUCCIONES ESPECÍFICAS:
-1. REGLA DE ORO DE INFORMACIÓN MÉDICA:
-   - Tienes estrictamente prohibido inventar información médica de métodos que no tengamos o inventar disponibilidad.
-   - Si un usuario pregunta si se puede colocar o usar un método específico, explícale de forma amigable que para utilizar cualquier método debe recibir primero una adecuada orientación y consejería presencial por un profesional de la salud.
-2. PROHIBICIÓN ABSOLUTA DE ASEGURAR CITAS O ATENCIONES INMEDIATAS:
-   - JAMÁS asegures atenciones el mismo día, colocación o servicios inmediatos. Aclara siempre que cualquier atención queda sujeta a disponibilidad de horario y fechas previa consejería.
-3. ATENCIÓN FRACCIONADA Y BREVE (MÁXIMO 1 A 2 FRASES):
-   - Tus respuestas deben ser breves. NUNCA des toda la información de un método de golpe.
-   - Contamos con: Implante subdérmico, DIU de cobre, DIU medicado (Mirena/Levonorgestrel), Inyecciones (1, 2 y 3 meses), Pastillas orales, Condones y Vasectomía sin bisturí (100% GRATUITOS y confidenciales para toda la población sin importar derechohabiencia o edad).
-   - Si piden vasectomía o implante, da una breve introducción y pregúntales si desean agendar consejería.
-4. HORARIOS Y ASESOR:
-   - Horario de atención: Lunes a Viernes de 2:00 PM a 8:30 PM.
-   - Si solicitan hablar con personal o agendar cita directa, recuérdales escribir la palabra 'asesor'.`;
-
+    // Configuración Inicial por Defecto
     const configInicial = {
-        nombre_negocio: "CAISES Jaral del Progreso - Planificación Familiar",
-        descripcion_corta: "Servicios de salud reproductiva, métodos anticonceptivos y vasectomía sin bisturí gratuitos",
+        nombre_negocio: "Mi Empresa / Negocio",
+        descripcion_corta: "Atención personalizada y servicios profesionales",
         telefono_contacto: "",
-        ubicacion_direccion: "CAISES Jaral del Progreso, Guanajuato",
-        ubicacion_maps_link: "https://maps.app.goo.gl/S51vXVfHb3kihpjp9",
+        ubicacion_direccion: "Calle Principal #123, Colonia Centro",
+        ubicacion_maps_link: "https://maps.google.com",
         grupo_control: "[CONTROL-BOT]",
-        numeros_admins: "5214111120637, 5214112688857",
         timezone: "America/Mexico_City",
         modo_receptivo_antiban: "1",
         simular_escritura_humana: "1",
-        tiempo_pausa_humano_mins: "120",
+        tiempo_pausa_humano_mins: "30",
         gemini_api_key: "",
         gemini_modelo_ia: "gemini-2.5-flash",
         google_calendar_id: "",
-        prompt_ia: promptCaises,
-        catalogo_servicios: "• Implante Subdérmico (Gratuito)\n• DIU de Cobre y DIU Medicado (Gratuito)\n• Inyecciones Anticonceptivas (Gratuito)\n• Pastillas y Condones (Gratuito)\n• Vasectomía sin Bisturí (Gratuito)",
+        prompt_ia: "Eres el asistente virtual oficial de la empresa. Atiende de manera cordial, profesional, clara y concisa en español.",
+        catalogo_servicios: "Servicio General: $450 MXN\nConsulta Especializada: $700 MXN",
         menu_numerico: JSON.stringify([
-            { opcion: "1", titulo: "Requisitos de Atención", respuesta: "Requisitos: Identificación oficial o CURP y comprobante de domicilio. El servicio es 100% gratuito y confidencial sin importar edad.", enlace: "" },
-            { opcion: "2", titulo: "Métodos Anticonceptivos", respuesta: "Contamos con Implantes, DIUs, Inyecciones, Pastillas, Condones y Vasectomía.", enlace: "" },
-            { opcion: "3", titulo: "Horarios de Consulta", respuesta: "Atención de Lunes a Viernes de 2:00 PM a 8:30 PM.", enlace: "" },
-            { opcion: "4", titulo: "Ubicación de CAISES", respuesta: "Abrir ubicación en Google Maps.", enlace: "https://maps.app.goo.gl/S51vXVfHb3kihpjp9" },
-            { opcion: "5", titulo: "Hablar con Personal de Salud", respuesta: "En un momento nuestro personal te atenderá.", enlace: "" }
+            { opcion: "1", titulo: "Ver Catálogo y Precios", respuesta: "Aquí puedes ver nuestros catálogos completos.", enlace: "https://mi-empresa.com/catalogo" },
+            { opcion: "2", titulo: "Ubicación y Horarios", respuesta: "Estamos ubicados en Calle Principal #123. Horario de 1pm a 6pm.", enlace: "https://maps.google.com" },
+            { opcion: "3", titulo: "Hablar con Asesor Humano", respuesta: "En un momento nuestro personal te atenderá de forma personalizada.", enlace: "" }
         ]),
-        horario_sucursal_fisica: "Lunes a Viernes de 2:00 PM a 8:30 PM (Sábados y Domingos cerrado)",
-        horario_asesor_en_linea: "Lunes a Viernes de 2:00 PM a 8:30 PM",
-        hora_inicio_semana: "14:00",
-        hora_fin_semana: "20:30",
-        hora_inicio_sab: "00:00",
-        hora_fin_sab: "00:00",
-        mensaje_fuera_horario: "Hola. Nuestro horario de atención en CAISES Jaral es de Lunes a Viernes de 2:00 PM a 8:30 PM. Con gusto te atenderemos a primera hora en nuestro próximo turno laboral.",
-        datos_bancarios: "Servicio 100% Gratuito de la Secretaría de Salud",
-        linktree_titulo: "CAISES Jaral - Salud Reproductiva",
-        linktree_descripcion: "Orientación en Métodos Anticonceptivos y Vasectomía",
-        plan_nombre: "Salud Pública / Ilimitado",
-        plan_limite_mensajes: "99999"
+        infografias_config: JSON.stringify([
+            { palabras: ["talla", "tallas", "medida", "medidas"], respuesta: "Aquí tienes nuestra tabla oficial de medidas y tallas.", enlace: "https://mi-empresa.com/guia-tallas.jpg" }
+        ]),
+        horario_sucursal_fisica: "Lunes a Viernes de 1:00 PM a 6:00 PM, Sábados de 10:00 AM a 2:00 PM",
+        horario_asesor_en_linea: "Lunes a Viernes de 9:00 AM a 6:00 PM",
+        hora_inicio_semana: "09:00",
+        hora_fin_semana: "18:00",
+        hora_inicio_sab: "09:00",
+        hora_fin_sab: "14:00",
+        mensaje_fuera_horario: "Hola. Nuestro horario de atención personalizada es de Lunes a Viernes de 9am a 6pm. Con gusto te atenderemos a primera hora.",
+        datos_bancarios: "Banco: BBVA\nCuenta: 1234567890\nCLABE: 012345678901234567\nTitular: Mi Empresa",
+        linktree_titulo: "Mi Empresa Oficial",
+        linktree_descripcion: "Soluciones y atención inmediata por WhatsApp",
+        plan_nombre: "Pro Ilimitado",
+        plan_limite_mensajes: "2000"
     };
 
     for (const [clave, valor] of Object.entries(configInicial)) {
-        await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [clave, valor]);
+        const existe = await getQuery("SELECT clave FROM configuracion WHERE clave = ?", [clave]);
+        if (!existe) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?)", [clave, valor]);
+        }
     }
 
     // Enlaces de muestra para Linktree

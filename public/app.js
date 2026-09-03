@@ -557,11 +557,147 @@ async function cargarConfiguracion() {
 
         if (document.getElementById('config-modo-prueba')) document.getElementById('config-modo-prueba').checked = (config.modo_prueba_admins === '1');
 
+        cargarMenuNumerico(config.menu_numerico);
         cargarListaIgnorados();
         cargarDocumentosConocimiento();
         cargarInfografiasImagenes();
     } catch (e) {
         console.error("Error al cargar config:", e);
+    }
+}
+
+// ------------------------------------------------------------------------------
+// GESTOR DE MENÚ NUMÉRICO INTERACTIVO (1, 2, 3...)
+// ------------------------------------------------------------------------------
+let menuNumericoActual = [];
+
+function cargarMenuNumerico(menuRaw) {
+    try {
+        if (typeof menuRaw === 'string') {
+            menuNumericoActual = JSON.parse(menuRaw);
+        } else if (Array.isArray(menuRaw)) {
+            menuNumericoActual = menuRaw;
+        } else {
+            menuNumericoActual = [];
+        }
+    } catch (e) {
+        menuNumericoActual = [];
+    }
+    renderizarMenuNumerico();
+}
+
+function renderizarMenuNumerico() {
+    const cont = document.getElementById('lista-menu-numerico-container');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (menuNumericoActual.length === 0) {
+        cont.innerHTML = '<div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center">No hay opciones configuradas. Haz clic en "+ Nueva Opción" para agregar respuestas automáticas con números (1, 2, 3...).</div>';
+        return;
+    }
+
+    menuNumericoActual.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-start justify-between space-x-4";
+        div.innerHTML = `
+            <div class="flex items-start space-x-3">
+                <span class="w-7 h-7 bg-amber-500/20 text-amber-400 font-bold font-mono rounded-xl flex items-center justify-center flex-shrink-0 text-sm border border-amber-500/30">
+                    ${item.opcion}
+                </span>
+                <div class="space-y-1">
+                    <div class="text-sm font-bold text-white flex items-center space-x-2">
+                        <span>${item.titulo}</span>
+                        ${item.enlace ? `<a href="${item.enlace}" target="_blank" class="text-xs text-indigo-400 hover:underline"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+                    </div>
+                    <p class="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">${item.respuesta}</p>
+                    ${item.enlace ? `<div class="text-[11px] text-indigo-400 truncate">🔗 ${item.enlace}</div>` : ''}
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 flex-shrink-0">
+                <button onclick="editarOpcionMenu(${index})" class="text-slate-400 hover:text-amber-400 transition text-xs p-1.5 bg-slate-900 rounded-lg">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="eliminarOpcionMenu(${index})" class="text-slate-400 hover:text-rose-400 transition text-xs p-1.5 bg-slate-900 rounded-lg">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        `;
+        cont.appendChild(div);
+    });
+}
+
+let indiceEdicionMenu = -1;
+
+function abrirModalNuevaOpcionMenu(index = -1) {
+    indiceEdicionMenu = index;
+    if (index >= 0 && menuNumericoActual[index]) {
+        const item = menuNumericoActual[index];
+        document.getElementById('menu-num-digito').value = item.opcion;
+        document.getElementById('menu-num-titulo').value = item.titulo;
+        document.getElementById('menu-num-respuesta').value = item.respuesta;
+        document.getElementById('menu-num-enlace').value = item.enlace || '';
+    } else {
+        document.getElementById('menu-num-digito').value = (menuNumericoActual.length + 1).toString();
+        document.getElementById('menu-num-titulo').value = '';
+        document.getElementById('menu-num-respuesta').value = '';
+        document.getElementById('menu-num-enlace').value = '';
+    }
+    document.getElementById('modal-menu-numerico').classList.remove('hidden');
+}
+
+function editarOpcionMenu(index) {
+    abrirModalNuevaOpcionMenu(index);
+}
+
+function cerrarModalMenuNumerico() {
+    document.getElementById('modal-menu-numerico').classList.add('hidden');
+}
+
+async function guardarOpcionMenu(e) {
+    e.preventDefault();
+    const opcion = document.getElementById('menu-num-digito').value.trim();
+    const titulo = document.getElementById('menu-num-titulo').value.trim();
+    const respuesta = document.getElementById('menu-num-respuesta').value.trim();
+    const enlace = document.getElementById('menu-num-enlace').value.trim();
+
+    const nuevoItem = { opcion, titulo, respuesta, enlace };
+
+    if (indiceEdicionMenu >= 0) {
+        menuNumericoActual[indiceEdicionMenu] = nuevoItem;
+    } else {
+        menuNumericoActual.push(nuevoItem);
+    }
+
+    cerrarModalMenuNumerico();
+    renderizarMenuNumerico();
+
+    try {
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                menu_numerico: JSON.stringify(menuNumericoActual)
+            })
+        });
+        alert("✅ Opción del menú guardada con éxito.");
+    } catch (err) {
+        alert("Error al guardar menú: " + err.message);
+    }
+}
+
+async function eliminarOpcionMenu(index) {
+    if (!confirm("¿Eliminar esta opción del menú?")) return;
+    menuNumericoActual.splice(index, 1);
+    renderizarMenuNumerico();
+
+    try {
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                menu_numerico: JSON.stringify(menuNumericoActual)
+            })
+        });
+    } catch (err) {
+        alert("Error al eliminar opción: " + err.message);
     }
 }
 

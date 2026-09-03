@@ -580,6 +580,30 @@
                     </div>
                 </div>
 
+                <!-- Gestor de Menú Numérico Interactivo (Opciones 1, 2, 3, 4, 5...) -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-list-ol text-amber-400"></i>
+                                <span>Menú Numérico Interactivo (Respuestas Rápidas 1, 2, 3...)</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Permite a tus clientes presionar o escribir un número simple para recibir información clave al instante.</p>
+                        </div>
+                        <button onclick="abrirModalNuevaOpcionMenu()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>+ Nueva Opción</span>
+                        </button>
+                    </div>
+
+                    <!-- Lista de Opciones del Menú Numérico -->
+                    <div id="lista-menu-numerico-container" class="space-y-3 pt-2">
+                        <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center">
+                            Cargando opciones del menú numérico...
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Cerebro de IA -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
                     <div>
@@ -809,7 +833,84 @@
                     <div id="lista-ignorados-container" class="space-y-2 pt-2"></div>
                 </div>
 
-                <!-- 5. Respaldo de Base de Datos SQLite -->
+                <!-- 5. Centro de Comandos Móviles y Glosario (!) -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-terminal text-emerald-400"></i>
+                            <span>Centro de Comandos Móviles por WhatsApp (Glosario !)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Comandos que los administradores autorizados pueden enviar directamente desde su WhatsApp para controlar el bot:</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 text-xs">
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 font-mono font-bold rounded-lg flex-shrink-0">!reactivar</span>
+                            <div>
+                                <strong class="text-white block">Reactivar Todo el Bot</strong>
+                                <span class="text-slate-400 text-[11px]">Reanuda la atención normal, quita pausas individuales y apaga el modo vacaciones.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-purple-500/20 text-purple-300 font-mono font-bold rounded-lg flex-shrink-0">!prueba</span>
+                            <div>
+                                <strong class="text-white block">Modo Prueba (Activar / Desactivar)</strong>
+                                <span class="text-slate-400 text-[11px]">Usa <code>!prueba</code> para que te responda como cliente o <code>!prueba off</code> para silencio.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-rose-500/20 text-rose-300 font-mono font-bold rounded-lg flex-shrink-0">!pausa</span>
+                            <div>
+                                <strong class="text-white block">Pausar Globalmente</strong>
+                                <span class="text-slate-400 text-[11px]">El bot no responderá a ningún cliente hasta enviar <code>!reactivar</code>.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-amber-500/20 text-amber-300 font-mono font-bold rounded-lg flex-shrink-0">!pausa [num]</span>
+                            <div>
+                                <strong class="text-white block">Pausar Cliente Específico</strong>
+                                <span class="text-slate-400 text-[11px]">Ej: <code>!pausa 4111234567</code>. Pausa a esa persona temporalmente.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-sky-500/20 text-sky-300 font-mono font-bold rounded-lg flex-shrink-0">!vacaciones</span>
+                            <div>
+                                <strong class="text-white block">Modo Ausencia con IA</strong>
+                                <span class="text-slate-400 text-[11px]">Ej: <code>!vacaciones Volvemos el lunes</code> (o <code>!vacaciones off</code> para desactivar).</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-indigo-500/20 text-indigo-300 font-mono font-bold rounded-lg flex-shrink-0">!resumen</span>
+                            <div>
+                                <strong class="text-white block">Reporte de Contactos Recientes</strong>
+                                <span class="text-slate-400 text-[11px]">Envía la lista con nombre y número de los últimos clientes atendidos.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-rose-500/20 text-rose-300 font-mono font-bold rounded-lg flex-shrink-0">!ignorar [num]</span>
+                            <div>
+                                <strong class="text-white block">Bloquear Contacto de IA</strong>
+                                <span class="text-slate-400 text-[11px]">Ej: <code>!ignorar 4111234567</code>. Excluye a la persona de respuestas del bot.</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
+                            <span class="px-2 py-1 bg-teal-500/20 text-teal-300 font-mono font-bold rounded-lg flex-shrink-0">📇 vCard</span>
+                            <div>
+                                <strong class="text-white block">Ignorar con Tarjeta de Contacto</strong>
+                                <span class="text-slate-400 text-[11px]">Comparte la tarjeta de contacto de WhatsApp al bot o grupo para ignorarlo en 1 segundo.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Respaldo de Base de Datos SQLite -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-3">
                     <h3 class="text-sm font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-database text-amber-400"></i>
@@ -824,6 +925,49 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL NUEVA / EDITAR OPCIÓN MENÚ NUMÉRICO -->
+    <!-- ==================================================================== -->
+    <div id="modal-menu-numerico" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Opción del Menú Numérico</h3>
+                    <p class="text-xs text-slate-400">Configura el número y la respuesta automática.</p>
+                </div>
+                <button onclick="cerrarModalMenuNumerico()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <form id="form-menu-numerico" onsubmit="guardarOpcionMenu(event)" class="space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Dígito / N°</label>
+                        <input type="text" id="menu-num-digito" required placeholder="1" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-bold text-center">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Título de la Opción</label>
+                        <input type="text" id="menu-num-titulo" required placeholder="Ej: Requisitos de Atención" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Respuesta Automática del Bot</label>
+                    <textarea id="menu-num-respuesta" rows="4" required placeholder="Texto que enviará el bot cuando el cliente escriba este número..." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Enlace / Link Adicional (Opcional)</label>
+                    <input type="url" id="menu-num-enlace" placeholder="https://maps.app.goo.gl/... o https://tu-sitio.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="cerrarModalMenuNumerico()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition">Guardar Opción</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- ==================================================================== -->
