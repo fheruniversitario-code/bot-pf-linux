@@ -666,7 +666,16 @@ async function cargarConfiguracion() {
 
         if (document.getElementById('config-horario-fisico')) document.getElementById('config-horario-fisico').value = config.horario_sucursal_fisica || '';
         if (document.getElementById('config-horario-online')) document.getElementById('config-horario-online').value = config.horario_asesor_en_linea || '';
+        if (document.getElementById('config-hora-inicio-semana')) document.getElementById('config-hora-inicio-semana').value = config.hora_inicio_semana || '14:00';
+        if (document.getElementById('config-hora-fin-semana')) document.getElementById('config-hora-fin-semana').value = config.hora_fin_semana || '20:30';
         if (document.getElementById('config-mensaje-fuera-horario')) document.getElementById('config-mensaje-fuera-horario').value = config.mensaje_fuera_horario || '';
+
+        const esDiferente = config.horario_online_diferente === '1' || (config.horario_asesor_en_linea && config.horario_sucursal_fisica && config.horario_asesor_en_linea !== config.horario_sucursal_fisica);
+        const toggleOnline = document.getElementById('toggle-horario-online-diferente');
+        if (toggleOnline) {
+            toggleOnline.checked = !!esDiferente;
+            toggleHorarioOnlineVisible(toggleOnline.checked);
+        }
 
         // Cargar Rejilla Semanal de 7 Días
         const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
@@ -964,17 +973,32 @@ function aplicarPlantillaHorario(texto) {
     }
 }
 
-// Guardar Horarios de Atención del Negocio (Texto Libre y Flexible)
+function toggleHorarioOnlineVisible(visible) {
+    const sec = document.getElementById('seccion-horario-online');
+    if (sec) {
+        if (visible) sec.classList.remove('hidden');
+        else sec.classList.add('hidden');
+    }
+}
+
+// Guardar Horarios de Atención del Negocio (Físico y Asesores en Línea)
 async function guardarHorariosDetallados() {
     try {
-        const horarioTexto = document.getElementById('config-horario-fisico').value;
+        const horarioFisico = document.getElementById('config-horario-fisico').value;
+        const esDiferente = document.getElementById('toggle-horario-online-diferente') ? document.getElementById('toggle-horario-online-diferente').checked : false;
+        const horarioOnline = esDiferente ? (document.getElementById('config-horario-online').value || horarioFisico) : horarioFisico;
+        const horaInicio = document.getElementById('config-hora-inicio-semana') ? document.getElementById('config-hora-inicio-semana').value : '14:00';
+        const horaFin = document.getElementById('config-hora-fin-semana') ? document.getElementById('config-hora-fin-semana').value : '20:30';
         const msgFuera = document.getElementById('config-mensaje-fuera-horario').value;
 
         await apiFetch('/api/configuracion', {
             method: 'POST',
             body: JSON.stringify({
-                horario_sucursal_fisica: horarioTexto,
-                horario_asesor_en_linea: horarioTexto,
+                horario_sucursal_fisica: horarioFisico,
+                horario_asesor_en_linea: horarioOnline,
+                horario_online_diferente: esDiferente ? '1' : '0',
+                hora_inicio_semana: horaInicio,
+                hora_fin_semana: horaFin,
                 mensaje_fuera_horario: msgFuera
             })
         });

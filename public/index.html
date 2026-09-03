@@ -853,26 +853,69 @@
                             <i class="fa-solid fa-clock text-emerald-400"></i>
                             <span>Horarios de Atención del Negocio</span>
                         </h2>
-                        <p class="text-xs text-slate-400">Escribe libremente los horarios en que tu negocio atiende (estilo Google Negocios). La IA los interpretará de forma 100% natural.</p>
+                        <p class="text-xs text-slate-400">Configura los horarios de tu sucursal física y/o de atención personalizada en WhatsApp para que la IA responda y calcule con exactitud.</p>
                     </div>
 
+                    <!-- 1. Horario de Sucursal Física -->
                     <div class="space-y-2">
-                        <label class="block text-xs font-semibold text-slate-300 uppercase">Horario de Atención (Texto Libre y Flexible)</label>
-                        <textarea id="config-horario-fisico" rows="3" placeholder="Ejemplo: Lunes a Jueves de 8:00 AM a 2:00 PM y de 4:00 PM a 6:00 PM. Viernes de 8:00 AM a 2:00 PM. Sábados y Domingos: Cerrado." class="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white focus:border-emerald-500 outline-none leading-relaxed font-sans"></textarea>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase flex items-center space-x-1.5">
+                            <i class="fa-solid fa-store text-emerald-400"></i>
+                            <span>Horario de Sucursal o Consultorio Físico (Texto Flexible)</span>
+                        </label>
+                        <textarea id="config-horario-fisico" rows="2" placeholder="Ejemplo: Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 10:00 AM a 2:00 PM. Domingos Cerrado." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white focus:border-emerald-500 outline-none leading-relaxed font-sans"></textarea>
                         
-                        <!-- Botones de plantilla rápida -->
+                        <!-- Botones de plantilla rápida genéricos -->
                         <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                            <span class="text-slate-500 font-semibold">⚡ Ejemplos Rápidos:</span>
-                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 10:00 AM a 2:00 PM. Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Lunes a Sábado Corrido</button>
+                            <span class="text-slate-500 font-semibold">⚡ Plantillas Rápidas:</span>
+                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 10:00 AM a 2:00 PM. Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Lun a Sáb (9 AM a 6 PM)</button>
+                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 2:00 PM a 8:30 PM. Sábados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Vespertino (2:00 PM a 8:30 PM)</button>
                             <button type="button" onclick="aplicarPlantillaHorario('Lunes a Jueves de 8:00 AM a 2:00 PM y de 4:00 PM a 6:00 PM. Viernes de 8:00 AM a 2:00 PM. Sábados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Horario Partido / Quebrado</button>
-                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 2:00 PM a 8:30 PM. Sábados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">CAISES Jaral (2:00 PM a 8:30 PM)</button>
                         </div>
                     </div>
 
+                    <!-- 2. Switch Diferenciador: Atención en Línea / WhatsApp diferente a Sucursal -->
+                    <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div class="space-y-0.5 pr-4">
+                            <label for="toggle-horario-online-diferente" class="font-bold text-white text-xs flex items-center space-x-2 cursor-pointer">
+                                <i class="fa-solid fa-headset text-indigo-400"></i>
+                                <span>¿Tienes un horario de atención en línea (WhatsApp) diferente al de la sucursal física?</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400">Activa si tu personal humano en WhatsApp atiende en horas distintas a las de la puerta física del negocio (o para especificar inicio y fin de turno exactos).</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="toggle-horario-online-diferente" onchange="toggleHorarioOnlineVisible(this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- 3. Sección Desplegable de Horario en Línea / WhatsApp -->
+                    <div id="seccion-horario-online" class="hidden space-y-4 p-4 bg-slate-950/60 border border-indigo-950/60 rounded-2xl">
+                        <div>
+                            <label class="block text-xs font-semibold text-indigo-300 uppercase mb-1.5 flex items-center space-x-1.5">
+                                <i class="fa-solid fa-comments text-indigo-400"></i>
+                                <span>Horario de Asesores en Línea / WhatsApp (Texto para la IA)</span>
+                            </label>
+                            <textarea id="config-horario-online" rows="2" placeholder="Ejemplo: Nuestro equipo en WhatsApp atiende de Lunes a Viernes de 2:00 PM a 8:30 PM. Fuera de este horario, el bot de IA responde tus dudas 24/7." class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1">Hora Inicio de Turno Asesor (Formato 24h)</label>
+                                <input type="time" id="config-hora-inicio-semana" value="14:00" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1">Hora Fin de Turno Asesor (Formato 24h)</label>
+                                <input type="time" id="config-hora-fin-semana" value="20:30" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-slate-400 block">El motor inteligente de horarios usa estas horas exactas para calcular en vivo si dice: <em>"mañana a partir de las X"</em>, <em>"el próximo lunes"</em>, etc.</span>
+                    </div>
+
+                    <!-- 4. Mensaje Fuera de Horario -->
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Mensaje Automático Fuera de Horario (Opcional)</label>
                         <p class="text-[11px] text-slate-400 mb-2">Mensaje que la IA o el bot responderá cuando escriban de noche o en días inhábiles.</p>
-                        <textarea id="config-mensaje-fuera-horario" rows="2" placeholder="Hola, nuestro horario de atención es... (Si lo dejas vacío, la IA responderá amablemente con los horarios configurados arriba)." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-emerald-500"></textarea>
+                        <textarea id="config-mensaje-fuera-horario" rows="2" placeholder="Ejemplo: Hola. Por el momento nuestro equipo está fuera de horario. Tu solicitud ha quedado registrada y con gusto te atenderemos en nuestro próximo turno laboral." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-emerald-500"></textarea>
                     </div>
 
                     <div class="pt-2 flex justify-end">
