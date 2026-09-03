@@ -520,8 +520,15 @@
                                     <span>¿Cómo obtenerla gratis?</span>
                                 </button>
                             </label>
-                            <input type="password" id="config-api-key" placeholder="Pega aquí tu API Key de Google AI Studio (AIzaSy...)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono">
-                            <span class="text-[10px] text-slate-500 mt-1 block">Deja vacío para usar la clave predeterminada del sistema.</span>
+                            <div class="relative">
+                                <input type="password" id="config-api-key" placeholder="AIzaSy..." class="w-full pl-4 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:border-indigo-500 outline-none">
+                                <button type="button" onclick="toggleMostrarApiKey()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-xs transition" title="Ver / Ocultar Clave">
+                                    <i id="icono-ojo-api" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                            <span class="text-[11px] text-slate-400 mt-1 block">
+                                🔑 Consigue tu clave oficial en <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a> (comienza siempre con <code>AIzaSy...</code>).
+                            </span>
                         </div>
                     </div>
                 </div>

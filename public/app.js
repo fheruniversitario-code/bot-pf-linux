@@ -701,6 +701,52 @@ async function eliminarOpcionMenu(index) {
     }
 }
 
+// Alternar ver / ocultar clave API
+function toggleMostrarApiKey() {
+    const input = document.getElementById('config-api-key');
+    const icono = document.getElementById('icono-ojo-api');
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icono) icono.className = 'fa-solid fa-eye-slash';
+    } else {
+        input.type = 'password';
+        if (icono) icono.className = 'fa-solid fa-eye';
+    }
+}
+
+// Guardar Todo el Conocimiento de IA, Catálogo y Clave API
+async function guardarConocimientoIA() {
+    try {
+        const apiKey = document.getElementById('config-api-key') ? document.getElementById('config-api-key').value.trim() : '';
+        const modeloIA = document.getElementById('config-modelo-ia') ? document.getElementById('config-modelo-ia').value : 'gemini-1.5-flash';
+        const promptIA = document.getElementById('config-prompt-ia') ? document.getElementById('config-prompt-ia').value : '';
+        const catalogo = document.getElementById('config-catalogo-servicios') ? document.getElementById('config-catalogo-servicios').value : '';
+        const googleSheets = document.getElementById('config-google-sheets-url') ? document.getElementById('config-google-sheets-url').value : '';
+        const direccion = document.getElementById('config-ubicacion-direccion') ? document.getElementById('config-ubicacion-direccion').value : '';
+        const maps = document.getElementById('config-ubicacion-maps') ? document.getElementById('config-ubicacion-maps').value : '';
+        const bancos = document.getElementById('config-datos-bancarios') ? document.getElementById('config-datos-bancarios').value : '';
+
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                gemini_api_key: apiKey,
+                gemini_modelo_ia: modeloIA,
+                prompt_ia: promptIA,
+                catalogo_servicios: catalogo,
+                google_sheets_url: googleSheets,
+                ubicacion_direccion: direccion,
+                ubicacion_maps_link: maps,
+                datos_bancarios: bancos
+            })
+        });
+
+        alert("✅ Todo el conocimiento de IA, Catálogo y Clave API guardados con éxito en la memoria del bot.");
+    } catch (e) {
+        alert("Error al guardar conocimiento de IA: " + e.message);
+    }
+}
+
 // Guardar Identidad del Negocio y Administradores
 async function guardarIdentidadNegocio() {
     try {
