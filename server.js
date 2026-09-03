@@ -1688,9 +1688,31 @@ async function obtenerContenidoGoogleSheets(url) {
             }
         }
 
+        let reglaHorarioIA = '';
+        if (estadoHorario.enReceso) {
+            reglaHorarioIA = `
+🔴 ESTADO DE RECESO / VACACIONES:
+- Actualmente el personal humano se encuentra en receso/vacaciones debido a: "${estadoHorario.motivoReceso}".
+- REGLA ESTRICTA: NO ofrezcas "hablar con un asesor" o "pasar con un asesor ahora mismo". Si el cliente requiere atención personalizada o cita presencial, indícale amablemente que su solicitud será atendida prioritariamente ${estadoHorario.proximoTexto}, o invítalo a resolver sus dudas contigo directamente (asistente virtual 24/7).`;
+        } else if (!estadoHorario.enHorario) {
+            reglaHorarioIA = `
+🔴 ESTADO DE HORARIO DE ATENCIÓN (FUERA DE HORARIO LABORAL):
+- Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
+- Actualmente estamos FUERA del horario de atención del personal humano. El personal atenderá nuevamente: ${estadoHorario.proximoTexto}.
+- REGLA ESTRICTA DE HORARIO: En este momento es de noche / fuera de turno. NUNCA ofrezcas "hablar con un asesor" como si fuera a contestar de inmediato.
+- Si el tema requiere cita médica o atención humana indispensable, aclara explícitamente que nuestro personal humano labora ${estadoHorario.proximoTexto}, pero que puede escribir 'asesor' para dejar su solicitud registrada en la bandeja de pendientes para mañana, o bien resolver todas sus preguntas de salud/servicios contigo directamente en este instante (tú estás activo 24/7).`;
+        } else {
+            reglaHorarioIA = `
+🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO LABORAL):
+- Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
+- Actualmente el personal humano de salud está EN TURNO en las instalaciones.
+- Puedes invitar al usuario a escribir 'asesor' si desea atención humana o agendar su cita presencial.`;
+        }
+
         const systemInstruction = `
 ${configPrompt}
 ${avisoAusencia}
+${reglaHorarioIA}
 
 CLIENTE / PACIENTE ACTUAL:
 - Nombre: ${nombreContacto} (Usa su nombre con naturalidad y calidez cuando sea oportuno).
@@ -1712,6 +1734,7 @@ ${datosBancos}
 
 INSTRUCCIONES CLAVE DE ATENCIÓN:
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
+- REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
 - Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.
 - Si el cliente envía una imagen (foto de producto o comprobante), analízala visualmente y responde en consecuencia.
