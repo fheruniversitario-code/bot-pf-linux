@@ -462,6 +462,18 @@ app.post('/api/configuracion/ignorar', autenticarToken, async (req, res) => {
     }
 });
 
+// Renombrar Contacto / Paciente desde el Dashboard o Chat en Vivo
+app.put('/api/contactos/:jid/nombre', autenticarToken, async (req, res) => {
+    try {
+        const { nombre } = req.body;
+        if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'Nombre es requerido' });
+        await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nombre.trim(), req.params.jid]);
+        res.json({ success: true, nombre: nombre.trim() });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Subida de Logo de la Empresa
 app.post('/api/upload/logo', autenticarToken, uploadLogo.single('logo'), async (req, res) => {
     try {
@@ -673,6 +685,90 @@ app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Motor de Cálculo Inteligente de Horario en México (America/Mexico_City)
+async function obtenerEstadoHorarioMexico() {
+    const ahora = new Date();
+    const formatter = new Intl.DateTimeFormat('es-MX', {
+        timeZone: 'America/Mexico_City',
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(ahora);
+    let diaSemana = '';
+    let hora = 0;
+    let minuto = 0;
+    for (const p of parts) {
+        if (p.type === 'weekday') diaSemana = p.value.toLowerCase();
+        if (p.type === 'hour') hora = parseInt(p.value, 10);
+        if (p.type === 'minute') minuto = parseInt(p.value, 10);
+    }
+
+    const minutosActuales = hora * 60 + minuto;
+
+    // 1. Verificar si hay Receso / Vacaciones activo
+    const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
+    const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
+    const ausenciaFechaFin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
+
+    if (ausenciaActiva) {
+        let proximoTexto = 'al reanudar actividades tras el periodo vacacional';
+        if (ausenciaFechaFin) {
+            proximoTexto = `el próximo ${ausenciaFechaFin} a primera hora`;
+        }
+        return {
+            enHorario: false,
+            enReceso: true,
+            motivoReceso: ausenciaMsg || 'Periodo Vacacional / Capacitación',
+            proximoTexto
+        };
+    }
+
+    // 2. Horarios de Trabajo (Predeterminados o configurados)
+    const horaInicioStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '14:00';
+    const horaFinStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '20:30';
+    
+    const [hIni, mIni] = horaInicioStr.split(':').map(n => parseInt(n, 10) || 0);
+    const [hFin, mFin] = horaFinStr.split(':').map(n => parseInt(n, 10) || 0);
+    const minInicio = hIni * 60 + mIni;
+    const minFin = hFin * 60 + mFin;
+
+    // Días laborables (Lunes a Viernes)
+    const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
+    const esDiaLaboral = diasLaborables.some(d => diaSemana.startsWith(d));
+    const esFinDeSemana = diaSemana.startsWith('s') || diaSemana.startsWith('d');
+    const esViernes = diaSemana.startsWith('v');
+
+    const formatoHoraInicio = hIni > 12 ? `${hIni - 12}:${mIni.toString().padStart(2, '0')} PM` : `${hIni}:${mIni.toString().padStart(2, '0')} AM`;
+
+    if (esDiaLaboral && minutosActuales >= minInicio && minutosActuales <= minFin) {
+        return {
+            enHorario: true,
+            enReceso: false,
+            proximoTexto: 'actualmente en horario de atención'
+        };
+    }
+
+    // Fuera de horario: calcular retorno amigable
+    let proximoTexto = `en nuestro próximo horario laboral (${formatoHoraInicio})`;
+    if (esFinDeSemana) {
+        proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+    } else if (esViernes && minutosActuales > minFin) {
+        proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+    } else if (minutosActuales > minFin) {
+        proximoTexto = `mañana a partir de las ${formatoHoraInicio}`;
+    } else if (minutosActuales < minInicio) {
+        proximoTexto = `hoy a partir de las ${formatoHoraInicio}`;
+    }
+
+    return {
+        enHorario: false,
+        enReceso: false,
+        proximoTexto
+    };
+}
 
 app.post('/api/bot/pausar', autenticarToken, async (req, res) => {
     try {
@@ -1127,6 +1223,8 @@ async function procesarMensajeEntrante(msg) {
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
     const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral';
     const enlacePrivacidad = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'enlace_formulario_privacidad'"))?.valor || 'https://forms.gle/zJxZeXXj1TwWGF9N8';
+    const mostrarMenuNumerico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'mostrar_menu_numerico'"))?.valor !== '0';
+    const estadoHorario = await obtenerEstadoHorarioMexico();
     const textoLowerNorm = texto.toLowerCase();
 
     // --------------------------------------------------------------------------
@@ -1134,36 +1232,80 @@ async function procesarMensajeEntrante(msg) {
     // --------------------------------------------------------------------------
     const claveEsperandoNombre = `${remitente}_esperando_nombre`;
     if (chatsPausados.has(claveEsperandoNombre) && !texto.startsWith('!')) {
-        chatsPausados.delete(claveEsperandoNombre);
-        const nombreIngresado = texto.replace(/[\n\r]/g, ' ').trim();
-        if (nombreIngresado.length >= 3) {
-            await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nombreIngresado, remitente]);
-            nombreContacto = nombreIngresado;
+        const txtClean = texto.replace(/[\n\r]/g, ' ').trim();
+        const txtLower = txtClean.toLowerCase();
 
+        // Lista de frases o confirmaciones comunes que NO son un nombre real
+        const frasesNoNombre = [
+            'ya lo hice', 'ya lo llene', 'ya lo llené', 'ya quedo', 'ya quedó', 'listo', 'ya está', 'ya esta',
+            'ya envie', 'ya envié', 'ya mande', 'ya mandé', 'ok', 'si', 'ya', 'gracias', 'hola', 'buenas',
+            'hecho', 'completado', 'registrado', 'formulario', 'link', 'enlace', 'ya registre', 'ya registré',
+            'ya puse', 'listo ya', 'ya fue', 'ya terminé', 'ya termine'
+        ];
+
+        const esConfirmacionSinNombre = frasesNoNombre.some(f => txtLower === f || txtLower.startsWith(f + ' ') || txtLower.endsWith(' ' + f));
+
+        if (esConfirmacionSinNombre || txtClean.length < 3 || /^\d+$/.test(txtClean)) {
+            // No es un nombre: insistir amablemente en el nombre para poder registrarlo correctamente
             const chat = await msg.getChat();
             await chat.sendStateTyping();
-            await delay(1200);
+            await delay(1000);
 
-            const msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                `He notificado a nuestro personal de salud de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
-
-            const sent = await client.sendMessage(remitente, msjConfirmado);
+            const msjPedirNombre = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Excelente! ✍️ Para poder registrar tu expediente e identificarte con nuestro personal de salud, por favor indícame **cuál es tu nombre completo** (o cómo te gustaría que te llamemos):`;
+            const sent = await client.sendMessage(remitente, msjPedirNombre);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
-
-            await runQuery(
-                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [remitente, 'bot', 'Registro Paciente', msjConfirmado, 1, 1, Date.now()]
-            );
             return;
         }
+
+        // Es un nombre real: limpiamos prefijos ("Me llamo...", "Soy...")
+        chatsPausados.delete(claveEsperandoNombre);
+        let nombreLimpio = txtClean;
+        const prefijos = [/^(me llamo|soy|mi nombre es|nombre:?|yo soy)\s+/i];
+        for (const pref of prefijos) {
+            nombreLimpio = nombreLimpio.replace(pref, '').trim();
+        }
+        if (!nombreLimpio) nombreLimpio = txtClean;
+
+        // Formatear Capitalize
+        nombreLimpio = nombreLimpio.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+
+        await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nombreLimpio, remitente]);
+        nombreContacto = nombreLimpio;
+
+        const chat = await msg.getChat();
+        await chat.sendStateTyping();
+        await delay(1200);
+
+        let msjConfirmado = '';
+        if (estadoHorario.enReceso) {
+            msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+        } else if (!estadoHorario.enHorario) {
+            msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                `⏰ *Fuera de horario de atención personalizada:* He dejado tu solicitud registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+        } else {
+            msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                `He notificado a nuestro personal de salud de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+        }
+
+        const sent = await client.sendMessage(remitente, msjConfirmado);
+        if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+        await runQuery(
+            "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [remitente, 'bot', 'Registro Paciente', msjConfirmado, 1, 1, Date.now()]
+        );
+        return;
     }
 
     // --------------------------------------------------------------------------
-    // B. SALUDO INICIAL Y MENÚ INTERACTIVO DE BIENVENIDA
+    // B. SALUDO INICIAL Y MENÚ INTERACTIVO DE BIENVENIDA (OPCIONAL)
     // --------------------------------------------------------------------------
     const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
-    if (saludos.includes(textoLowerNorm)) {
+    if (saludos.includes(textoLowerNorm) && mostrarMenuNumerico) {
         const chat = await msg.getChat();
         await chat.sendStateTyping();
         await delay(1200);
@@ -1225,9 +1367,22 @@ async function procesarMensajeEntrante(msg) {
         }
 
         // Si ya está registrado con su nombre:
-        const msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ Entendido, *${nombreContacto}*. He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
-            `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n` +
-            `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas hacer más preguntas o consultar cualquier otro tema._`;
+        let msjTransferido = '';
+        if (estadoHorario.enReceso) {
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *AVISO DE RECESO / VACACIONES*\n\n` +
+                `Hola, *${nombreContacto}*. Por el momento nuestro personal de ${nombreNegocio} se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
+                `🗓️ Tu solicitud ha quedado registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder todas tus preguntas sobre métodos y requisitos._`;
+        } else if (!estadoHorario.enHorario) {
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *FUERA DE HORARIO DE ATENCIÓN PERSONALIZADA*\n\n` +
+                `Hola, *${nombreContacto}*. Por el momento nos encontramos fuera de nuestro horario de atención presencial.\n\n` +
+                `🕒 Tu solicitud ha quedado registrada. Nuestro personal revisará tu chat y te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder cualquier consulta sobre métodos o requisitos._`;
+        } else {
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ Entendido, *${nombreContacto}*. He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
+                `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas hacer más preguntas o consultar cualquier otro tema._`;
+        }
 
         const sent = await client.sendMessage(remitente, msjTransferido);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);

@@ -317,6 +317,29 @@ async function toggleIgnorarChatActual(jid, nuevoEstado) {
     }
 }
 
+async function renombrarContactoActual() {
+    if (!chatActivoJid) return alert("Selecciona un chat primero");
+    const nomElem = document.getElementById('chat-nombre-cliente');
+    const nomActual = nomElem ? nomElem.textContent : '';
+    const nuevoNombre = prompt("Ingresa el nombre correcto para este contacto / paciente:", nomActual !== 'Selecciona una conversación' ? nomActual : '');
+    if (!nuevoNombre || !nuevoNombre.trim() || nuevoNombre.trim() === nomActual) return;
+
+    try {
+        const res = await apiFetch(`/api/contactos/${encodeURIComponent(chatActivoJid)}/nombre`, {
+            method: 'PUT',
+            body: JSON.stringify({ nombre: nuevoNombre.trim() })
+        });
+        if (res.success) {
+            nomElem.textContent = res.nombre;
+            document.getElementById('chat-avatar').textContent = res.nombre.charAt(0).toUpperCase();
+            cargarConversaciones();
+            alert(`✅ Contacto renombrado con éxito a: ${res.nombre}`);
+        }
+    } catch (e) {
+        alert("Error al renombrar contacto: " + e.message);
+    }
+}
+
 // Enviar Mensaje desde el Formulario
 document.getElementById('form-enviar-mensaje').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -512,6 +535,8 @@ async function cargarConfiguracion() {
     try {
         const config = await apiFetch('/api/configuracion');
         if (document.getElementById('config-modelo-ia')) document.getElementById('config-modelo-ia').value = config.gemini_modelo_ia || 'gemini-3.6-flash';
+        if (document.getElementById('config-estilo-longitud-ia')) document.getElementById('config-estilo-longitud-ia').value = config.estilo_longitud_ia || 'breve';
+        if (document.getElementById('config-mostrar-menu-numerico')) document.getElementById('config-mostrar-menu-numerico').checked = config.mostrar_menu_numerico !== '0';
         if (document.getElementById('config-api-key')) document.getElementById('config-api-key').value = config.gemini_api_key || '';
         if (document.getElementById('config-prompt-ia')) document.getElementById('config-prompt-ia').value = config.prompt_ia || '';
         if (document.getElementById('config-catalogo-servicios')) document.getElementById('config-catalogo-servicios').value = config.catalogo_servicios || '';
@@ -759,6 +784,8 @@ async function guardarConocimientoIA() {
     try {
         const apiKey = document.getElementById('config-api-key') ? document.getElementById('config-api-key').value.trim() : '';
         const modeloIA = document.getElementById('config-modelo-ia') ? document.getElementById('config-modelo-ia').value : 'gemini-3.6-flash';
+        const estiloLongitud = document.getElementById('config-estilo-longitud-ia') ? document.getElementById('config-estilo-longitud-ia').value : 'breve';
+        const mostrarMenu = document.getElementById('config-mostrar-menu-numerico') ? (document.getElementById('config-mostrar-menu-numerico').checked ? '1' : '0') : '1';
         const promptIA = document.getElementById('config-prompt-ia') ? document.getElementById('config-prompt-ia').value : '';
         const catalogo = document.getElementById('config-catalogo-servicios') ? document.getElementById('config-catalogo-servicios').value : '';
         const googleSheets = document.getElementById('config-google-sheets-url') ? document.getElementById('config-google-sheets-url').value : '';
@@ -771,6 +798,8 @@ async function guardarConocimientoIA() {
             body: JSON.stringify({
                 gemini_api_key: apiKey,
                 gemini_modelo_ia: modeloIA,
+                estilo_longitud_ia: estiloLongitud,
+                mostrar_menu_numerico: mostrarMenu,
                 prompt_ia: promptIA,
                 catalogo_servicios: catalogo,
                 google_sheets_url: googleSheets,

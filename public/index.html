@@ -312,7 +312,12 @@
                         <div class="flex items-center space-x-3">
                             <div id="chat-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm">?</div>
                             <div>
-                                <h3 id="chat-nombre-cliente" class="font-bold text-white text-sm">Selecciona una conversación</h3>
+                                <div class="flex items-center space-x-2">
+                                    <h3 id="chat-nombre-cliente" class="font-bold text-white text-sm">Selecciona una conversación</h3>
+                                    <button id="btn-renombrar-chat" onclick="renombrarContactoActual()" class="text-slate-400 hover:text-indigo-400 text-xs transition" title="Renombrar paciente / cliente">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </div>
                                 <p id="chat-telefono-cliente" class="text-xs text-slate-400">---</p>
                             </div>
                         </div>
@@ -501,7 +506,7 @@
                         <p class="text-xs text-slate-400">Conecta la clave de tu cuenta de Google AI Studio para que el asistente funcione con tu cuenta propia.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
                                 <span>Modelo de Inteligencia Artificial</span>
@@ -518,13 +523,23 @@
                             </select>
                             <span class="text-[10px] text-emerald-400/90 mt-1 block flex items-center space-x-1">
                                 <i class="fa-solid fa-shield-halved"></i>
-                                <span>El bot auto-repara y conmuta a modelos Flash de bajo costo si Google depreca alguno.</span>
+                                <span>Auto-repara a modelos Flash de bajo costo si Google depreca alguno.</span>
                             </span>
                         </div>
 
                         <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Longitud y Estilo de Respuestas</label>
+                            <select id="config-estilo-longitud-ia" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="breve">⚡ Breve y Conciso (1-2 frases cortas - Recomendado WhatsApp)</option>
+                                <option value="equilibrado">⚖️ Equilibrado (1-2 párrafos claros)</option>
+                                <option value="detallado">📖 Detallado y Extenso (Explicación amplia y profunda)</option>
+                            </select>
+                            <span class="text-[10px] text-slate-400 mt-1 block">Controla si responde directo al grano o con detalle.</span>
+                        </div>
+
+                        <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
-                                <span>Tu Clave de IA (API Key de Google Gemini)</span>
+                                <span>Tu Clave de IA (API Key Gemini)</span>
                                 <button type="button" onclick="abrirInstructivo('gemini-api-key')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
                                     <i class="fa-solid fa-circle-info"></i>
                                     <span>¿Cómo obtenerla gratis?</span>
@@ -537,7 +552,7 @@
                                 </button>
                             </div>
                             <span class="text-[11px] text-slate-400 mt-1 block">
-                                🔑 Consigue tu clave oficial en <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a> (comienza siempre con <code>AIzaSy...</code>).
+                                🔑 Consíguela en <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a>.
                             </span>
                         </div>
                     </div>
@@ -599,7 +614,7 @@
 
                 <!-- Gestor de Menú Numérico Interactivo (Opciones 1, 2, 3, 4, 5...) -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                                 <i class="fa-solid fa-list-ol text-amber-400"></i>
@@ -607,10 +622,16 @@
                             </h2>
                             <p class="text-xs text-slate-400">Permite a tus clientes presionar o escribir un número simple para recibir información clave al instante.</p>
                         </div>
-                        <button onclick="abrirModalNuevaOpcionMenu()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>+ Nueva Opción</span>
-                        </button>
+                        <div class="flex items-center space-x-3">
+                            <label class="flex items-center space-x-2 cursor-pointer bg-slate-950 px-3 py-2 border border-slate-800 rounded-xl">
+                                <input type="checkbox" id="config-mostrar-menu-numerico" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked>
+                                <span class="text-xs text-slate-300">Mostrar menú en saludos</span>
+                            </label>
+                            <button onclick="abrirModalNuevaOpcionMenu()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2 flex-shrink-0">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>+ Nueva Opción</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Lista de Opciones del Menú Numérico -->
