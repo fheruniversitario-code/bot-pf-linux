@@ -695,6 +695,21 @@
                         </div>
                     </div>
 
+                    <!-- Switch de Modo Prueba para Administradores -->
+                    <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div class="space-y-0.5 pr-4">
+                            <label for="config-modo-prueba" class="font-bold text-white text-xs flex items-center space-x-2 cursor-pointer">
+                                <i class="fa-solid fa-vial-circle-check text-purple-400"></i>
+                                <span>Modo Prueba de IA para Administradores</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400">Activa si deseas que el bot te conteste como a un cliente normal para probar respuestas. Desactívalo cuando termines para que el bot solo escuche tus comandos con <code>!</code> sin responderte con IA.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="config-modo-prueba" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
                     <div class="pt-2 flex justify-end">
                         <button onclick="guardarIdentidadNegocio()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-floppy-disk"></i>

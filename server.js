@@ -836,17 +836,27 @@ async function procesarMensajeEntrante(msg) {
     // Registrar o actualizar Contacto en la Base de Datos
     let nombreContacto = 'Cliente';
     let pushname = '';
+    let telefonoReal = remitente.replace(/[^0-9]/g, '');
     try {
         const contact = await msg.getContact();
         if (contact) {
             nombreContacto = contact.name || contact.pushname || 'Cliente';
             pushname = contact.pushname || '';
+            if (contact.number && !contact.number.startsWith('1660') && contact.number.length >= 10) {
+                telefonoReal = contact.number;
+            }
         }
     } catch (e) {}
 
+    // Si el contacto ya existía con un número limpio, conservarlo
+    const contactoPrevio = await getQuery("SELECT telefono FROM contactos WHERE jid = ?", [remitente]);
+    if (contactoPrevio && contactoPrevio.telefono && !contactoPrevio.telefono.startsWith('1660') && telefonoReal.startsWith('1660')) {
+        telefonoReal = contactoPrevio.telefono;
+    }
+
     await runQuery(
-        "INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto) VALUES (?, ?, ?, ?, ?) ON CONFLICT(jid) DO UPDATE SET ultimo_contacto = excluded.ultimo_contacto, pushname = excluded.pushname",
-        [remitente, remitente.replace(/[^0-9]/g, ''), nombreContacto, pushname, Date.now()]
+        "INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto) VALUES (?, ?, ?, ?, ?) ON CONFLICT(jid) DO UPDATE SET telefono = excluded.telefono, ultimo_contacto = excluded.ultimo_contacto, pushname = excluded.pushname, nombre = CASE WHEN excluded.nombre != 'Cliente' THEN excluded.nombre ELSE contactos.nombre END",
+        [remitente, telefonoReal, nombreContacto, pushname, Date.now()]
     );
 
     // Guardar mensaje recibido en historial
@@ -898,6 +908,22 @@ async function procesarMensajeEntrante(msg) {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false });
                 const sent = await msg.reply("✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia. El bot vuelve a responder a todos los clientes.");
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            if (textoLower === '!probar on' || textoLower === '!prueba on' || textoLower === '!modo prueba on') {
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
+                io.emit('estado_control_actualizado', { modoPruebaAdmins: true });
+                const sent = await msg.reply("🧪 *MODO PRUEBA ACTIVADO*\n\nEl bot te responderá a partir de ahora como si fueras un cliente normal para que pongas a prueba sus respuestas de IA, infografías y catálogo.\n\n_Para desactivar y que vuelva a guardar silencio contigo, envía `!probar off`._");
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            if (textoLower === '!probar off' || textoLower === '!prueba off' || textoLower === '!modo prueba off') {
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
+                io.emit('estado_control_actualizado', { modoPruebaAdmins: false });
+                const sent = await msg.reply("🛡️ *MODO PRUEBA DESACTIVADO*\n\nEl bot ya no te responderá con mensajes de IA a tus chats personales. Solo obedecerá tus comandos con signo de exclamación `!`.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -965,11 +991,12 @@ async function procesarMensajeEntrante(msg) {
             }
 
             if (textoLower === '!pendientes' || textoLower === '!resumen') {
-                const ultimos = await allQuery("SELECT nombre, pushname, telefono, ultimo_contacto FROM contactos WHERE es_ignorado = 0 ORDER BY ultimo_contacto DESC LIMIT 5");
+                const ultimos = await allQuery("SELECT nombre, pushname, telefono, jid, ultimo_contacto FROM contactos WHERE es_ignorado = 0 ORDER BY ultimo_contacto DESC LIMIT 10");
                 let rep = `📋 *REPORTE DE CONTACTOS RECIENTES (${ultimos.length}):*\n\n`;
                 ultimos.forEach((u, i) => {
                     const nom = u.nombre !== 'Cliente' ? u.nombre : (u.pushname || 'Cliente');
-                    rep += `${i + 1}️⃣ 👤 *${nom}* (+${u.telefono})\n`;
+                    const telLimpio = u.telefono && !u.telefono.startsWith('1660') ? u.telefono : u.jid.replace(/[^0-9]/g, '');
+                    rep += `${i + 1}️⃣ 👤 *${nom}*\n   📱 +${telLimpio}\n`;
                 });
                 rep += `\n_💡 Puedes abrir sus chats en WhatsApp Web para dar seguimiento personal._`;
                 const sent = await msg.reply(rep);
@@ -983,11 +1010,13 @@ async function procesarMensajeEntrante(msg) {
                     "▶️ `!reactivar` -> Reactiva el bot, quita pausas y desactiva vacaciones.\n" +
                     "⏸️ `!pausa` -> Pausa globalmente el bot de forma indefinida.\n" +
                     "⏸️ `!pausa 4111234567` -> Pausa a un cliente específico.\n" +
+                    "🧪 `!probar on` -> Activa Modo Prueba (el bot te responde como cliente).\n" +
+                    "🛡️ `!probar off` -> Desactiva Modo Prueba (el bot guarda silencio contigo).\n" +
                     "🌴 `!vacaciones [mensaje]` -> Activa modo ausencia.\n" +
                     "🌴 `!vacaciones off` -> Desactiva modo ausencia.\n" +
                     "🚫 `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
                     "✅ `!atender 4111234567` -> Remueve de ignorados.\n" +
-                    "📋 `!resumen` -> Lista los últimos clientes atendidos.\n" +
+                    "📋 `!resumen` -> Lista los últimos clientes atendidos con sus teléfonos reales.\n" +
                     "📇 _(O envía una tarjeta de contacto al grupo de control para ignorarlo al instante)_"
                 );
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -1001,6 +1030,20 @@ async function procesarMensajeEntrante(msg) {
     // --------------------------------------------------------------------------
     // FILTROS: Contactos Ignorados / Pausas Humanas / Filtro de Audios
     // --------------------------------------------------------------------------
+    // Comprobar si el remitente es un teléfono Administrador registrado
+    const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
+    const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
+    const remitenteNum = remitente.replace(/[^0-9]/g, '');
+    const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
+
+    if (esAdminRemitente) {
+        const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
+        if (!modoPruebaActivo) {
+            // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
+            return;
+        }
+    }
+
     // Pausa Global
     const pausadoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'bot_pausado_global'"))?.valor === '1';
     if (botPausadoGlobal || pausadoConf) return;

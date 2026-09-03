@@ -529,6 +529,8 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-ausencia-mensaje')) document.getElementById('config-ausencia-mensaje').value = config.ausencia_mensaje || '';
         if (document.getElementById('config-ausencia-fecha')) document.getElementById('config-ausencia-fecha').value = config.ausencia_fecha_fin || '';
 
+        if (document.getElementById('config-modo-prueba')) document.getElementById('config-modo-prueba').checked = (config.modo_prueba_admins === '1');
+
         cargarListaIgnorados();
         cargarDocumentosConocimiento();
         cargarInfografiasImagenes();
@@ -546,10 +548,11 @@ async function guardarIdentidadNegocio() {
                 nombre_negocio: document.getElementById('config-nombre-negocio').value,
                 numeros_admins: document.getElementById('config-numeros-admin').value,
                 grupo_control: document.getElementById('config-grupo-control').value,
-                tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value
+                tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value,
+                modo_prueba_admins: document.getElementById('config-modo-prueba').checked ? '1' : '0'
             })
         });
-        alert("✅ Identidad del negocio y teléfonos administradores guardados con éxito.");
+        alert("✅ Identidad del negocio y ajustes guardados con éxito.");
     } catch (e) {
         alert("Error al guardar: " + e.message);
     }
