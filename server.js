@@ -918,14 +918,14 @@ client.on('loading_screen', (percent, message) => {
         return;
     }
 
-    // Guardián Universal: Si se queda en CUALQUIER porcentaje antes de 'ready' por más de 2.5 minutos sin avanzar, forzar recarga
+    // Guardián Universal: Si se queda en CUALQUIER porcentaje antes de 'ready' por más de 75 segundos sin avanzar, forzar recarga limpia
     if (ultimoPorcentajeSaaS !== percent) {
         tiempoInicioLoadingSaaS = Date.now();
         ultimoPorcentajeSaaS = percent;
     }
 
-    if (tiempoInicioLoadingSaaS && (Date.now() - tiempoInicioLoadingSaaS > 150000)) {
-        console.warn(`⚠️ ALERTA: WhatsApp Web atascado en ${percent}% durante el inicio por más de 2.5 minutos. Reiniciando proceso limpio con PM2...`);
+    if (tiempoInicioLoadingSaaS && (Date.now() - tiempoInicioLoadingSaaS > 75000)) {
+        console.warn(`⚠️ ALERTA WATCHDOG: WhatsApp Web atascado en ${percent}% durante el inicio por más de 75s. Reiniciando proceso limpio con PM2...`);
         tiempoInicioLoadingSaaS = null;
         ultimoPorcentajeSaaS = null;
         process.exit(1);
@@ -964,8 +964,8 @@ client.on('disconnected', (reason) => {
 setInterval(async () => {
     try {
         // El watchdog de carga solo aplica si el bot NO ha logrado conectarse
-        if (!wsClienteConectado && tiempoInicioLoadingSaaS && (Date.now() - tiempoInicioLoadingSaaS > 180000)) {
-            console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga inicial lleva más de 3 minutos atascado en ${ultimoPorcentajeSaaS}%. Reiniciando proceso limpio con PM2...`);
+        if (!wsClienteConectado && tiempoInicioLoadingSaaS && (Date.now() - tiempoInicioLoadingSaaS > 90000)) {
+            console.warn(`⚠️ ALERTA WATCHDOG: El proceso de carga inicial lleva más de 90s atascado en ${ultimoPorcentajeSaaS}%. Reiniciando proceso limpio con PM2...`);
             tiempoInicioLoadingSaaS = null;
             ultimoPorcentajeSaaS = null;
             process.exit(1);
