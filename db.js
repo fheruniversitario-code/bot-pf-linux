@@ -97,8 +97,8 @@ async function inicializarBD() {
         )
     `);
 
-    // Limpieza automática de registros LID temporales
-    await runQuery("DELETE FROM contactos WHERE telefono LIKE '1660%' OR jid LIKE '%@lid'");
+    // Limpieza de números temporales inválidos (1660)
+    await runQuery("DELETE FROM contactos WHERE telefono LIKE '1660%'");
 
     // 5. CRM de Cotizaciones y Pedidos de Venta
     await runQuery(`

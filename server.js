@@ -490,13 +490,16 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
         for (const ch of dataWA.chats) {
             if (!ch.jid) continue;
             const tReal = ch.timestamp > 0 ? ch.timestamp * 1000 : Date.now();
-            const nomLimpio = ch.nombre && ch.nombre !== 'Cliente' ? ch.nombre : (ch.telefono || 'Cliente');
+            let nomLimpio = ch.nombre;
+            if (!nomLimpio || nomLimpio === 'Cliente' || nomLimpio.toLowerCase().includes('usuario desconocido')) {
+                nomLimpio = (ch.telefono && ch.telefono !== 'Grupo' && !ch.telefono.startsWith('1660')) ? `Paciente (+${ch.telefono})` : 'Paciente';
+            }
 
             await runQuery(`
                 INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
                 VALUES (?, ?, ?, '', ?)
                 ON CONFLICT(jid) DO UPDATE SET
-                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre NOT LIKE '%desconocido%' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
                     ultimo_contacto = ?
             `, [ch.jid, ch.telefono, nomLimpio, tReal, tReal]);
 
@@ -1475,6 +1478,22 @@ async function procesarMensajeEntrante(msg) {
         }
     }
 
+// Función para limpiar nombres y evitar saludos con códigos alfanuméricos, fechas o IDs técnicos
+function limpiarNombreParaSaludo(nombre) {
+    if (!nombre) return '';
+    const n = nombre.trim();
+    if (
+        n.toLowerCase() === 'cliente' ||
+        n.toLowerCase().includes('usuario desconocido') ||
+        n.toLowerCase().startsWith('paciente') ||
+        /\d{2,}/.test(n) ||
+        n.length < 2
+    ) {
+        return '';
+    }
+    return n.split(' ')[0];
+}
+
     // Registrar o actualizar Contacto en la Base de Datos
     let nombreContacto = 'Cliente';
     let pushname = '';
@@ -1482,7 +1501,9 @@ async function procesarMensajeEntrante(msg) {
     try {
         const contact = await msg.getContact();
         if (contact) {
-            nombreContacto = contact.name || contact.pushname || 'Cliente';
+            let nRaw = contact.name || contact.pushname || 'Cliente';
+            if (nRaw.toLowerCase().includes('usuario desconocido')) nRaw = 'Cliente';
+            nombreContacto = nRaw;
             pushname = contact.pushname || '';
             if (contact.number && !contact.number.startsWith('1660') && contact.number.length >= 10) {
                 telefonoReal = contact.number;
@@ -1490,10 +1511,15 @@ async function procesarMensajeEntrante(msg) {
         }
     } catch (e) {}
 
-    // Si el contacto ya existía con un número limpio, conservarlo
-    const contactoPrevio = await getQuery("SELECT telefono FROM contactos WHERE jid = ?", [remitente]);
-    if (contactoPrevio && contactoPrevio.telefono && !contactoPrevio.telefono.startsWith('1660') && telefonoReal.startsWith('1660')) {
-        telefonoReal = contactoPrevio.telefono;
+    // Si el contacto ya existía con un nombre editado o número limpio, conservarlo
+    const contactoPrevio = await getQuery("SELECT nombre, telefono FROM contactos WHERE jid = ?", [remitente]);
+    if (contactoPrevio) {
+        if (contactoPrevio.telefono && !contactoPrevio.telefono.startsWith('1660') && telefonoReal.startsWith('1660')) {
+            telefonoReal = contactoPrevio.telefono;
+        }
+        if (contactoPrevio.nombre && contactoPrevio.nombre !== 'Cliente' && !contactoPrevio.nombre.toLowerCase().includes('usuario desconocido') && !contactoPrevio.nombre.startsWith('Paciente (+')) {
+            nombreContacto = contactoPrevio.nombre;
+        }
     }
 
     await runQuery(
@@ -1930,29 +1956,65 @@ async function procesarMensajeEntrante(msg) {
 
             const sent = await client.sendMessage(remitente, msjRegistro);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+            await runQuery(
+                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 1, ?)",
+                [remitente, 'bot', 'Asistente IA', msjRegistro, Date.now()]
+            );
+            io.emit('nuevo_mensaje', {
+                chat_id: remitente,
+                emisor: 'bot',
+                emisor_nombre: 'Asistente IA',
+                cuerpo: msjRegistro,
+                tipo: 'chat',
+                es_mio: 1,
+                es_ia: 1,
+                timestamp: Date.now()
+            });
+
             return;
         }
 
-        // Si ya está registrado con su nombre:
+        // Si ya está registrado con su nombre (evitar códigos alfanuméricos como 211223DERR):
+        const nomSaludo = limpiarNombreParaSaludo(nombreContacto);
+        const saludoPersonal = nomSaludo ? `Hola, *${nomSaludo}*.` : 'Hola, un gusto saludarte.';
+        const saludoEntendido = nomSaludo ? `Entendido, *${nomSaludo}*.` : 'Entendido.';
+
         let msjTransferido = '';
         if (estadoHorario.enReceso) {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *AVISO DE RECESO / VACACIONES*\n\n` +
-                `Hola, *${nombreContacto}*. Por el momento nuestro personal de ${nombreNegocio} se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
+                `${saludoPersonal} Por el momento nuestro personal de ${nombreNegocio} se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
                 `🗓️ Tu solicitud ha quedado registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder todas tus preguntas sobre métodos y requisitos._`;
         } else if (!estadoHorario.enHorario) {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *FUERA DE HORARIO DE ATENCIÓN PERSONALIZADA*\n\n` +
-                `Hola, *${nombreContacto}*. Por el momento nos encontramos fuera de nuestro horario de atención presencial.\n\n` +
+                `${saludoPersonal} Por el momento nos encontramos fuera de nuestro horario de atención presencial.\n\n` +
                 `🕒 Tu solicitud ha quedado registrada. Nuestro personal revisará tu chat y te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder cualquier consulta sobre métodos o requisitos._`;
         } else {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ Entendido, *${nombreContacto}*. He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
                 `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas hacer más preguntas o consultar cualquier otro tema._`;
         }
 
         const sent = await client.sendMessage(remitente, msjTransferido);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+        // Guardar respuesta del bot en SQLite y emitir al panel en tiempo real
+        await runQuery(
+            "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 1, ?)",
+            [remitente, 'bot', 'Asistente IA', msjTransferido, Date.now()]
+        );
+        io.emit('nuevo_mensaje', {
+            chat_id: remitente,
+            emisor: 'bot',
+            emisor_nombre: 'Asistente IA',
+            cuerpo: msjTransferido,
+            tipo: 'chat',
+            es_mio: 1,
+            es_ia: 1,
+            timestamp: Date.now()
+        });
 
         // Si fue fuera de horario o en receso, registrar en solicitudes pendientes de asesor
         if (!estadoHorario.enHorario || estadoHorario.enReceso) {
@@ -2216,13 +2278,18 @@ async function obtenerContenidoGoogleSheets(url) {
 - Puedes invitar al usuario a escribir 'asesor' si desea atención humana o agendar su cita presencial.`;
         }
 
+        const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
+        const instruccionNombre = nomLimpioIA
+            ? `- Nombre del cliente/paciente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
+            : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
+
         const systemInstruction = `
 ${configPrompt}
 ${avisoAusencia}
 ${reglaHorarioIA}
 
 CLIENTE / PACIENTE ACTUAL:
-- Nombre: ${nombreContacto} (Usa su nombre con naturalidad y calidez cuando sea oportuno).
+${instruccionNombre}
 - Icono distintivo: ${iconoAsistente}
 
 CATÁLOGO DE PRODUCTOS / SERVICIOS / PRECIOS:
