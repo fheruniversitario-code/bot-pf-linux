@@ -13,22 +13,106 @@
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        /* ==================================================================== */
+        /* MODO CLARO SUAVE, ELEGANTE Y CONFORTABLE (SOFT EYE-RESTING LIGHT THEME) */
+        /* ==================================================================== */
+        body.light-theme { background-color: #f1f5f9 !important; color: #1e293b !important; }
+        body.light-theme aside { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 1px 0 4px rgba(0,0,0,0.03) !important; }
+        body.light-theme header { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important; }
+        body.light-theme main { background-color: #f1f5f9 !important; }
+        
+        /* Tarjetas y Contenedores Principales */
+        body.light-theme .bg-slate-900, 
+        body.light-theme .bg-slate-900\/90, 
+        body.light-theme .bg-slate-900\/80, 
+        body.light-theme .bg-slate-900\/50 { 
+            background-color: #ffffff !important; 
+            border-color: #e2e8f0 !important; 
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important; 
+        }
 
-        /* Light Theme Styles */
-        body.light-theme { background-color: #f8fafc !important; color: #0f172a !important; }
-        body.light-theme aside { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
-        body.light-theme header { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
-        body.light-theme main { background-color: #f8fafc !important; }
-        body.light-theme .bg-slate-900, body.light-theme .bg-slate-900\/90, body.light-theme .bg-slate-900\/80, body.light-theme .bg-slate-900\/50 { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); }
-        body.light-theme .bg-slate-950, body.light-theme .bg-slate-950\/40, body.light-theme .bg-slate-950\/60, body.light-theme .bg-slate-950\/80 { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
-        body.light-theme .bg-slate-800, body.light-theme .bg-slate-800\/60, body.light-theme .bg-slate-800\/80 { background-color: #f1f5f9 !important; border-color: #e2e8f0 !important; color: #334155 !important; }
-        body.light-theme input, body.light-theme textarea, body.light-theme select { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
-        body.light-theme h1, body.light-theme h2, body.light-theme h3, body.light-theme h4, body.light-theme .text-white { color: #0f172a !important; }
+        /* Sub-paneles, Fondos Internos y Listas */
+        body.light-theme .bg-slate-950, 
+        body.light-theme .bg-slate-950\/40, 
+        body.light-theme .bg-slate-950\/60, 
+        body.light-theme .bg-slate-950\/80 { 
+            background-color: #f8fafc !important; 
+            border-color: #e2e8f0 !important; 
+            color: #1e293b !important; 
+        }
+
+        /* Botones neutros e items secundarios */
+        body.light-theme .bg-slate-800, 
+        body.light-theme .bg-slate-800\/60, 
+        body.light-theme .bg-slate-800\/80 { 
+            background-color: #f1f5f9 !important; 
+            border-color: #cbd5e1 !important; 
+            color: #334155 !important; 
+        }
+
+        /* Inputs, Textareas y Selectores */
+        body.light-theme input, 
+        body.light-theme textarea, 
+        body.light-theme select { 
+            background-color: #ffffff !important; 
+            border-color: #cbd5e1 !important; 
+            color: #0f172a !important; 
+        }
+        body.light-theme input::placeholder, 
+        body.light-theme textarea::placeholder { 
+            color: #94a3b8 !important; 
+        }
+
+        /* Tipografías y Títulos con alto contraste y cero fatiga visual */
+        body.light-theme h1, 
+        body.light-theme h2, 
+        body.light-theme h3, 
+        body.light-theme h4, 
+        body.light-theme .text-white { 
+            color: #0f172a !important; 
+        }
         body.light-theme .text-slate-400 { color: #64748b !important; }
         body.light-theme .text-slate-300 { color: #334155 !important; }
         body.light-theme .text-slate-200 { color: #1e293b !important; }
-        body.light-theme .border-slate-800, body.light-theme .border-slate-800\/80, body.light-theme .border-slate-800\/60 { border-color: #e2e8f0 !important; }
-        body.light-theme .bg-slate-950\/60 { background-color: #f8fafc !important; }
+        body.light-theme .text-slate-500 { color: #64748b !important; }
+        body.light-theme .border-slate-800, 
+        body.light-theme .border-slate-800\/80, 
+        body.light-theme .border-slate-800\/60 { 
+            border-color: #e2e8f0 !important; 
+        }
+
+        /* Burbujas del Chat en Vivo Optimizadas */
+        body.light-theme #chat-mensajes-stream { 
+            background-color: #f8fafc !important; 
+        }
+        /* Mensajes de IA (Verde Menta Suave y Letras Oscuras Nítidas) */
+        body.light-theme .bg-emerald-950\/40 { 
+            background-color: #ecfdf5 !important; 
+            border-color: #a7f3d0 !important; 
+            color: #064e3b !important; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        }
+        body.light-theme .bg-emerald-950\/40 .text-emerald-100 { color: #064e3b !important; }
+        body.light-theme .bg-emerald-950\/40 .text-slate-400 { color: #047857 !important; }
+        body.light-theme .bg-emerald-950\/40 .text-emerald-400 { color: #059669 !important; }
+
+        /* Mensajes del Cliente / Paciente (Blanco Puro con Borde Definido) */
+        body.light-theme .bg-slate-800.text-slate-100 { 
+            background-color: #ffffff !important; 
+            border-color: #e2e8f0 !important; 
+            color: #0f172a !important; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        }
+
+        /* Sidebar Navegación Items */
+        body.light-theme .nav-btn:hover {
+            background-color: #f1f5f9 !important;
+            color: #4f46e5 !important;
+        }
+        body.light-theme .nav-btn.active {
+            background-color: #eef2ff !important;
+            color: #4f46e5 !important;
+        }
     </style>
 </head>
 <body id="app-body" class="h-full bg-slate-950 text-slate-100 flex overflow-hidden font-sans">
