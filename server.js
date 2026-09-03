@@ -907,15 +907,15 @@ async function procesarMensajeEntrante(msg) {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false });
-                const sent = await msg.reply("✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia. El bot vuelve a responder a todos los clientes.");
+                const sent = await client.sendMessage(remitente, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia. El bot vuelve a responder a todos los clientes.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
 
-            if (textoLower === '!probar on' || textoLower === '!prueba on' || textoLower === '!modo prueba on') {
+            if (textoLower === '!probar' || textoLower === '!prueba' || textoLower === '!probar on' || textoLower === '!prueba on' || textoLower === '!modo prueba on' || textoLower === '!modo prueba') {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
                 io.emit('estado_control_actualizado', { modoPruebaAdmins: true });
-                const sent = await msg.reply("🧪 *MODO PRUEBA ACTIVADO*\n\nEl bot te responderá a partir de ahora como si fueras un cliente normal para que pongas a prueba sus respuestas de IA, infografías y catálogo.\n\n_Para desactivar y que vuelva a guardar silencio contigo, envía `!probar off`._");
+                const sent = await client.sendMessage(remitente, "🧪 *MODO PRUEBA ACTIVADO*\n\nEl bot te responderá a partir de ahora como si fueras un cliente normal para que pongas a prueba sus respuestas de IA, infografías y catálogo.\n\n_Para desactivar y que vuelva a guardar silencio contigo, envía `!probar off` o `!prueba off`._");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -923,7 +923,7 @@ async function procesarMensajeEntrante(msg) {
             if (textoLower === '!probar off' || textoLower === '!prueba off' || textoLower === '!modo prueba off') {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 io.emit('estado_control_actualizado', { modoPruebaAdmins: false });
-                const sent = await msg.reply("🛡️ *MODO PRUEBA DESACTIVADO*\n\nEl bot ya no te responderá con mensajes de IA a tus chats personales. Solo obedecerá tus comandos con signo de exclamación `!`.");
+                const sent = await client.sendMessage(remitente, "🛡️ *MODO PRUEBA DESACTIVADO*\n\nEl bot ya no te responderá con mensajes de IA a tus chats personales. Solo obedecerá tus comandos con signo de exclamación `!`.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -935,13 +935,13 @@ async function procesarMensajeEntrante(msg) {
                     botPausadoGlobal = true;
                     await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
                     io.emit('estado_control_actualizado', { botPausadoGlobal: true });
-                    const sent = await msg.reply("⏸️ *BOT PAUSADO GLOBALMENTE.*\n\nNo responderá a ningún cliente hasta enviar `!reactivar` o reanudar desde el Panel.");
+                    const sent = await client.sendMessage(remitente, "⏸️ *BOT PAUSADO GLOBALMENTE.*\n\nNo responderá a ningún cliente hasta enviar `!reactivar` o reanudar desde el Panel.");
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                     return;
                 } else {
                     const jidTarget = numRaw.length === 10 ? `521${numRaw}@c.us` : `${numRaw}@c.us`;
                     chatsPausados.set(jidTarget, Date.now());
-                    const sent = await msg.reply(`⏸️ Chat +${numRaw} pausado temporalmente.`);
+                    const sent = await client.sendMessage(remitente, `⏸️ Chat +${numRaw} pausado temporalmente.`);
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                     return;
                 }
@@ -953,7 +953,7 @@ async function procesarMensajeEntrante(msg) {
                 if (accion === 'off' || accion === 'desactivar') {
                     await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                     io.emit('estado_control_actualizado', { ausenciaActiva: false });
-                    const sent = await msg.reply("🏖️ *MODO AUSENCIA / VACACIONES DESACTIVADO.* El bot reanuda la atención normal.");
+                    const sent = await client.sendMessage(remitente, "🏖️ *MODO AUSENCIA / VACACIONES DESACTIVADO.* El bot reanuda la atención normal.");
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                     return;
                 }
@@ -961,7 +961,7 @@ async function procesarMensajeEntrante(msg) {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [msj]);
                 io.emit('estado_control_actualizado', { ausenciaActiva: true, mensaje: msj });
-                const sent = await msg.reply(`🌴 *MODO AUSENCIA ACTIVADO:*\n\n📌 Mensaje al cliente: "${msj}"\n\n_Para desactivar envía \`!reactivar\` o \`!vacaciones off\`._`);
+                const sent = await client.sendMessage(remitente, `🌴 *MODO AUSENCIA ACTIVADO:*\n\n📌 Mensaje al cliente: "${msj}"\n\n_Para desactivar envía \`!reactivar\` o \`!vacaciones off\`._`);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -972,7 +972,7 @@ async function procesarMensajeEntrante(msg) {
                 if (num) {
                     const jidTarget = num.length === 10 ? `521${num}@c.us` : `${num}@c.us`;
                     await runQuery("INSERT INTO contactos (jid, telefono, nombre, es_ignorado, ultimo_contacto) VALUES (?, ?, 'Contacto Excluido', 1, ?) ON CONFLICT(jid) DO UPDATE SET es_ignorado = 1", [jidTarget, num, Date.now()]);
-                    const sent = await msg.reply(`🚫 *Contacto +${num} agregado a la lista de ignorados.*`);
+                    const sent = await client.sendMessage(remitente, `🚫 *Contacto +${num} agregado a la lista de ignorados.*`);
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 }
                 return;
@@ -984,7 +984,7 @@ async function procesarMensajeEntrante(msg) {
                 if (num) {
                     const jidTarget = num.length === 10 ? `521${num}@c.us` : `${num}@c.us`;
                     await runQuery("UPDATE contactos SET es_ignorado = 0 WHERE jid = ? OR telefono = ?", [jidTarget, num]);
-                    const sent = await msg.reply(`✅ *Contacto +${num} removido de ignorados.* El bot volverá a atenderlo.`);
+                    const sent = await client.sendMessage(remitente, `✅ *Contacto +${num} removido de ignorados.* El bot volverá a atenderlo.`);
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 }
                 return;
@@ -999,19 +999,19 @@ async function procesarMensajeEntrante(msg) {
                     rep += `${i + 1}️⃣ 👤 *${nom}*\n   📱 +${telLimpio}\n`;
                 });
                 rep += `\n_💡 Puedes abrir sus chats en WhatsApp Web para dar seguimiento personal._`;
-                const sent = await msg.reply(rep);
+                const sent = await client.sendMessage(remitente, rep);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
 
             if (textoLower === '!ayuda' || textoLower === '!help') {
-                const sent = await msg.reply(
+                const sent = await client.sendMessage(remitente, 
                     "🤖 *COMANDOS DISPONIBLES DE CONTROL OMNIBOT:*\n\n" +
                     "▶️ `!reactivar` -> Reactiva el bot, quita pausas y desactiva vacaciones.\n" +
                     "⏸️ `!pausa` -> Pausa globalmente el bot de forma indefinida.\n" +
                     "⏸️ `!pausa 4111234567` -> Pausa a un cliente específico.\n" +
-                    "🧪 `!probar on` -> Activa Modo Prueba (el bot te responde como cliente).\n" +
-                    "🛡️ `!probar off` -> Desactiva Modo Prueba (el bot guarda silencio contigo).\n" +
+                    "🧪 `!probar` (o `!prueba`) -> Activa Modo Prueba (el bot te responde como cliente).\n" +
+                    "🛡️ `!probar off` (o `!prueba off`) -> Desactiva Modo Prueba (el bot guarda silencio contigo).\n" +
                     "🌴 `!vacaciones [mensaje]` -> Activa modo ausencia.\n" +
                     "🌴 `!vacaciones off` -> Desactiva modo ausencia.\n" +
                     "🚫 `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
@@ -1318,18 +1318,15 @@ INSTRUCCIONES CLAVE:
             }
         }
 
-        // Cascada completa de modelos dinámicos a prueba de futuro
-        const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-flash-latest';
+        // Cascada completa de modelos dinámicos válidos
+        const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-1.5-flash';
         const listaModelos = Array.from(new Set([
             modeloGuardado,
-            'gemini-flash-latest',
-            'gemini-3.5-flash',
-            'gemini-3.6-flash',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
             'gemini-1.5-flash',
-            'gemini-1.5-pro'
-        ]));
+            'gemini-2.0-flash',
+            'gemini-1.5-pro',
+            'gemini-2.5-flash'
+        ])).filter(m => m && !m.includes('3.5') && !m.includes('3.6') && !m.includes('latest'));
 
         let respuestaIA = null;
         for (const modName of listaModelos) {
@@ -1338,17 +1335,21 @@ INSTRUCCIONES CLAVE:
                 const result = await model.generateContent(promptContenido);
                 respuestaIA = result.response.text();
                 if (respuestaIA) break;
-            } catch (errModel) {}
+            } catch (errModel) {
+                // Probar siguiente modelo de la lista
+            }
         }
 
         if (respuestaIA) {
             // Simulación de escritura humana anti-ban
-            const chat = await msg.getChat();
-            await chat.sendStateTyping();
-            const delayEscritura = Math.min(Math.max(respuestaIA.length * 20, 1500), 4000);
-            await delay(delayEscritura);
+            try {
+                const chat = await msg.getChat();
+                await chat.sendStateTyping();
+                const delayEscritura = Math.min(Math.max(respuestaIA.length * 20, 1500), 3500);
+                await delay(delayEscritura);
+            } catch (eTyping) {}
 
-            const sent = await msg.reply(respuestaIA);
+            const sent = await client.sendMessage(remitente, respuestaIA);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
             // Guardar respuesta de IA en base de datos

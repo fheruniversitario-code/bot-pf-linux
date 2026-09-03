@@ -452,6 +452,32 @@ async function cargarLinktreeConfig() {
     }
 }
 
+async function subirArchivoLogo(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+        const res = await fetch('/api/configuracion/logo', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('linktree-logo-input').value = data.logo_url;
+            alert("✅ Logo subido y guardado con éxito.");
+            cargarLinktreeConfig();
+        } else {
+            alert("Error al subir logo: " + (data.error || 'Error desconocido'));
+        }
+    } catch (e) {
+        alert("Error al subir logo: " + e.message);
+    }
+    input.value = '';
+}
+
 async function guardarConfigLinktree() {
     try {
         await apiFetch('/api/configuracion', {
