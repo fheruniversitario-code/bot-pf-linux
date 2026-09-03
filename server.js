@@ -412,15 +412,29 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
             return res.json({ success: true, message: 'No se encontraron etiquetas creadas en WhatsApp Business.', total_etiquetas: 0, total_asignaciones: 0 });
         }
 
+        // Limpiar etiquetas por defecto iniciales que no tengan contactos asociados para dar prioridad a las de WhatsApp
+        try {
+            const nombresWA = labelsWA.map(l => l.name.toLowerCase().trim());
+            const etiquetasLocales = await allQuery("SELECT id, nombre FROM etiquetas");
+            for (const etq of etiquetasLocales) {
+                if (!nombresWA.includes(etq.nombre.toLowerCase().trim())) {
+                    const tieneContactos = await getQuery("SELECT id FROM contactos_etiquetas WHERE etiqueta_id = ? LIMIT 1", [etq.id]);
+                    if (!tieneContactos) {
+                        await runQuery("DELETE FROM etiquetas WHERE id = ?", [etq.id]);
+                    }
+                }
+            }
+        } catch(eClean) {}
+
         let importadas = 0;
         let asignacionesTotal = 0;
 
         for (const l of labelsWA) {
             const colorHex = l.hexColor || '#10b981';
-            let etiquetaBD = await getQuery("SELECT id FROM etiquetas WHERE nombre = ?", [l.name]);
+            let etiquetaBD = await getQuery("SELECT id FROM etiquetas WHERE LOWER(nombre) = LOWER(?)", [l.name.trim()]);
 
             if (!etiquetaBD) {
-                const r = await runQuery("INSERT INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [l.name, colorHex, Date.now()]);
+                const r = await runQuery("INSERT INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [l.name.trim(), colorHex, Date.now()]);
                 etiquetaBD = { id: r.id };
                 importadas++;
             } else {
@@ -434,18 +448,61 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                     for (const ch of chatsConEtiqueta) {
                         const jidChat = ch.id._serialized;
                         const userTel = ch.id.user;
-                        const nombreChat = ch.name || ch.pushname || 'Cliente';
 
+                        // Obtener nombre real del contacto
+                        let nombreChat = ch.name || ch.formattedTitle;
+                        let pushnameChat = '';
+                        try {
+                            const cInfo = await ch.getContact();
+                            if (cInfo) {
+                                nombreChat = cInfo.name || cInfo.pushname || nombreChat || userTel;
+                                pushnameChat = cInfo.pushname || '';
+                            }
+                        } catch(eC) {}
+
+                        if (!nombreChat || nombreChat === 'Cliente') {
+                            nombreChat = ch.formattedTitle || userTel;
+                        }
+
+                        // Obtener fecha real de última interacción
+                        const tSeg = ch.lastMessage?.timestamp || ch.timestamp || 0;
+                        const tReal = tSeg > 0 ? tSeg * 1000 : Date.now();
+
+                        // Actualizar / Insertar contacto con su fecha y nombre retroactivos
                         await runQuery(`
                             INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
                             VALUES (?, ?, ?, ?, ?)
-                            ON CONFLICT(jid) DO NOTHING
-                        `, [jidChat, userTel, nombreChat, ch.pushname || '', Date.now()]);
+                            ON CONFLICT(jid) DO UPDATE SET
+                                nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                                pushname = CASE WHEN excluded.pushname != '' THEN excluded.pushname ELSE contactos.pushname END,
+                                ultimo_contacto = ?
+                        `, [jidChat, userTel, nombreChat, pushnameChat, tReal, tReal]);
 
+                        // Asignar etiqueta en la base de datos
                         const yaAsignada = await getQuery("SELECT id FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [jidChat, etiquetaBD.id]);
                         if (!yaAsignada) {
-                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jidChat, etiquetaBD.id, Date.now()]);
+                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jidChat, etiquetaBD.id, tReal]);
                             asignacionesTotal++;
+                        }
+
+                        // Guardar último mensaje para que no aparezca "Sin mensajes"
+                        let ultimoTxt = ch.lastMessage?.body;
+                        if (!ultimoTxt) {
+                            try {
+                                const ultMsgs = await ch.fetchMessages({ limit: 1 });
+                                if (ultMsgs && ultMsgs.length > 0) ultimoTxt = ultMsgs[0].body;
+                            } catch(eM) {}
+                        }
+
+                        if (ultimoTxt) {
+                            const yaMsg = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [jidChat]);
+                            if (!yaMsg) {
+                                const esMio = ch.lastMessage?.fromMe ? 1 : 0;
+                                await runQuery(`
+                                    INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
+                                    VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
+                                `, [jidChat, ch.lastMessage?.from || jidChat, esMio ? 'Asesor' : nombreChat, ultimoTxt, esMio, tReal]);
+                            }
                         }
                     }
                 }
@@ -454,9 +511,51 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
             }
         }
 
+        // Actualizar también los primeros 30 chats recientes generales para que muestren nombres y fechas reales
+        try {
+            const chatsGenerales = await client.getChats();
+            for (const ch of (chatsGenerales || []).slice(0, 30)) {
+                if (ch.isGroup) continue;
+                const jid = ch.id._serialized;
+                const userTel = ch.id.user;
+                let nom = ch.name || ch.formattedTitle || userTel;
+                let push = '';
+                try {
+                    const ci = await ch.getContact();
+                    if (ci) {
+                        nom = ci.name || ci.pushname || nom;
+                        push = ci.pushname || '';
+                    }
+                } catch(e) {}
+
+                const tSeg = ch.lastMessage?.timestamp || ch.timestamp || 0;
+                const tReal = tSeg > 0 ? tSeg * 1000 : Date.now();
+
+                await runQuery(`
+                    INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(jid) DO UPDATE SET
+                        nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                        pushname = CASE WHEN excluded.pushname != '' THEN excluded.pushname ELSE contactos.pushname END,
+                        ultimo_contacto = ?
+                `, [jid, userTel, nom, push, tReal, tReal]);
+
+                if (ch.lastMessage?.body) {
+                    const ya = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [jid]);
+                    if (!ya) {
+                        const esMio = ch.lastMessage.fromMe ? 1 : 0;
+                        await runQuery(`
+                            INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
+                            VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
+                        `, [jid, ch.lastMessage.from || jid, esMio ? 'Asesor' : nom, ch.lastMessage.body, esMio, tReal]);
+                    }
+                }
+            }
+        } catch(eGen) {}
+
         res.json({
             success: true,
-            message: `¡Sincronización completada! Se detectaron ${labelsWA.length} etiquetas en WhatsApp Business y se importaron ${asignacionesTotal} asignaciones de clientes.`,
+            message: `¡Sincronización completada! Se detectaron ${labelsWA.length} etiquetas en WhatsApp Business y se importaron ${asignacionesTotal} asignaciones de clientes con sus nombres y fechas reales.`,
             total_etiquetas: labelsWA.length,
             total_asignaciones: asignacionesTotal
         });
@@ -620,12 +719,56 @@ app.post('/api/seguimientos/enviar', autenticarToken, async (req, res) => {
     }
 });
 
-// Mensajes de un Chat específico
+// Mensajes de un Chat específico (con carga histórica desde WhatsApp si está vacía)
 app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) => {
     try {
         const { jid } = req.params;
-        const mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY id ASC LIMIT 100", [jid]);
-        const contacto = await getQuery("SELECT * FROM contactos WHERE jid = ?", [jid]);
+        let mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY id ASC LIMIT 100", [jid]);
+        let contacto = await getQuery("SELECT * FROM contactos WHERE jid = ?", [jid]);
+
+        // Si la base local no tiene mensajes o tiene menos de 2, traemos los mensajes reales históricos de WhatsApp
+        if (mensajes.length <= 1 && client && wsClienteConectado) {
+            try {
+                const waChat = await client.getChatById(jid);
+                if (waChat) {
+                    const rawMsgs = await waChat.fetchMessages({ limit: 40 });
+                    if (rawMsgs && rawMsgs.length > 0) {
+                        for (const m of rawMsgs) {
+                            const esMio = m.fromMe ? 1 : 0;
+                            const emisorNombre = esMio ? 'Asesor' : (waChat.name || waChat.formattedTitle || 'Cliente');
+                            const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
+                            const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : '💬 (Mensaje)');
+
+                            // Evitar duplicar
+                            const existe = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? AND timestamp = ?", [jid, timestampMs]);
+                            if (!existe) {
+                                await runQuery(`
+                                    INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
+                                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                                `, [jid, m.from, emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
+                            }
+                        }
+                        mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY id ASC LIMIT 100", [jid]);
+
+                        // Actualizar nombre y último contacto si aún decía 'Cliente'
+                        if (contacto && (contacto.nombre === 'Cliente' || !contacto.nombre)) {
+                            let nomActualizado = waChat.name || waChat.formattedTitle;
+                            try {
+                                const cInfo = await waChat.getContact();
+                                if (cInfo) nomActualizado = cInfo.name || cInfo.pushname || nomActualizado;
+                            } catch(e) {}
+                            if (nomActualizado && nomActualizado !== 'Cliente') {
+                                await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nomActualizado, jid]);
+                                contacto.nombre = nomActualizado;
+                            }
+                        }
+                    }
+                }
+            } catch (errFetch) {
+                console.error("Error trayendo historial de WhatsApp:", errFetch.message);
+            }
+        }
+
         const pedido = await getQuery("SELECT * FROM pedidos_cotizaciones WHERE cliente_telefono LIKE ? ORDER BY id DESC LIMIT 1", [`%${jid.replace(/[^0-9]/g, '')}%`]);
         res.json({ contacto, mensajes, pedido });
     } catch (e) {
