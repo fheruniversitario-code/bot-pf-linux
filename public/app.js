@@ -10,6 +10,10 @@ if (!token && !window.location.pathname.includes('login.html')) {
 const socket = io();
 let chatActivoJid = null;
 let currentTab = 'ventas';
+let listaEtiquetasMem = [];
+let listaConversacionesMem = [];
+let filtroEtiquetaActiva = 'todas';
+let listaReglasSeguimientoMem = [];
 
 // ------------------------------------------------------------------------------
 // 1. HELPERS DE API CON AUTENTICACIÓN
@@ -128,7 +132,12 @@ function cambiarTab(tabId) {
     if (tabId === 'conversaciones') { cargarListaConversaciones(); cargarSolicitudesAsesor(); }
     if (tabId === 'citas') cargarAgendaCitas();
     if (tabId === 'linktree') cargarLinktreeConfig();
-    if (tabId === 'conocimiento' || tabId === 'configuracion') cargarConfiguracion();
+    if (tabId === 'conocimiento') cargarConfiguracion();
+    if (tabId === 'configuracion') { 
+        cargarConfiguracion(); 
+        cargarReglasSeguimiento(); 
+        cargarSeguimientosPendientes(); 
+    }
 }
 
 // ------------------------------------------------------------------------------
@@ -315,43 +324,143 @@ async function filtrarChatsPendientesAsesor() {
 }
 
 // ------------------------------------------------------------------------------
-// 4. TAB 2: CONVERSACIONES LIVE CHAT
+// 4. TAB 2: CONVERSACIONES LIVE CHAT CON ETIQUETAS Y TIEMPO RELATIVO
 // ------------------------------------------------------------------------------
+
+async function cargarEtiquetasFiltro() {
+    try {
+        listaEtiquetasMem = await apiFetch('/api/etiquetas');
+        const cont = document.getElementById('lista-filtros-etiquetas');
+        if (!cont) return;
+
+        cont.innerHTML = `
+            <button onclick="filtrarPorEtiqueta('todas')" class="etiqueta-filtro-btn px-2.5 py-1 rounded-lg text-white font-bold text-[11px] whitespace-nowrap transition ${filtroEtiquetaActiva === 'todas' ? 'bg-indigo-600 shadow-sm' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}" data-etiqueta="todas">
+                Todas (${listaConversacionesMem.length})
+            </button>
+        `;
+
+        listaEtiquetasMem.forEach(etq => {
+            const esActiva = filtroEtiquetaActiva === String(etq.id);
+            const btn = document.createElement('button');
+            btn.className = `etiqueta-filtro-btn px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition flex items-center space-x-1.5 ${esActiva ? 'text-white shadow-sm' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`;
+            if (esActiva) btn.style.backgroundColor = etq.color;
+            btn.onclick = () => filtrarPorEtiqueta(String(etq.id));
+            btn.innerHTML = `
+                <span class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${etq.color};"></span>
+                <span>${etq.nombre}</span>
+                <span class="text-[9px] opacity-75">(${etq.total_contactos || 0})</span>
+            `;
+            cont.appendChild(btn);
+        });
+
+        // Actualizar selectores de etiquetas en modales
+        const selectRegla = document.getElementById('select-regla-etiqueta');
+        if (selectRegla) {
+            selectRegla.innerHTML = '<option value="">(Aplica a Todos los Clientes)</option>';
+            listaEtiquetasMem.forEach(e => {
+                selectRegla.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+            });
+        }
+    } catch (e) {
+        console.error("Error al cargar etiquetas:", e);
+    }
+}
+
+function filtrarPorEtiqueta(etiquetaId) {
+    filtroEtiquetaActiva = etiquetaId;
+    cargarEtiquetasFiltro();
+    aplicarFiltrosConversaciones();
+}
+
+function aplicarFiltrosConversaciones() {
+    const busqueda = (document.getElementById('buscar-chat-input')?.value || '').toLowerCase().trim();
+    let filtrados = listaConversacionesMem;
+
+    if (filtroEtiquetaActiva !== 'todas') {
+        const idNum = parseInt(filtroEtiquetaActiva, 10);
+        filtrados = filtrados.filter(c => c.etiquetas_lista && c.etiquetas_lista.some(t => t.id === idNum));
+    }
+
+    if (busqueda) {
+        filtrados = filtrados.filter(c => 
+            (c.nombre && c.nombre.toLowerCase().includes(busqueda)) ||
+            (c.pushname && c.pushname.toLowerCase().includes(busqueda)) ||
+            (c.telefono && c.telefono.includes(busqueda)) ||
+            (c.ultimo_mensaje && c.ultimo_mensaje.toLowerCase().includes(busqueda))
+        );
+    }
+
+    renderizarListaConversaciones(filtrados);
+}
+
+// Búsqueda en tiempo real
+document.getElementById('buscar-chat-input')?.addEventListener('input', aplicarFiltrosConversaciones);
+
 async function cargarListaConversaciones() {
     try {
-        const chats = await apiFetch('/api/conversaciones');
-        const cont = document.getElementById('lista-chats-container');
-        cont.innerHTML = '';
-
-        if (!chats || chats.length === 0) {
-            cont.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">No hay chats recientes</div>`;
-            return;
-        }
-
-        chats.forEach(c => {
-            const div = document.createElement('div');
-            div.className = `p-4 cursor-pointer hover:bg-slate-800/60 transition flex items-center space-x-3 ${chatActivoJid === c.jid ? 'bg-slate-800/80 border-l-4 border-indigo-500' : ''}`;
-            div.onclick = () => seleccionarChat(c.jid, c.nombre || c.pushname || c.telefono);
-
-            const badgeIA = c.ultimo_fue_ia ? '<span class="text-[9px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded font-bold">IA</span>' : '';
-
-            div.innerHTML = `
-                <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 flex-shrink-0">
-                    ${(c.nombre || c.pushname || 'C').charAt(0).toUpperCase()}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-bold text-white text-xs truncate">${c.nombre || c.pushname || c.telefono}</h4>
-                        ${badgeIA}
-                    </div>
-                    <p class="text-[11px] text-slate-400 truncate mt-0.5">${c.ultimo_mensaje || 'Sin mensajes'}</p>
-                </div>
-            `;
-            cont.appendChild(div);
-        });
+        listaConversacionesMem = await apiFetch('/api/conversaciones');
+        await cargarEtiquetasFiltro();
+        aplicarFiltrosConversaciones();
     } catch (e) {
         console.error("Error cargando chats:", e);
     }
+}
+
+function renderizarListaConversaciones(chats) {
+    const cont = document.getElementById('lista-chats-container');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!chats || chats.length === 0) {
+        cont.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">No se encontraron conversaciones con este filtro</div>`;
+        return;
+    }
+
+    chats.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `p-3.5 cursor-pointer hover:bg-slate-800/60 transition flex items-start space-x-3 ${chatActivoJid === c.jid ? 'bg-slate-800/80 border-l-4 border-indigo-500' : ''}`;
+        div.onclick = () => seleccionarChat(c.jid, c.nombre || c.pushname || c.telefono);
+
+        const badgeIA = c.ultimo_fue_ia ? '<span class="text-[9px] px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 rounded font-bold">IA</span>' : '';
+        const tiempoRelativo = c.tiempo_relativo || 'reciente';
+
+        // Renderizar Badges de Etiquetas con Colores
+        let tagsHtml = '';
+        if (c.etiquetas_lista && c.etiquetas_lista.length > 0) {
+            tagsHtml = c.etiquetas_lista.map(t => `
+                <span class="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold text-white shadow-xs" style="background-color: ${t.color};">
+                    <span>${t.nombre}</span>
+                </span>
+            `).join('');
+        }
+
+        div.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-slate-200 flex-shrink-0 mt-0.5 shadow-sm">
+                ${(c.nombre || c.pushname || 'C').charAt(0).toUpperCase()}
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <h4 class="font-bold text-white text-xs truncate">${c.nombre || c.pushname || c.telefono}</h4>
+                    <div class="flex items-center space-x-1.5">
+                        ${badgeIA}
+                    </div>
+                </div>
+
+                <p class="text-[11px] text-slate-400 truncate mt-0.5">${c.ultimo_mensaje || 'Sin mensajes'}</p>
+
+                <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/40 text-[10px] text-slate-500">
+                    <span class="flex items-center space-x-1 text-slate-400 font-medium">
+                        <i class="fa-regular fa-clock text-[9px]"></i>
+                        <span>${tiempoRelativo}</span>
+                    </span>
+                    <div class="flex items-center space-x-1 overflow-hidden max-w-[50%]">
+                        ${tagsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        cont.appendChild(div);
+    });
 }
 
 async function seleccionarChat(jid, nombre) {
@@ -360,18 +469,41 @@ async function seleccionarChat(jid, nombre) {
     document.getElementById('chat-telefono-cliente').textContent = jid.replace('@c.us', '');
     document.getElementById('chat-avatar').textContent = (nombre || 'C').charAt(0).toUpperCase();
 
+    // Mostrar botón de gestionar etiquetas
+    const btnEtq = document.getElementById('btn-gestionar-etiquetas');
+    if (btnEtq) btnEtq.classList.remove('hidden');
+
     const stream = document.getElementById('chat-mensajes-stream');
     stream.innerHTML = '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Cargando mensajes...</div>';
 
     try {
-        const data = await apiFetch(`/api/conversaciones/${encodeURIComponent(jid)}/mensajes`);
+        const [data, tagsContacto] = await Promise.all([
+            apiFetch(`/api/conversaciones/${encodeURIComponent(jid)}/mensajes`),
+            apiFetch(`/api/contactos/${encodeURIComponent(jid)}/etiquetas`)
+        ]);
+
         stream.innerHTML = '';
+
+        // Renderizar Badges de Etiquetas en el Header del Chat
+        const badgesCont = document.getElementById('chat-etiquetas-badges');
+        if (badgesCont) {
+            badgesCont.innerHTML = (tagsContacto || []).map(t => `
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-xs flex items-center space-x-1" style="background-color: ${t.color};">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                    <span>${t.nombre}</span>
+                </span>
+            `).join('');
+        }
 
         // Botón de Ignorar / Reactivar Contacto en 1 Clic
         const accionesCont = document.getElementById('chat-acciones');
         if (accionesCont) {
             const esIgnorado = data.contacto && data.contacto.es_ignorado === 1;
             accionesCont.innerHTML = `
+                <button id="btn-gestionar-etiquetas" onclick="abrirModalEtiquetasContacto()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Asignar Etiquetas / Listas">
+                    <i class="fa-solid fa-tags text-indigo-400"></i>
+                    <span>Etiquetas</span>
+                </button>
                 <button onclick="toggleIgnorarChatActual('${jid}', ${esIgnorado ? 0 : 1})" class="px-3.5 py-1.5 ${esIgnorado ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} border rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm">
                     <i class="fa-solid ${esIgnorado ? 'fa-user-slash text-rose-400' : 'fa-user-check text-slate-400'}"></i>
                     <span>${esIgnorado ? 'Contacto Ignorado (Click para Reactivar)' : 'Ignorar Contacto (1 Clic)'}</span>
@@ -591,11 +723,17 @@ async function subirArchivoLogo(input) {
     formData.append('logo', file);
 
     try {
-        const res = await fetch('/api/configuracion/logo', {
+        const res = await fetch('/api/upload/logo', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
+
+        if (!res.ok) {
+            const errTxt = await res.text();
+            throw new Error(`Error en el servidor (${res.status}): ${errTxt.slice(0, 100)}`);
+        }
+
         const data = await res.json();
         if (data.success) {
             document.getElementById('linktree-logo-input').value = data.logo_url;
@@ -701,6 +839,9 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-ausencia-fecha')) document.getElementById('config-ausencia-fecha').value = config.ausencia_fecha_fin || '';
 
         if (document.getElementById('config-modo-prueba')) document.getElementById('config-modo-prueba').checked = (config.modo_prueba_admins === '1');
+        if (document.getElementById('config-notificar-admins-activa')) document.getElementById('config-notificar-admins-activa').checked = (config.notificar_admins_activa === '1');
+        if (document.getElementById('config-palabras-clave-alerta')) document.getElementById('config-palabras-clave-alerta').value = config.palabras_clave_alerta || '';
+        if (document.getElementById('config-destino-alerta-admins')) document.getElementById('config-destino-alerta-admins').value = config.destino_alerta_admins || 'ambos';
 
         cargarMenuNumerico(config.menu_numerico);
         cargarListaIgnorados();
@@ -956,7 +1097,10 @@ async function guardarIdentidadNegocio() {
                 numeros_admins: document.getElementById('config-numeros-admin').value,
                 grupo_control: document.getElementById('config-grupo-control').value,
                 tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value,
-                modo_prueba_admins: document.getElementById('config-modo-prueba').checked ? '1' : '0'
+                modo_prueba_admins: document.getElementById('config-modo-prueba').checked ? '1' : '0',
+                notificar_admins_activa: document.getElementById('config-notificar-admins-activa').checked ? '1' : '0',
+                palabras_clave_alerta: document.getElementById('config-palabras-clave-alerta').value,
+                destino_alerta_admins: document.getElementById('config-destino-alerta-admins').value
             })
         });
         alert("✅ Identidad del negocio y ajustes guardados con éxito.");
@@ -1561,6 +1705,276 @@ async function eliminarInfografiaImagen(nombre) {
         cargarInfografiasImagenes();
     } catch(e) {
         alert("Error al eliminar imagen: " + e.message);
+    }
+}
+
+// ==============================================================================
+// GESTIÓN DE ETIQUETAS DE CONTACTO (MODAL & CRM)
+// ==============================================================================
+async function abrirModalEtiquetasContacto() {
+    if (!chatActivoJid) return alert("Selecciona un chat primero");
+    const nomElem = document.getElementById('chat-nombre-cliente');
+    document.getElementById('modal-etiquetas-nombre-cliente').textContent = nomElem ? nomElem.textContent : '';
+
+    try {
+        const [todasEtiquetas, tagsContacto] = await Promise.all([
+            apiFetch('/api/etiquetas'),
+            apiFetch(`/api/contactos/${encodeURIComponent(chatActivoJid)}/etiquetas`)
+        ]);
+
+        const idsAsignados = new Set((tagsContacto || []).map(t => t.id));
+        const cont = document.getElementById('modal-etiquetas-lista-check');
+        if (!cont) return;
+
+        if (!todasEtiquetas || todasEtiquetas.length === 0) {
+            cont.innerHTML = '<p class="text-xs text-slate-500 py-2">No hay etiquetas creadas aún.</p>';
+        } else {
+            cont.innerHTML = todasEtiquetas.map(e => {
+                const checked = idsAsignados.has(e.id) ? 'checked' : '';
+                return `
+                    <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${e.color};"></span>
+                            <span class="font-bold text-xs text-white">${e.nombre}</span>
+                        </div>
+                        <input type="checkbox" onchange="toggleEtiquetaContacto(${e.id}, this.checked)" ${checked} class="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 focus:ring-indigo-500 cursor-pointer">
+                    </label>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('modal-etiquetas-contacto').classList.remove('hidden');
+    } catch (e) {
+        alert("Error al cargar etiquetas: " + e.message);
+    }
+}
+
+function cerrarModalEtiquetasContacto() {
+    document.getElementById('modal-etiquetas-contacto').classList.add('hidden');
+    if (chatActivoJid) {
+        seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
+    }
+    cargarListaConversaciones();
+}
+
+async function toggleEtiquetaContacto(etiquetaId, estaMarcado) {
+    if (!chatActivoJid) return;
+    try {
+        await apiFetch(`/api/contactos/${encodeURIComponent(chatActivoJid)}/etiquetas`, {
+            method: 'POST',
+            body: JSON.stringify({
+                etiqueta_id: etiquetaId,
+                accion: estaMarcado ? 'asignar' : 'quitar'
+            })
+        });
+    } catch (e) {
+        alert("Error al actualizar etiqueta: " + e.message);
+    }
+}
+
+// Modal Crear Nueva Etiqueta
+function abrirModalNuevaEtiqueta() {
+    document.getElementById('form-nueva-etiqueta').reset();
+    document.getElementById('input-etiqueta-id').value = '';
+    document.getElementById('input-etiqueta-color').value = '#10b981';
+    document.getElementById('modal-etiqueta-titulo').textContent = 'Nueva Lista / Etiqueta';
+    document.getElementById('modal-nueva-etiqueta').classList.remove('hidden');
+}
+
+function cerrarModalNuevaEtiqueta() {
+    document.getElementById('modal-nueva-etiqueta').classList.add('hidden');
+}
+
+async function guardarNuevaEtiqueta(e) {
+    e.preventDefault();
+    const id = document.getElementById('input-etiqueta-id').value;
+    const nombre = document.getElementById('input-etiqueta-nombre').value.trim();
+    const color = document.getElementById('input-etiqueta-color').value;
+
+    if (!nombre) return alert("Ingresa un nombre para la etiqueta");
+
+    try {
+        const url = id ? `/api/etiquetas/${id}` : '/api/etiquetas';
+        const method = id ? 'PUT' : 'POST';
+        await apiFetch(url, {
+            method,
+            body: JSON.stringify({ nombre, color })
+        });
+        cerrarModalNuevaEtiqueta();
+        await cargarEtiquetasFiltro();
+        await cargarListaConversaciones();
+        if (chatActivoJid) abrirModalEtiquetasContacto();
+    } catch (err) {
+        alert("Error al guardar etiqueta: " + err.message);
+    }
+}
+
+// ==============================================================================
+// MÓDULO UNIVERSAL DE SEGUIMIENTOS Y RECORDATORIOS PROGRAMADOS
+// ==============================================================================
+async function cargarReglasSeguimiento() {
+    const cont = document.getElementById('contenedor-reglas-seguimiento');
+    if (!cont) return;
+    try {
+        listaReglasSeguimientoMem = await apiFetch('/api/seguimientos/reglas');
+        if (!listaReglasSeguimientoMem || listaReglasSeguimientoMem.length === 0) {
+            cont.innerHTML = `<div class="p-6 bg-slate-950 border border-slate-800 rounded-2xl text-center text-xs text-slate-500 col-span-full">No hay reglas de seguimiento configuradas. Crea una con el botón "+ Nueva Regla de Seguimiento".</div>`;
+            return;
+        }
+
+        cont.innerHTML = listaReglasSeguimientoMem.map(r => `
+            <div class="p-4 bg-slate-950 border border-slate-800/80 rounded-2xl space-y-3 flex flex-col justify-between hover:border-slate-700 transition">
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-white text-xs">${r.nombre}</h4>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${r.activo === 1 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-500'}">
+                            ${r.activo === 1 ? 'Activa' : 'Inactiva'}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center space-x-2 text-[11px] text-slate-400">
+                        <span>Aplica a:</span>
+                        ${r.etiqueta_nombre 
+                            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold text-white" style="background-color: ${r.etiqueta_color || '#6366f1'};">${r.etiqueta_nombre}</span>` 
+                            : `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-semibold">Todos los clientes</span>`}
+                    </div>
+
+                    <p class="text-[11px] text-slate-400">
+                        ⏳ Enviar tras: <b class="text-amber-400">${r.dias_espera} días</b> • Hora diaria: <b class="text-indigo-400">${r.hora_envio || '10:30'}</b> • Modo: <b class="text-slate-200">${r.modo_envio === 'automatico' ? 'Automático' : 'Manual'}</b>
+                    </p>
+
+                    <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 italic line-clamp-2">
+                        "${r.mensaje_plantilla}"
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-900">
+                    <button onclick="abrirModalEditarReglaSeguimiento(${JSON.stringify(r).replace(/"/g, '&quot;')})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition" title="Editar">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i>Editar
+                    </button>
+                    <button onclick="eliminarReglaSeguimiento(${r.id})" class="px-3 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-semibold transition" title="Eliminar">
+                        <i class="fa-solid fa-trash mr-1"></i>Eliminar
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        cont.innerHTML = `<div class="text-xs text-rose-400 text-center py-2 col-span-full">Error al cargar reglas: ${e.message}</div>`;
+    }
+}
+
+async function cargarSeguimientosPendientes() {
+    const tbody = document.getElementById('tabla-seguimientos-pendientes');
+    if (!tbody) return;
+    try {
+        const pendientes = await apiFetch('/api/seguimientos/pendientes');
+        if (!pendientes || pendientes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500 text-xs">No hay contactos pendientes de seguimiento hoy. El sistema notificará cuando cumplan su periodo.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = pendientes.map(p => `
+            <tr class="hover:bg-slate-900/60 transition">
+                <td class="p-3">
+                    <b class="text-white block">${p.nombre}</b>
+                    <span class="text-[10px] text-slate-400 font-mono">${p.telefono || p.jid.replace('@c.us', '')}</span>
+                </td>
+                <td class="p-3 text-slate-300">${p.regla_nombre}</td>
+                <td class="p-3 font-semibold text-amber-400">${p.dias_transcurridos} días transcurridos</td>
+                <td class="p-3 text-[11px] text-slate-300 max-w-xs truncate" title="${p.mensaje_preparado}">
+                    ${p.mensaje_preparado}
+                </td>
+                <td class="p-3 text-right">
+                    <button onclick="enviarSeguimientoManual('${p.jid}', ${p.regla_id}, '${p.mensaje_preparado.replace(/'/g, "\\'")}')" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1.5 ml-auto">
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                        <span>Enviar Ahora</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-400 text-xs">Error: ${e.message}</td></tr>`;
+    }
+}
+
+async function enviarSeguimientoManual(jid, reglaId, mensaje) {
+    if (!confirm(`¿Deseas enviar el recordatorio de seguimiento a este contacto ahora?`)) return;
+    try {
+        const res = await apiFetch('/api/seguimientos/enviar', {
+            method: 'POST',
+            body: JSON.stringify({ jid, regla_id: reglaId, mensaje })
+        });
+        if (res.success) {
+            alert("✅ " + res.message);
+            cargarSeguimientosPendientes();
+            if (chatActivoJid === jid) seleccionarChat(jid, document.getElementById('chat-nombre-cliente').textContent);
+        }
+    } catch (e) {
+        alert("Error al enviar seguimiento: " + e.message);
+    }
+}
+
+function abrirModalNuevaReglaSeguimiento() {
+    document.getElementById('form-regla-seguimiento').reset();
+    document.getElementById('input-regla-id').value = '';
+    document.getElementById('input-regla-dias').value = 90;
+    document.getElementById('input-regla-hora').value = '10:30';
+    document.getElementById('modal-regla-titulo').textContent = 'Nueva Regla de Seguimiento Programado';
+    cargarEtiquetasFiltro();
+    document.getElementById('modal-regla-seguimiento').classList.remove('hidden');
+}
+
+function abrirModalEditarReglaSeguimiento(r) {
+    document.getElementById('input-regla-id').value = r.id;
+    document.getElementById('input-regla-nombre').value = r.nombre;
+    document.getElementById('select-regla-etiqueta').value = r.etiqueta_id || '';
+    document.getElementById('input-regla-dias').value = r.dias_espera;
+    document.getElementById('input-regla-hora').value = r.hora_envio || '10:30';
+    document.getElementById('select-regla-modo').value = r.modo_envio || 'automatico';
+    document.getElementById('input-regla-plantilla').value = r.mensaje_plantilla;
+    document.getElementById('modal-regla-titulo').textContent = 'Editar Regla de Seguimiento';
+    document.getElementById('modal-regla-seguimiento').classList.remove('hidden');
+}
+
+function cerrarModalReglaSeguimiento() {
+    document.getElementById('modal-regla-seguimiento').classList.add('hidden');
+}
+
+async function guardarReglaSeguimiento(e) {
+    e.preventDefault();
+    const id = document.getElementById('input-regla-id').value;
+    const nombre = document.getElementById('input-regla-nombre').value.trim();
+    const etiqueta_id = document.getElementById('select-regla-etiqueta').value || null;
+    const dias_espera = parseInt(document.getElementById('input-regla-dias').value, 10);
+    const hora_envio = document.getElementById('input-regla-hora').value;
+    const modo_envio = document.getElementById('select-regla-modo').value;
+    const mensaje_plantilla = document.getElementById('input-regla-plantilla').value.trim();
+
+    if (!nombre || !mensaje_plantilla) return alert("Completa los campos obligatorios");
+
+    try {
+        const url = id ? `/api/seguimientos/reglas/${id}` : '/api/seguimientos/reglas';
+        const method = id ? 'PUT' : 'POST';
+        await apiFetch(url, {
+            method,
+            body: JSON.stringify({ nombre, etiqueta_id, dias_espera, hora_envio, modo_envio, mensaje_plantilla })
+        });
+        cerrarModalReglaSeguimiento();
+        cargarReglasSeguimiento();
+        cargarSeguimientosPendientes();
+    } catch (err) {
+        alert("Error al guardar regla: " + err.message);
+    }
+}
+
+async function eliminarReglaSeguimiento(id) {
+    if (!confirm("¿Deseas eliminar esta regla de seguimiento?")) return;
+    try {
+        await apiFetch(`/api/seguimientos/reglas/${id}`, { method: 'DELETE' });
+        cargarReglasSeguimiento();
+        cargarSeguimientosPendientes();
+    } catch (err) {
+        alert("Error al eliminar regla: " + err.message);
     }
 }
 

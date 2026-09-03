@@ -413,11 +413,28 @@
                                 <span><span id="count-pendientes-asesor">0</span> pendientes</span>
                             </span>
                         </div>
+
+                        <!-- Filtros por Etiqueta / Listas de WhatsApp -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtrar por Lista / Etiqueta:</span>
+                                <button type="button" onclick="abrirModalNuevaEtiqueta()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1 transition">
+                                    <i class="fa-solid fa-plus text-[9px]"></i>
+                                    <span>Nueva Lista</span>
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs scrollbar-none" id="lista-filtros-etiquetas">
+                                <button onclick="filtrarPorEtiqueta('todas')" class="etiqueta-filtro-btn px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px] whitespace-nowrap active shadow-sm" data-etiqueta="todas">
+                                    Todas
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                             </span>
-                            <input type="text" id="buscar-chat-input" placeholder="Buscar cliente..." class="w-full pl-8 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <input type="text" id="buscar-chat-input" placeholder="Buscar cliente por nombre o teléfono..." class="w-full pl-8 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
 
@@ -432,7 +449,7 @@
                     <!-- Chat Header -->
                     <div id="chat-header" class="h-16 px-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/90">
                         <div class="flex items-center space-x-3">
-                            <div id="chat-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm">?</div>
+                            <div id="chat-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">?</div>
                             <div>
                                 <div class="flex items-center space-x-2">
                                     <h3 id="chat-nombre-cliente" class="font-bold text-white text-sm">Selecciona una conversación</h3>
@@ -440,10 +457,18 @@
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
                                 </div>
-                                <p id="chat-telefono-cliente" class="text-xs text-slate-400">---</p>
+                                <div class="flex items-center space-x-2">
+                                    <p id="chat-telefono-cliente" class="text-xs text-slate-400">---</p>
+                                    <div id="chat-etiquetas-badges" class="flex items-center space-x-1"></div>
+                                </div>
                             </div>
                         </div>
-                        <div id="chat-acciones" class="flex items-center space-x-2"></div>
+                        <div id="chat-acciones" class="flex items-center space-x-2">
+                            <button id="btn-gestionar-etiquetas" onclick="abrirModalEtiquetasContacto()" class="hidden px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition" title="Asignar Etiquetas / Listas">
+                                <i class="fa-solid fa-tags text-indigo-400"></i>
+                                <span>Etiquetas</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Mensajes Stream -->
@@ -919,6 +944,47 @@
                         </label>
                     </div>
 
+                    <!-- Notificaciones a Administradores por Palabras Clave -->
+                    <div class="p-5 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                            <div class="space-y-0.5 pr-4">
+                                <label for="config-notificar-admins-activa" class="font-bold text-white text-xs flex items-center space-x-2 cursor-pointer">
+                                    <i class="fa-solid fa-bell text-amber-400"></i>
+                                    <span>Notificar a Administradores si un Cliente Menciona Palabras Clave</span>
+                                </label>
+                                <p class="text-[11px] text-slate-400">El bot enviará una alerta inmediata por WhatsApp a los números o grupo si un cliente escribe palabras de interés (o apágalo si no deseas alertas).</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" id="config-notificar-admins-activa" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-key text-amber-400"></i>
+                                    <span>Palabras Clave que Disparan la Alerta (Separadas por Comas)</span>
+                                </label>
+                                <input type="text" id="config-palabras-clave-alerta" placeholder="Ej: asesor, vasectomia, urgencia, cita, implante, queja" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
+                                <span class="text-[10px] text-slate-500 mt-1 block">Si el mensaje del cliente incluye alguna de estas palabras, se enviará la alerta.</span>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-phone text-emerald-400"></i>
+                                    <span>Destino de la Notificación</span>
+                                </label>
+                                <select id="config-destino-alerta-admins" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 outline-none">
+                                    <option value="ambos">A los Números de Administradores y al Grupo de Control</option>
+                                    <option value="numeros">Solo a los Números Administradores Directos</option>
+                                    <option value="grupo">Solo al Grupo de Control</option>
+                                </select>
+                                <span class="text-[10px] text-slate-500 mt-1 block">Elige por dónde prefieres recibir los avisos inmediatos.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pt-2 flex justify-end">
                         <button onclick="guardarIdentidadNegocio()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-floppy-disk"></i>
@@ -1039,6 +1105,62 @@
                             <i class="fa-solid fa-floppy-disk"></i>
                             <span>Guardar Estado de Ausencia</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- 4. Módulo Universal de Recordatorios y Seguimientos Programados -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6 shadow-sm">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                                <span>Módulo Universal de Recordatorios y Seguimientos Programados</span>
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-1">Automatiza recordatorios post-atención (ej: revisión a los 3 meses de vasectomía, satisfacción post-venta a los 7 días, etc.)</p>
+                        </div>
+                        <button onclick="abrirModalNuevaReglaSeguimiento()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-1.5 flex-shrink-0">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            <span>Nueva Regla de Seguimiento</span>
+                        </button>
+                    </div>
+
+                    <!-- Lista de Reglas Configuradas -->
+                    <div class="space-y-3">
+                        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Reglas de Seguimiento Activas:</h3>
+                        <div id="contenedor-reglas-seguimiento" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <p class="text-xs text-slate-500 col-span-full text-center py-4">Cargando reglas de seguimiento...</p>
+                        </div>
+                    </div>
+
+                    <!-- Bandeja de Próximos Seguimientos a Enviar -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>Bandeja de Contactos Listos para Seguimiento:</span>
+                            </h3>
+                            <button onclick="cargarSeguimientosPendientes()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1">
+                                <i class="fa-solid fa-rotate text-xs"></i>
+                                <span>Actualizar Bandeja</span>
+                            </button>
+                        </div>
+
+                        <div class="overflow-x-auto bg-slate-950/60 rounded-2xl border border-slate-800/80 p-1">
+                            <table class="w-full text-left text-xs">
+                                <thead class="border-b border-slate-800 text-slate-400 uppercase font-semibold">
+                                    <tr>
+                                        <th class="p-3">Paciente / Cliente</th>
+                                        <th class="p-3">Regla / Motivo</th>
+                                        <th class="p-3">Tiempo Transcurrido</th>
+                                        <th class="p-3">Mensaje Preparado</th>
+                                        <th class="p-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-seguimientos-pendientes" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr><td colspan="5" class="p-6 text-center text-slate-500">No hay seguimientos pendientes por enviar en este momento.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -1441,6 +1563,134 @@
                 <p class="text-[11px] text-slate-400">💡 También puedes enviar una tarjeta de contacto al grupo <b class="text-slate-200">[CONTROL-BOT]</b> para ignorarlo al instante.</p>
                 <button type="button" onclick="cerrarModalIgnorados()" class="mt-4 w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">Cerrar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL GESTIÓN DE ETIQUETAS DE CONTACTO -->
+    <!-- ==================================================================== -->
+    <div id="modal-etiquetas-contacto" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-tags text-indigo-400"></i>
+                    <h3 class="font-bold text-white text-sm">Etiquetas del Contacto</h3>
+                </div>
+                <button onclick="cerrarModalEtiquetasContacto()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <p class="text-xs text-slate-400">Marca o desmarca las listas/etiquetas a las que pertenece <span id="modal-etiquetas-nombre-cliente" class="font-bold text-white"></span>:</p>
+
+            <div id="modal-etiquetas-lista-check" class="space-y-2 max-h-60 overflow-y-auto p-1">
+                <!-- Dinámico -->
+            </div>
+
+            <div class="flex items-center space-x-2 pt-2 border-t border-slate-800">
+                <button onclick="abrirModalNuevaEtiqueta()" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1">
+                    <i class="fa-solid fa-plus text-[9px]"></i>
+                    <span>Crear Nueva Etiqueta</span>
+                </button>
+                <div class="flex-1"></div>
+                <button onclick="cerrarModalEtiquetasContacto()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-md">Listo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL CREAR / EDITAR ETIQUETA -->
+    <!-- ==================================================================== -->
+    <div id="modal-nueva-etiqueta" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 id="modal-etiqueta-titulo" class="font-bold text-white text-sm">Nueva Lista / Etiqueta</h3>
+                <button onclick="cerrarModalNuevaEtiqueta()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-nueva-etiqueta" onsubmit="guardarNuevaEtiqueta(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="input-etiqueta-id" value="">
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1">Nombre de la Etiqueta *</label>
+                    <input type="text" id="input-etiqueta-nombre" required placeholder="Ej: Vasectomía, Implante, Pedido..." class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-2">Color Distintivo</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="color" id="input-etiqueta-color" value="#10b981" class="w-10 h-10 rounded-xl border border-slate-800 bg-slate-950 cursor-pointer">
+                        <span class="text-xs text-slate-400">Color que identificará visualmente a este grupo</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-2">
+                    <button type="button" onclick="cerrarModalNuevaEtiqueta()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md transition">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL CREAR / EDITAR REGLA DE SEGUIMIENTO -->
+    <!-- ==================================================================== -->
+    <div id="modal-regla-seguimiento" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                    <h3 id="modal-regla-titulo" class="font-bold text-white text-base">Nueva Regla de Seguimiento Programado</h3>
+                </div>
+                <button onclick="cerrarModalReglaSeguimiento()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-regla-seguimiento" onsubmit="guardarReglaSeguimiento(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="input-regla-id" value="">
+
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1">Nombre Descriptivo de la Regla *</label>
+                    <input type="text" id="input-regla-nombre" required placeholder="Ej: Seguimiento 3 Meses Vasectomía / Encuesta 7 Días Post-Venta" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Aplica a Pacientes / Clientes con Etiqueta:</label>
+                        <select id="select-regla-etiqueta" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                            <option value="">(Aplica a Todos los Clientes)</option>
+                            <!-- Dinámico -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Días de Espera Transcurridos *</label>
+                        <input type="number" id="input-regla-dias" required value="90" min="1" max="730" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Hora de Envío Diaria (Formato 24h)</label>
+                        <input type="time" id="input-regla-hora" value="10:30" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Modo de Envío</label>
+                        <select id="select-regla-modo" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                            <option value="automatico">Automático (Envío Seguro Diario)</option>
+                            <option value="manual_aprobacion">Manual (Aprobación con 1 Clic en Bandeja)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1 flex items-center justify-between">
+                        <span>Plantilla del Mensaje de WhatsApp *</span>
+                        <span class="text-[10px] text-amber-400 font-normal">Variables: {nombre}, {negocio}, {dias}</span>
+                    </label>
+                    <textarea id="input-regla-plantilla" rows="3" required placeholder="🏥 Hola, *{nombre}*. Te saludamos de *{negocio}*. Han transcurrido {dias} días desde tu atención..." class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500 leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-2">
+                    <button type="button" onclick="cerrarModalReglaSeguimiento()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black rounded-xl shadow-md transition">Guardar Regla</button>
+                </div>
+            </form>
         </div>
     </div>
 

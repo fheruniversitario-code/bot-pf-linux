@@ -719,8 +719,8 @@ app.delete('/api/solicitudes-asesor/:id', autenticarToken, async (req, res) => {
     }
 });
 
-// Subida de Logo de la Empresa
-app.post('/api/upload/logo', autenticarToken, uploadLogo.single('logo'), async (req, res) => {
+// Subida de Logo de la Empresa (compatible con ambas rutas)
+app.post(['/api/upload/logo', '/api/configuracion/logo'], autenticarToken, uploadLogo.single('logo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No se subió ningún archivo' });
         const logoUrl = '/uploads/' + req.file.filename;
@@ -1520,6 +1520,74 @@ async function procesarMensajeEntrante(msg) {
     const textoLowerNorm = texto.toLowerCase();
 
     // --------------------------------------------------------------------------
+    // ALERTA A ADMINISTRADORES POR PALABRAS CLAVE DETECTADAS
+    // --------------------------------------------------------------------------
+    try {
+        const notificarActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'notificar_admins_activa'"))?.valor === '1';
+        const palabrasRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'palabras_clave_alerta'"))?.valor || '';
+        const destinoAlerta = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'destino_alerta_admins'"))?.valor || 'ambos';
+
+        if (notificarActiva && palabrasRaw.trim()) {
+            const palabrasLista = palabrasRaw.split(',').map(p => p.trim().toLowerCase()).filter(p => p.length >= 2);
+            const palabraEncontrada = palabrasLista.find(p => textoLowerNorm.includes(p));
+
+            if (palabraEncontrada) {
+                if (!global.alertasAdminsMemoria) global.alertasAdminsMemoria = new Map();
+                const claveCooldown = `${remitente}_${palabraEncontrada}`;
+                const ultimoEnvio = global.alertasAdminsMemoria.get(claveCooldown) || 0;
+
+                // Cooldown de 15 minutos por el mismo cliente y palabra clave
+                if (Date.now() - ultimoEnvio > 15 * 60 * 1000) {
+                    global.alertasAdminsMemoria.set(claveCooldown, Date.now());
+
+                    const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
+                    const nombreLimpio = nombreContacto && nombreContacto !== 'Cliente' ? nombreContacto : (pushname || 'Paciente / Cliente');
+
+                    const alertaMsg = `🚨 *ALERTA OMNIBOT - PALABRA CLAVE DETECTADA* 🚨\n\n` +
+                        `👤 *Cliente / Paciente:* ${nombreLimpio}\n` +
+                        `📱 *WhatsApp:* +${telLimpio}\n` +
+                        `🔑 *Palabra detectada:* *"${palabraEncontrada.toUpperCase()}"*\n` +
+                        `💬 *Mensaje recibido:*\n"${texto}"\n\n` +
+                        `⏰ *Fecha:* ${obtenerFechaHoraLocal()}\n` +
+                        `👉 _Puedes responderle directamente abriendo su conversación en WhatsApp o en el Panel._`;
+
+                    // 1. Enviar a Números Administradores
+                    if ((destinoAlerta === 'ambos' || destinoAlerta === 'numeros') && adminsArray.length > 0) {
+                        for (const numAdm of adminsArray) {
+                            const jidAdm = numAdm.length === 10 ? `521${numAdm}@c.us` : `${numAdm}@c.us`;
+                            try {
+                                const sentAdm = await client.sendMessage(jidAdm, alertaMsg);
+                                if (sentAdm?.id) idsMensajesEnviadosBot.add(sentAdm.id._serialized);
+                            } catch (eAdm) {
+                                console.error(`Error notificando al administrador +${numAdm}:`, eAdm.message);
+                            }
+                        }
+                    }
+
+                    // 2. Enviar al Grupo de Control
+                    if (destinoAlerta === 'ambos' || destinoAlerta === 'grupo') {
+                        try {
+                            const grupoCtrlNombre = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'grupo_control'"))?.valor || '[CONTROL-BOT]';
+                            if (grupoCtrlNombre && client) {
+                                const chats = await client.getChats();
+                                const grupo = chats.find(c => c.isGroup && (c.name.includes(grupoCtrlNombre) || c.id._serialized === grupoCtrlNombre));
+                                if (grupo) {
+                                    const sentGrp = await client.sendMessage(grupo.id._serialized, alertaMsg);
+                                    if (sentGrp?.id) idsMensajesEnviadosBot.add(sentGrp.id._serialized);
+                                }
+                            }
+                        } catch (eGrp) {
+                            console.error("Error enviando alerta al grupo de control:", eGrp.message);
+                        }
+                    }
+                }
+            }
+        }
+    } catch (errAlerta) {
+        console.error("Error evaluando alerta a administradores:", errAlerta.message);
+    }
+
+    // --------------------------------------------------------------------------
     // A. CAPTURA Y REGISTRO AUTOMÁTICO DE NOMBRE DEL PACIENTE
     // --------------------------------------------------------------------------
     const claveEsperandoNombre = `${remitente}_esperando_nombre`;
@@ -1768,7 +1836,28 @@ async function procesarMensajeEntrante(msg) {
         return false;
     }
 
-    // Auto-detección por palabras clave de salud / productos / promociones
+    // Auto-detección dinámica de cualquier imagen en la carpeta según las palabras del cliente
+    try {
+        if (fs.existsSync(DIR_IMAGENES)) {
+            const archivosGaleria = fs.readdirSync(DIR_IMAGENES);
+            for (const archivo of archivosGaleria) {
+                const parsed = path.parse(archivo);
+                const baseName = parsed.name.toLowerCase(); // ej: 'promocion', 'vasectomia', 'calzado'
+                const palabrasClave = baseName.split(/[-_ ]+/).filter(w => w.length >= 3);
+
+                // Si el mensaje del cliente incluye alguna palabra clave del archivo o el nombre completo
+                const coincide = palabrasClave.some(p => textoLowerNorm.includes(p)) || textoLowerNorm.includes(baseName);
+                if (coincide) {
+                    const tituloLimpio = baseName.replace(/[-_]/g, ' ').toUpperCase();
+                    await enviarImagenSiExiste(parsed.name, `🖼️ *${tituloLimpio}*`);
+                }
+            }
+        }
+    } catch (errGaleria) {
+        console.error("Error buscando imágenes automáticas:", errGaleria);
+    }
+
+    // Reglas específicas con títulos enriquecidos
     if (textoLowerNorm.includes('implante')) {
         await enviarImagenSiExiste('implante', '🖼️ *Infografía: Implante Subdérmico*');
     } else if (textoLowerNorm.includes('vasectomia') || textoLowerNorm.includes('vasectomía') || textoLowerNorm.includes('sin bisturi')) {
@@ -1791,8 +1880,9 @@ async function procesarMensajeEntrante(msg) {
         await enviarImagenSiExiste('emergencia', '🖼️ *Infografía: Pastilla de Emergencia*');
     } else if (textoLowerNorm.includes('metodos') || textoLowerNorm.includes('métodos') || textoLowerNorm.includes('catalogo') || textoLowerNorm.includes('catálogo')) {
         await enviarImagenSiExiste('metodos', '🖼️ *Catálogo de Métodos Anticonceptivos*');
-    } else if (textoLowerNorm.includes('promocion') || textoLowerNorm.includes('promociones') || textoLowerNorm.includes('promo') || textoLowerNorm.includes('descuento')) {
+    } else if (textoLowerNorm.includes('promocion') || textoLowerNorm.includes('promociones') || textoLowerNorm.includes('promo') || textoLowerNorm.includes('descuento') || textoLowerNorm.includes('oferta')) {
         await enviarImagenSiExiste('promociones', '🎉 *Nuestras Promociones y Descuentos*');
+        await enviarImagenSiExiste('promocion', '🎉 *Nuestras Promociones y Descuentos*');
     }
 
     try {
