@@ -1124,8 +1124,118 @@ async function procesarMensajeEntrante(msg) {
 
     if (!texto) return;
 
+    const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
+    const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral';
+    const enlacePrivacidad = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'enlace_formulario_privacidad'"))?.valor || 'https://forms.gle/zJxZeXXj1TwWGF9N8';
+    const textoLowerNorm = texto.toLowerCase();
+
     // --------------------------------------------------------------------------
-    // 1. EVALUACIÓN DE MENÚ NUMÉRICO INTERACTIVO (1, 2, 3...)
+    // A. CAPTURA Y REGISTRO AUTOMÁTICO DE NOMBRE DEL PACIENTE
+    // --------------------------------------------------------------------------
+    const claveEsperandoNombre = `${remitente}_esperando_nombre`;
+    if (chatsPausados.has(claveEsperandoNombre) && !texto.startsWith('!')) {
+        chatsPausados.delete(claveEsperandoNombre);
+        const nombreIngresado = texto.replace(/[\n\r]/g, ' ').trim();
+        if (nombreIngresado.length >= 3) {
+            await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nombreIngresado, remitente]);
+            nombreContacto = nombreIngresado;
+
+            const chat = await msg.getChat();
+            await chat.sendStateTyping();
+            await delay(1200);
+
+            const msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreIngresado}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                `He notificado a nuestro personal de salud de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+
+            const sent = await client.sendMessage(remitente, msjConfirmado);
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+            await runQuery(
+                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [remitente, 'bot', 'Registro Paciente', msjConfirmado, 1, 1, Date.now()]
+            );
+            return;
+        }
+    }
+
+    // --------------------------------------------------------------------------
+    // B. SALUDO INICIAL Y MENÚ INTERACTIVO DE BIENVENIDA
+    // --------------------------------------------------------------------------
+    const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
+    if (saludos.includes(textoLowerNorm)) {
+        const chat = await msg.getChat();
+        await chat.sendStateTyping();
+        await delay(1200);
+
+        const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
+        const saludoHeader = nombreMostrar ?
+            `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola, ${nombreMostrar}! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*` :
+            `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*`;
+
+        let textoMenu = `${saludoHeader}\n\nDe Lunes a Viernes de 2:00 PM a 8:30 PM estamos para servirte. ☺️\n\nElige una opción:\n\n`;
+        try {
+            const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
+            if (menuRaw) {
+                const menuOpts = JSON.parse(menuRaw);
+                menuOpts.forEach(o => {
+                    textoMenu += `${o.opcion}️⃣ *${o.titulo}*\n`;
+                });
+            } else {
+                textoMenu += `1️⃣ 📋 *Requisitos para atención*\n2️⃣ 💊 *Métodos disponibles*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación del CAISES*\n5️⃣ 👨‍⚕️ *Solicitar Asesor / Agendar Cita*\n`;
+            }
+        } catch(e) {
+            textoMenu += `1️⃣ 📋 *Requisitos para atención*\n2️⃣ 💊 *Métodos disponibles*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación del CAISES*\n5️⃣ 👨‍⚕️ *Solicitar Asesor / Agendar Cita*\n`;
+        }
+        textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
+
+        const sent = await client.sendMessage(remitente, textoMenu);
+        if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+        await runQuery(
+            "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [remitente, 'bot', 'Menú Bienvenida', textoMenu, 1, 1, Date.now()]
+        );
+        return;
+    }
+
+    // --------------------------------------------------------------------------
+    // C. SOLICITUD DIRECTA DE ASESOR / AGENDAR CITA (OPCIÓN 5 O PALABRAS CLAVE)
+    // --------------------------------------------------------------------------
+    const frasesAsesor = ['asesor', '!asesor', 'humano', 'agente', 'hablar con alguien', 'hablar con un asesor', 'hablar con una persona', 'quiero un asesor', 'solicitar asesor', 'transferir', 'cita', 'agendar'];
+    const pideAsesorDirecto = textoLowerNorm === '5' || frasesAsesor.some(f => textoLowerNorm === f || (textoLowerNorm.includes(f) && !textoLowerNorm.includes('que') && !textoLowerNorm.includes('como') && !textoLowerNorm.includes('donde')));
+
+    if (pideAsesorDirecto) {
+        const chat = await msg.getChat();
+        await chat.sendStateTyping();
+        await delay(1200);
+
+        // Si el paciente aún no está registrado con su nombre:
+        if (!nombreContacto || nombreContacto === 'Cliente') {
+            chatsPausados.set(claveEsperandoNombre, Date.now());
+            const msjRegistro = `${iconoAsistente ? iconoAsistente + ' ' : ''}📋 *REGISTRO Y AVISO DE PRIVACIDAD* 🔒\n\n` +
+                `Para comunicarte con nuestro personal de salud de ${nombreNegocio}, completa estos 2 rápidos pasos:\n\n` +
+                `1️⃣ *Abre este enlace y llena tus datos (1 min):*\n👉 ${enlacePrivacidad}\n\n` +
+                `2️⃣ *Escribe aquí tu NOMBRE COMPLETO* para confirmar tu registro y transferirte. ✍️✅\n\n` +
+                `_(Tu información es 100% confidencial y protegida)_ 🏥✨`;
+
+            const sent = await client.sendMessage(remitente, msjRegistro);
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+            return;
+        }
+
+        // Si ya está registrado con su nombre:
+        const msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ Entendido, *${nombreContacto}*. He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
+            `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n` +
+            `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas hacer más preguntas o consultar cualquier otro tema._`;
+
+        const sent = await client.sendMessage(remitente, msjTransferido);
+        if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+        return;
+    }
+
+    // --------------------------------------------------------------------------
+    // D. EVALUACIÓN DE OPCIONES DEL MENÚ NUMÉRICO (1, 2, 3...)
     // --------------------------------------------------------------------------
     try {
         const menuConfigRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
@@ -1137,12 +1247,12 @@ async function procesarMensajeEntrante(msg) {
                 await chat.sendStateTyping();
                 await delay(1200);
 
-                let respMenu = `📌 *${opcionEncontrada.titulo}*\n\n${opcionEncontrada.respuesta}`;
+                let respMenu = `${iconoAsistente ? iconoAsistente + ' ' : ''}📌 *${opcionEncontrada.titulo}*\n\n${opcionEncontrada.respuesta}`;
                 if (opcionEncontrada.enlace) {
                     respMenu += `\n\n🔗 ${opcionEncontrada.enlace}`;
                 }
 
-                const sent = await msg.reply(respMenu);
+                const sent = await client.sendMessage(remitente, respMenu);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
                 await runQuery(
@@ -1333,6 +1443,10 @@ async function obtenerContenidoGoogleSheets(url) {
 ${configPrompt}
 ${avisoAusencia}
 
+CLIENTE / PACIENTE ACTUAL:
+- Nombre: ${nombreContacto} (Usa su nombre con naturalidad y calidez cuando sea oportuno).
+- Icono distintivo: ${iconoAsistente}
+
 CATÁLOGO DE PRODUCTOS / SERVICIOS / PRECIOS:
 ${catalogo}
 
@@ -1347,8 +1461,9 @@ INFORMACIÓN DE UBICACIÓN Y HORARIOS:
 INFORMACIÓN DE PAGOS / BANCOS:
 ${datosBancos}
 
-INSTRUCCIONES CLAVE:
-- Responde de forma concisa, educada y profesional en español basándote en el catálogo y documentos.
+INSTRUCCIONES CLAVE DE ATENCIÓN:
+- REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
+- Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.
 - Si el cliente envía una imagen (foto de producto o comprobante), analízala visualmente y responde en consecuencia.
 - La fecha y hora actual en México es: ${obtenerFechaHoraLocal()}.
@@ -1411,28 +1526,33 @@ INSTRUCCIONES CLAVE:
         }
 
         if (respuestaIA) {
+            let textoRespuestaFinal = respuestaIA.trim();
+            if (iconoAsistente && !textoRespuestaFinal.startsWith(iconoAsistente)) {
+                textoRespuestaFinal = `${iconoAsistente} ${textoRespuestaFinal}`;
+            }
+
             // Simulación de escritura humana anti-ban
             try {
                 const chat = await msg.getChat();
                 await chat.sendStateTyping();
-                const delayEscritura = Math.min(Math.max(respuestaIA.length * 20, 1500), 3500);
+                const delayEscritura = Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500);
                 await delay(delayEscritura);
             } catch (eTyping) {}
 
-            const sent = await client.sendMessage(remitente, respuestaIA);
+            const sent = await client.sendMessage(remitente, textoRespuestaFinal);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
             // Guardar respuesta de IA en base de datos
             await runQuery(
                 "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                [remitente, 'bot', 'Asistente IA', respuestaIA, 1, 1, Date.now()]
+                [remitente, 'bot', 'Asistente IA', textoRespuestaFinal, 1, 1, Date.now()]
             );
 
             io.emit('nuevo_mensaje', {
                 chat_id: remitente,
                 emisor: 'bot',
                 emisor_nombre: 'Asistente IA',
-                cuerpo: respuestaIA,
+                cuerpo: textoRespuestaFinal,
                 es_mio: 1,
                 es_ia: 1,
                 timestamp: Date.now()

@@ -520,6 +520,8 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-datos-bancarios')) document.getElementById('config-datos-bancarios').value = config.datos_bancarios || '';
         
         if (document.getElementById('config-nombre-negocio')) document.getElementById('config-nombre-negocio').value = config.nombre_negocio || '';
+        if (document.getElementById('config-icono-asistente')) document.getElementById('config-icono-asistente').value = config.icono_asistente || '🤖';
+        if (document.getElementById('config-enlace-privacidad')) document.getElementById('config-enlace-privacidad').value = config.enlace_formulario_privacidad || 'https://forms.gle/zJxZeXXj1TwWGF9N8';
         if (document.getElementById('config-numeros-admin')) document.getElementById('config-numeros-admin').value = config.numeros_admins || '';
         if (document.getElementById('config-grupo-control')) document.getElementById('config-grupo-control').value = config.grupo_control || '[CONTROL-BOT]';
         if (document.getElementById('config-tiempo-pausa')) document.getElementById('config-tiempo-pausa').value = config.tiempo_pausa_humano_mins || '30';
@@ -784,6 +786,17 @@ async function guardarConocimientoIA() {
     }
 }
 
+function seleccionarIconoPreset(val) {
+    const input = document.getElementById('config-icono-asistente');
+    if (!input) return;
+    if (val === 'custom') {
+        input.value = '';
+        input.focus();
+    } else {
+        input.value = val;
+    }
+}
+
 // Guardar Identidad del Negocio y Administradores
 async function guardarIdentidadNegocio() {
     try {
@@ -791,6 +804,8 @@ async function guardarIdentidadNegocio() {
             method: 'POST',
             body: JSON.stringify({
                 nombre_negocio: document.getElementById('config-nombre-negocio').value,
+                icono_asistente: document.getElementById('config-icono-asistente').value,
+                enlace_formulario_privacidad: document.getElementById('config-enlace-privacidad').value,
                 numeros_admins: document.getElementById('config-numeros-admin').value,
                 grupo_control: document.getElementById('config-grupo-control').value,
                 tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value,
