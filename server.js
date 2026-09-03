@@ -632,6 +632,24 @@ app.post('/api/contactos/toggle-ignorar', autenticarToken, async (req, res) => {
     }
 });
 
+// Helper para detectar la ruta nativa de Chromium en Linux ARM64 (Oracle Ampere) / Windows
+function obtenerRutaChromium() {
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH.replace(/"/g, '');
+    if (process.env.CHROME_PATH) return process.env.CHROME_PATH.replace(/"/g, '');
+    if (process.platform === 'linux') {
+        const rutas = [
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome'
+        ];
+        for (const r of rutas) {
+            if (fs.existsSync(r)) return r;
+        }
+    }
+    return undefined;
+}
+
 // ------------------------------------------------------------------------------
 // 5. MOTOR DE WHATSAPP WEB CON IA Y SISTEMA ANTI-BAN RECEPTIVO
 // ------------------------------------------------------------------------------
@@ -640,6 +658,7 @@ const client = new Client({
     puppeteer: {
         headless: true,
         timeout: 120000,
+        executablePath: obtenerRutaChromium(),
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
