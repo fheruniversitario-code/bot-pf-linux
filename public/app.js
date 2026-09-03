@@ -531,6 +531,7 @@ async function cargarConfiguracion() {
 
         cargarListaIgnorados();
         cargarDocumentosConocimiento();
+        cargarInfografiasImagenes();
     } catch (e) {
         console.error("Error al cargar config:", e);
     }
@@ -1004,6 +1005,138 @@ async function agregarIgnoradoManual(e) {
 
 function descargarRespaldoBD() {
     window.location.href = `/api/backup/descargar?token=${token}`;
+}
+
+// ==============================================================================
+// GESTIÓN DE DOCUMENTOS Y GALERÍA DE INFOGRAFÍAS / PROMOS
+// ==============================================================================
+async function cargarDocumentosConocimiento() {
+    const cont = document.getElementById('lista-documentos-container');
+    if (!cont) return;
+    try {
+        const docs = await apiFetch('/api/documentos');
+        if (!docs || docs.length === 0) {
+            cont.innerHTML = `<div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center">No hay documentos de catálogo o precios subidos aún.</div>`;
+            return;
+        }
+        cont.innerHTML = docs.map(d => `
+            <div class="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-xs">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-file-lines text-indigo-400 text-sm"></i>
+                    <div>
+                        <span class="font-bold text-white block">${d.nombre}</span>
+                        <span class="text-[10px] text-slate-400">${d.tamano} • Subido el ${d.fecha}</span>
+                    </div>
+                </div>
+                <button onclick="eliminarDocumentoConocimiento('${d.nombre}')" class="text-slate-500 hover:text-rose-400 p-2 transition">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    } catch(e) {
+        cont.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">Error cargando documentos: ${e.message}</div>`;
+    }
+}
+
+async function subirDocumentoConocimiento(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('documento', file);
+
+    try {
+        const res = await fetch('/api/documentos/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`✅ Documento "${file.name}" subido con éxito.`);
+            cargarDocumentosConocimiento();
+        } else {
+            alert("Error al subir: " + data.error);
+        }
+    } catch(e) {
+        alert("Error de red: " + e.message);
+    }
+    input.value = '';
+}
+
+async function eliminarDocumentoConocimiento(nombre) {
+    if (!confirm(`¿Deseas eliminar el documento "${nombre}"?`)) return;
+    try {
+        await apiFetch(`/api/documentos/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
+        cargarDocumentosConocimiento();
+    } catch(e) {
+        alert("Error al eliminar: " + e.message);
+    }
+}
+
+// Galería de Infografías e Imágenes Automáticas
+async function cargarInfografiasImagenes() {
+    const cont = document.getElementById('lista-infografias-container');
+    if (!cont) return;
+    try {
+        const imgs = await apiFetch('/api/imagenes');
+        if (!imgs || imgs.length === 0) {
+            cont.innerHTML = `<div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center col-span-full">No hay imágenes en la galería aún. Sube tus infografías o promociones con el botón superior.</div>`;
+            return;
+        }
+        cont.innerHTML = imgs.map(img => `
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden group hover:border-indigo-500/50 transition flex flex-col justify-between">
+                <div class="h-32 bg-slate-900 overflow-hidden flex items-center justify-center p-2 relative">
+                    <img src="${img.url}" alt="${img.nombre}" class="max-h-full max-w-full object-contain rounded-lg">
+                </div>
+                <div class="p-3 border-t border-slate-800/80 flex items-center justify-between">
+                    <div class="min-w-0 pr-2">
+                        <span class="font-bold text-white text-[11px] block truncate" title="${img.nombre}">${img.nombre}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">${img.tamano}</span>
+                    </div>
+                    <button onclick="eliminarInfografiaImagen('${img.nombre}')" class="text-slate-500 hover:text-rose-400 p-1.5 transition text-xs flex-shrink-0" title="Eliminar imagen">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) {
+        cont.innerHTML = `<div class="text-xs text-rose-400 text-center py-2 col-span-full">Error cargando galería: ${e.message}</div>`;
+    }
+}
+
+async function subirInfografiaImagen(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('imagen', file);
+
+    try {
+        const res = await fetch('/api/imagenes/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`✅ Imagen "${file.name}" subida con éxito.`);
+            cargarInfografiasImagenes();
+        } else {
+            alert("Error al subir imagen: " + data.error);
+        }
+    } catch(e) {
+        alert("Error de red: " + e.message);
+    }
+    input.value = '';
+}
+
+async function eliminarInfografiaImagen(nombre) {
+    if (!confirm(`¿Deseas eliminar la imagen "${nombre}"?`)) return;
+    try {
+        await apiFetch(`/api/imagenes/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
+        cargarInfografiasImagenes();
+    } catch(e) {
+        alert("Error al eliminar imagen: " + e.message);
+    }
 }
 
 // Escuchar actualizaciones de estado de control en tiempo real vía Socket.io

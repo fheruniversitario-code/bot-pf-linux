@@ -556,6 +556,31 @@
                     </div>
                 </div>
 
+                <!-- Gestor de Infografías, Imágenes de Métodos y Promociones -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-images text-indigo-400"></i>
+                                <span>Galería de Infografías, Fotografías y Promociones</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Imágenes que el bot envía automáticamente por WhatsApp cuando el cliente pide información de un método, producto o promoción.</p>
+                        </div>
+                        <label class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>+ Subir Imagen / Foto</span>
+                            <input type="file" id="img-file-input" accept=".png,.jpg,.jpeg,.webp" class="hidden" onchange="subirInfografiaImagen(this)">
+                        </label>
+                    </div>
+
+                    <!-- Cuadrícula de Infografías Subidas -->
+                    <div id="lista-infografias-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-2">
+                        <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center col-span-full">
+                            Cargando galería de imágenes e infografías...
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Cerebro de IA -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
                     <div>
