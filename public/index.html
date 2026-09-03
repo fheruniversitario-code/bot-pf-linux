@@ -623,79 +623,234 @@
             </div>
 
             <!-- ============================================================ -->
-            <!-- TAB 6: HORARIOS, CONTACTOS IGNORADOS Y AJUSTES -->
+            <!-- TAB 6: HORARIOS, ADMINISTRADORES Y AJUSTES -->
             <!-- ============================================================ -->
             <div id="view-configuracion" class="tab-view hidden space-y-6">
-                <!-- 1. Identidad y Control -->
-                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
-                    <div>
-                        <h2 class="text-lg font-bold text-white">Identidad y Parámetros del Negocio</h2>
-                        <p class="text-xs text-slate-400">Datos generales de la empresa y configuración de control</p>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- 1. Identidad y Administradores -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-5">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Nombre Comercial</label>
-                            <input type="text" id="config-nombre-negocio" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-id-card text-indigo-400"></i>
+                                <span>Identidad del Negocio y Administradores</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Parámetros principales de la empresa y números autorizados para controlar el bot</p>
                         </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Etiqueta Grupo de Control</label>
-                            <input type="text" id="config-grupo-control" value="[CONTROL-BOT]" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Pausa por Intervención Humana (mins)</label>
-                            <input type="number" id="config-tiempo-pausa" value="30" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. Horarios Dobles (Sucursal vs En Línea) -->
-                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
-                    <div>
-                        <h2 class="text-lg font-bold text-white">Horarios de Atención Semanal (Lunes a Domingo)</h2>
-                        <p class="text-xs text-slate-400">Define los horarios de apertura y cierre de cada día para que la IA sepa cuándo pasar con un humano o responder fuera de horario.</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Horario de Sucursal Física (Texto informativo)</label>
-                            <input type="text" id="config-horario-fisico" placeholder="Lunes a Sábado 10:00 AM a 7:00 PM" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Nombre Comercial de la Empresa</label>
+                            <input type="text" id="config-nombre-negocio" placeholder="Ej. Nurse Fashion / CAISES Jaral" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Horario de Asesores en Línea (Texto)</label>
-                            <input type="text" id="config-horario-online" placeholder="Lunes a Domingo 9:00 AM a 8:00 PM" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Pausa por Intervención Humana (Minutos)</label>
+                            <input type="number" id="config-tiempo-pausa" value="30" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
                         </div>
                     </div>
 
-                    <!-- Relojes por día -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Lunes a Viernes</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="time" id="config-hora-inicio-semana" value="09:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
-                                <span class="text-slate-500 text-xs">a</span>
-                                <input type="time" id="config-hora-fin-semana" value="18:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
-                            </div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
+                                <i class="fa-solid fa-user-shield text-amber-400"></i>
+                                <span>Teléfonos Administradores Autorizados (Comandos !)</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400 mb-2">Números separados por comas autorizados para enviar <code>!reactivar</code>, <code>!pausa</code>, <code>!resumen</code>.</p>
+                            <input type="text" id="config-numeros-admin" placeholder="Ej. 5214111120637, 5214112688857" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:border-amber-500 outline-none">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Sábados</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="time" id="config-hora-inicio-sab" value="09:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
-                                <span class="text-slate-500 text-xs">a</span>
-                                <input type="time" id="config-hora-fin-sab" value="14:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
-                            </div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
+                                <i class="fa-solid fa-users-gear text-sky-400"></i>
+                                <span>Etiqueta del Grupo de Control</span>
+                            </label>
+                            <p class="text-[11px] text-slate-400 mb-2">Nombre distintivo del grupo de WhatsApp donde compartir tarjetas para ignorar contactos.</p>
+                            <input type="text" id="config-grupo-control" value="[CONTROL-BOT]" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-sky-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="guardarIdentidadNegocio()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Guardar Identidad y Administradores</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Horarios Detallados Día por Día con Doble Turno -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-clock text-emerald-400"></i>
+                            <span>Horarios de Atención Semanal (Lunes a Domingo)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">Configura días abiertos, turnos matutinos y vespertinos (horario quebrado) para que la IA responda con precisión.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Horario de Sucursal Física (Texto para IA)</label>
+                            <input type="text" id="config-horario-fisico" placeholder="Ej. Lunes a Viernes de 9am a 2pm y 4pm a 7pm, Sábados 10am a 2pm" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Domingos</label>
-                            <div class="flex items-center space-x-2">
-                                <input type="time" id="config-hora-inicio-dom" value="10:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
-                                <span class="text-slate-500 text-xs">a</span>
-                                <input type="time" id="config-hora-fin-dom" value="14:00" class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Horario de Asesores en Línea (Texto para IA)</label>
+                            <input type="text" id="config-horario-online" placeholder="Ej. Lunes a Domingo de 8:00 AM a 8:00 PM" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                        </div>
+                    </div>
+
+                    <!-- Rejilla Interactiva de 7 Días -->
+                    <div class="space-y-3 pt-2">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block">Configuración Detallada por Día:</span>
+                        
+                        <div id="contenedor-dias-semana" class="space-y-2.5">
+                            <!-- Los 7 días se generan o configuran dinámicamente -->
+                            <!-- Template Día Lunes -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="lunes">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-lunes" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-lunes" class="font-bold text-white uppercase">Lunes</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-lunes-t1-inicio" value="08:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-lunes-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-lunes-t2" checked class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-lunes-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-lunes-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Martes -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="martes">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-martes" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-martes" class="font-bold text-white uppercase">Martes</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-martes-t1-inicio" value="08:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-martes-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-martes-t2" checked class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-martes-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-martes-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Miércoles -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="miercoles">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-miercoles" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-miercoles" class="font-bold text-white uppercase">Miércoles</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-miercoles-t1-inicio" value="08:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-miercoles-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-miercoles-t2" checked class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-miercoles-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-miercoles-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Jueves -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="jueves">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-jueves" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-jueves" class="font-bold text-white uppercase">Jueves</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-jueves-t1-inicio" value="08:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-jueves-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-jueves-t2" checked class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-jueves-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-jueves-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Viernes -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="viernes">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-viernes" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-viernes" class="font-bold text-white uppercase">Viernes</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-viernes-t1-inicio" value="08:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-viernes-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-viernes-t2" checked class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-viernes-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-viernes-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Sábado -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="sabado">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-sabado" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-sabado" class="font-bold text-white uppercase">Sábado</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-sabado-t1-inicio" value="09:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-sabado-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-sabado-t2" class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-sabado-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-sabado-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                            </div>
+
+                            <!-- Domingo -->
+                            <div class="dia-horario-fila p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs" data-dia="domingo">
+                                <div class="flex items-center space-x-3 w-28">
+                                    <input type="checkbox" id="chk-dia-domingo" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0">
+                                    <label for="chk-dia-domingo" class="font-bold text-white uppercase">Domingo</label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-400 text-[11px]">Turno 1:</span>
+                                    <input type="time" id="dia-domingo-t1-inicio" value="10:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-domingo-t1-fin" value="14:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="checkbox" id="chk-dia-domingo-t2" class="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-indigo-600">
+                                    <span class="text-slate-400 text-[11px]">Turno 2 (Vespertino):</span>
+                                    <input type="time" id="dia-domingo-t2-inicio" value="16:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                    <span class="text-slate-500">a</span>
+                                    <input type="time" id="dia-domingo-t2-fin" value="18:00" class="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-white">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -705,33 +860,56 @@
                         <textarea id="config-mensaje-fuera-horario" rows="2" placeholder="Hola, nuestro horario de atención personalizada es... (Si lo dejas vacío, la IA responderá inteligentemente tomando en cuenta tu catálogo)." class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:outline-none focus:border-indigo-500"></textarea>
                     </div>
 
-                    <!-- Modo Vacaciones / Ausencia -->
-                    <div class="border-t border-slate-800 pt-5">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-                                    <i class="fa-solid fa-plane-departure text-amber-400"></i>
-                                    <span>Modo Ausencia / Vacaciones con IA</span>
-                                </h3>
-                                <p class="text-xs text-slate-400">Activa este modo si tu negocio sale de vacaciones, a un congreso o remodelación. La IA avisará amablemente a los clientes cuándo reanudan actividades.</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="config-ausencia-activa" class="sr-only peer">
-                                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                            </label>
-                        </div>
-                        <input type="text" id="config-ausencia-mensaje" placeholder="Ej. Estaremos de vacaciones del 1 al 10 de Agosto. Reanudamos actividades normales el 11 de Agosto." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="guardarHorariosDetallados()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Guardar Horarios Semanales</span>
+                        </button>
                     </div>
-
-                    <button onclick="guardarAjustesGenerales()" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition">
-                        Guardar Horarios y Ajustes
-                    </button>
                 </div>
 
-                <!-- 3. Contactos Ignorados (Lista Visual) -->
+                <!-- 3. Modo Vacaciones / Ausencia -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-umbrella-beach text-sky-400"></i>
+                                <span>Modo Ausencia / Vacaciones con IA</span>
+                            </h3>
+                            <p class="text-xs text-slate-400">Activa este modo si el negocio sale a congreso, vacaciones o remodelación. La IA avisará amablemente a los clientes.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="config-ausencia-activa" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Mensaje o Motivo al Cliente</label>
+                            <input type="text" id="config-ausencia-mensaje" placeholder="Ej. Estaremos de vacaciones del 1 al 10 de Agosto. Reanudamos actividades el 11 de Agosto." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Fecha Estimada de Regreso</label>
+                            <input type="date" id="config-ausencia-fecha" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="guardarModoAusenciaTab()" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Guardar Estado de Ausencia</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. Contactos Ignorados (Lista Visual) -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
                     <div>
-                        <h2 class="text-lg font-bold text-white">Contactos Ignorados (Familiares / Personales)</h2>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-user-slash text-rose-400"></i>
+                            <span>Contactos Ignorados (Exclusiones)</span>
+                        </h2>
                         <p class="text-xs text-slate-400">Contactos a los que el bot NUNCA les responderá en privado</p>
                     </div>
 
@@ -745,9 +923,12 @@
                     <div id="lista-ignorados-container" class="space-y-2 pt-2"></div>
                 </div>
 
-                <!-- 4. Respaldo de Base de Datos SQLite -->
+                <!-- 5. Respaldo de Base de Datos SQLite -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-3">
-                    <h3 class="text-sm font-bold text-white">📦 Respaldo de Base de Datos SQLite (1 Clic)</h3>
+                    <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-database text-amber-400"></i>
+                        <span>Respaldo de Base de Datos SQLite (1 Clic)</span>
+                    </h3>
                     <p class="text-xs text-slate-400">Descarga una copia completa de tus clientes, cotizaciones, citas y configuración en un solo archivo SQLite seguro.</p>
                     <button onclick="descargarRespaldoBD()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center space-x-2 transition">
                         <i class="fa-solid fa-download"></i>

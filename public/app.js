@@ -468,23 +468,40 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-datos-bancarios')) document.getElementById('config-datos-bancarios').value = config.datos_bancarios || '';
         
         if (document.getElementById('config-nombre-negocio')) document.getElementById('config-nombre-negocio').value = config.nombre_negocio || '';
-        if (document.getElementById('config-grupo-control')) document.getElementById('config-grupo-control').value = config.grupo_control || '';
+        if (document.getElementById('config-numeros-admin')) document.getElementById('config-numeros-admin').value = config.numeros_admins || '';
+        if (document.getElementById('config-grupo-control')) document.getElementById('config-grupo-control').value = config.grupo_control || '[CONTROL-BOT]';
+        if (document.getElementById('config-tiempo-pausa')) document.getElementById('config-tiempo-pausa').value = config.tiempo_pausa_humano_mins || '30';
+
         if (document.getElementById('config-google-sheets-url')) document.getElementById('config-google-sheets-url').value = config.google_sheets_url || '';
         if (document.getElementById('config-duracion-cita')) document.getElementById('config-duracion-cita').value = config.duracion_cita_mins || '30';
         if (document.getElementById('config-google-calendar-link')) document.getElementById('config-google-calendar-link').value = config.google_calendar_link || '';
 
-        if (document.getElementById('config-tiempo-pausa')) document.getElementById('config-tiempo-pausa').value = config.tiempo_pausa_humano_mins || '30';
         if (document.getElementById('config-horario-fisico')) document.getElementById('config-horario-fisico').value = config.horario_sucursal_fisica || '';
         if (document.getElementById('config-horario-online')) document.getElementById('config-horario-online').value = config.horario_asesor_en_linea || '';
-        if (document.getElementById('config-hora-inicio-semana')) document.getElementById('config-hora-inicio-semana').value = config.hora_inicio_semana || '09:00';
-        if (document.getElementById('config-hora-fin-semana')) document.getElementById('config-hora-fin-semana').value = config.hora_fin_semana || '18:00';
-        if (document.getElementById('config-hora-inicio-sab')) document.getElementById('config-hora-inicio-sab').value = config.hora_inicio_sab || '09:00';
-        if (document.getElementById('config-hora-fin-sab')) document.getElementById('config-hora-fin-sab').value = config.hora_fin_sab || '14:00';
-        if (document.getElementById('config-hora-inicio-dom')) document.getElementById('config-hora-inicio-dom').value = config.hora_inicio_dom || '10:00';
-        if (document.getElementById('config-hora-fin-dom')) document.getElementById('config-hora-fin-dom').value = config.hora_fin_dom || '14:00';
         if (document.getElementById('config-mensaje-fuera-horario')) document.getElementById('config-mensaje-fuera-horario').value = config.mensaje_fuera_horario || '';
+
+        // Cargar Rejilla Semanal de 7 Días
+        const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        if (config.horarios_semanales_json) {
+            try {
+                const sObj = JSON.parse(config.horarios_semanales_json);
+                dias.forEach(d => {
+                    if (sObj[d]) {
+                        const s = sObj[d];
+                        if (document.getElementById(`chk-dia-${d}`)) document.getElementById(`chk-dia-${d}`).checked = !!s.abierto;
+                        if (document.getElementById(`dia-${d}-t1-inicio`)) document.getElementById(`dia-${d}-t1-inicio`).value = s.t1Inicio || '08:00';
+                        if (document.getElementById(`dia-${d}-t1-fin`)) document.getElementById(`dia-${d}-t1-fin`).value = s.t1Fin || '14:00';
+                        if (document.getElementById(`chk-dia-${d}-t2`)) document.getElementById(`chk-dia-${d}-t2`).checked = !!s.t2Activo;
+                        if (document.getElementById(`dia-${d}-t2-inicio`)) document.getElementById(`dia-${d}-t2-inicio`).value = s.t2Inicio || '16:00';
+                        if (document.getElementById(`dia-${d}-t2-fin`)) document.getElementById(`dia-${d}-t2-fin`).value = s.t2Fin || '18:00';
+                    }
+                });
+            } catch(e) {}
+        }
+
         if (document.getElementById('config-ausencia-activa')) document.getElementById('config-ausencia-activa').checked = (config.ausencia_activa === '1');
         if (document.getElementById('config-ausencia-mensaje')) document.getElementById('config-ausencia-mensaje').value = config.ausencia_mensaje || '';
+        if (document.getElementById('config-ausencia-fecha')) document.getElementById('config-ausencia-fecha').value = config.ausencia_fecha_fin || '';
 
         cargarListaIgnorados();
         cargarDocumentosConocimiento();
@@ -493,198 +510,69 @@ async function cargarConfiguracion() {
     }
 }
 
-// Guardar Configuración de Agenda
-async function guardarConfigAgenda() {
-    try {
-        await apiFetch('/api/configuracion', {
-            method: 'POST',
-            body: JSON.stringify({
-                duracion_cita_mins: document.getElementById('config-duracion-cita').value,
-                google_calendar_link: document.getElementById('config-google-calendar-link').value
-            })
-        });
-        alert("Parámetros de agenda y Google Calendar guardados.");
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
-}
-
-// Copiar Enlace de Linktree al Portapapeles
-function copiarEnlaceLinktree() {
-    const url = window.location.origin + '/pagina.html';
-    navigator.clipboard.writeText(url).then(() => {
-        const btnTxt = document.getElementById('btn-copiar-txt');
-        if (btnTxt) btnTxt.textContent = "¡Enlace Copiado!";
-        setTimeout(() => {
-            if (btnTxt) btnTxt.textContent = "Copiar Enlace para Instagram";
-        }, 2500);
-    }).catch(() => {
-        prompt("Copia tu enlace público:", url);
-    });
-}
-
-// Alternar Modo Claro / Modo Oscuro
-function alternarTema() {
-    const isLight = document.body.classList.toggle('light-theme');
-    const icon = document.getElementById('theme-icon');
-    if (isLight) {
-        if (icon) icon.className = "fa-solid fa-moon text-indigo-400";
-        localStorage.setItem('omnibot_tema', 'light');
-    } else {
-        if (icon) icon.className = "fa-solid fa-sun text-amber-400";
-        localStorage.setItem('omnibot_tema', 'dark');
-    }
-}
-
-// Inicializar Tema Guardado
-if (localStorage.getItem('omnibot_tema') === 'light') {
-    document.body.classList.add('light-theme');
-    const icon = document.getElementById('theme-icon');
-    if (icon) icon.className = "fa-solid fa-moon text-indigo-400";
-}
-
-// Subir Logotipo desde Archivo
-async function subirArchivoLogo(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const formData = new FormData();
-    formData.append('logo', file);
-
-    try {
-        const res = await fetch('/api/upload/logo', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-        });
-        const data = await res.json();
-        if (data.logo_url) {
-            document.getElementById('linktree-logo-input').value = data.logo_url;
-            alert("¡Logotipo subido y actualizado con éxito!");
-            cargarLinktreeConfig();
-        }
-    } catch (err) {
-        alert("Error al subir imagen: " + err.message);
-    }
-}
-
-// Gestor de Documentos de Conocimiento (PDF, Excel, CSV, TXT)
-async function cargarDocumentosConocimiento() {
-    const cont = document.getElementById('lista-documentos-container');
-    if (!cont) return;
-
-    try {
-        const docs = await apiFetch('/api/documentos');
-        cont.innerHTML = '';
-
-        if (!docs || docs.length === 0) {
-            cont.innerHTML = `<div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center">No hay documentos subidos aún. Sube tu lista de precios en Excel/CSV o PDF para que la IA los memorice.</div>`;
-            return;
-        }
-
-        docs.forEach(d => {
-            const div = document.createElement('div');
-            div.className = "flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs";
-            
-            let iconClass = 'fa-solid fa-file-lines text-slate-400';
-            if (d.nombre.endsWith('.pdf')) iconClass = 'fa-solid fa-file-pdf text-rose-400';
-            else if (d.nombre.endsWith('.csv') || d.nombre.endsWith('.xlsx')) iconClass = 'fa-solid fa-file-excel text-emerald-400';
-
-            div.innerHTML = `
-                <div class="flex items-center space-x-3">
-                    <i class="${iconClass} text-base"></i>
-                    <div>
-                        <div class="font-bold text-white">${d.nombre}</div>
-                        <div class="text-[10px] text-slate-500">${d.tamano} • Subido el ${d.fecha}</div>
-                    </div>
-                </div>
-                <button onclick="eliminarDocumentoConocimiento('${d.nombre}')" class="text-slate-500 hover:text-rose-400 p-2 transition">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-            `;
-            cont.appendChild(div);
-        });
-    } catch (e) {
-        console.error("Error cargando documentos:", e);
-    }
-}
-
-async function subirDocumentoConocimiento(input) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const formData = new FormData();
-    formData.append('documento', file);
-
-    try {
-        const res = await fetch('/api/documentos/upload', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert(`¡Documento "${file.name}" cargado! La IA ahora tiene esta información en su memoria.`);
-            cargarDocumentosConocimiento();
-        }
-    } catch (err) {
-        alert("Error al subir archivo: " + err.message);
-    }
-}
-
-async function eliminarDocumentoConocimiento(nombre) {
-    if (!confirm(`¿Eliminar el documento "${nombre}" de la memoria del bot?`)) return;
-    try {
-        await apiFetch(`/api/documentos/${encodeURIComponent(nombre)}`, { method: 'DELETE' });
-        cargarDocumentosConocimiento();
-    } catch (e) {
-        alert("Error al eliminar documento: " + e.message);
-    }
-}
-
-async function guardarConocimientoIA() {
-    try {
-        await apiFetch('/api/configuracion', {
-            method: 'POST',
-            body: JSON.stringify({
-                gemini_modelo_ia: document.getElementById('config-modelo-ia').value,
-                gemini_api_key: document.getElementById('config-api-key').value,
-                prompt_ia: document.getElementById('config-prompt-ia').value,
-                catalogo_servicios: document.getElementById('config-catalogo-servicios').value,
-                google_sheets_url: document.getElementById('config-google-sheets-url').value,
-                ubicacion_direccion: document.getElementById('config-ubicacion-direccion').value,
-                ubicacion_maps_link: document.getElementById('config-ubicacion-maps').value,
-                datos_bancarios: document.getElementById('config-datos-bancarios').value
-            })
-        });
-        alert("¡Cerebro, Catálogo, Google Sheets y Modelo de IA actualizados en vivo!");
-    } catch (e) {
-        alert("Error al guardar: " + e.message);
-    }
-}
-
-async function guardarAjustesGenerales() {
+// Guardar Identidad del Negocio y Administradores
+async function guardarIdentidadNegocio() {
     try {
         await apiFetch('/api/configuracion', {
             method: 'POST',
             body: JSON.stringify({
                 nombre_negocio: document.getElementById('config-nombre-negocio').value,
+                numeros_admins: document.getElementById('config-numeros-admin').value,
                 grupo_control: document.getElementById('config-grupo-control').value,
-                tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value,
-                horario_sucursal_fisica: document.getElementById('config-horario-fisico').value,
-                horario_asesor_en_linea: document.getElementById('config-horario-online').value,
-                hora_inicio_semana: document.getElementById('config-hora-inicio-semana').value,
-                hora_fin_semana: document.getElementById('config-hora-fin-semana').value,
-                hora_inicio_sab: document.getElementById('config-hora-inicio-sab').value,
-                hora_fin_sab: document.getElementById('config-hora-fin-sab').value,
-                hora_inicio_dom: document.getElementById('config-hora-inicio-dom').value,
-                hora_fin_dom: document.getElementById('config-hora-fin-dom').value,
-                mensaje_fuera_horario: document.getElementById('config-mensaje-fuera-horario').value,
-                ausencia_activa: document.getElementById('config-ausencia-activa').checked ? '1' : '0',
-                ausencia_mensaje: document.getElementById('config-ausencia-mensaje').value
+                tiempo_pausa_humano_mins: document.getElementById('config-tiempo-pausa').value
             })
         });
-        alert("Horarios, modo ausencia y ajustes guardados con éxito.");
+        alert("✅ Identidad del negocio y teléfonos administradores guardados con éxito.");
     } catch (e) {
-        alert("Error: " + e.message);
+        alert("Error al guardar: " + e.message);
+    }
+}
+
+// Guardar Horarios Semanales Detallados (7 Días con Doble Turno)
+async function guardarHorariosDetallados() {
+    try {
+        const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        const scheduleObj = {};
+        dias.forEach(d => {
+            const abierto = document.getElementById(`chk-dia-${d}`)?.checked || false;
+            const t1Inicio = document.getElementById(`dia-${d}-t1-inicio`)?.value || '08:00';
+            const t1Fin = document.getElementById(`dia-${d}-t1-fin`)?.value || '14:00';
+            const t2Activo = document.getElementById(`chk-dia-${d}-t2`)?.checked || false;
+            const t2Inicio = document.getElementById(`dia-${d}-t2-inicio`)?.value || '16:00';
+            const t2Fin = document.getElementById(`dia-${d}-t2-fin`)?.value || '18:00';
+            scheduleObj[d] = { abierto, t1Inicio, t1Fin, t2Activo, t2Inicio, t2Fin };
+        });
+
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                horario_sucursal_fisica: document.getElementById('config-horario-fisico').value,
+                horario_asesor_en_linea: document.getElementById('config-horario-online').value,
+                mensaje_fuera_horario: document.getElementById('config-mensaje-fuera-horario').value,
+                horarios_semanales_json: JSON.stringify(scheduleObj)
+            })
+        });
+        alert("✅ Horarios de atención semanales guardados con éxito.");
+    } catch (e) {
+        alert("Error al guardar horarios: " + e.message);
+    }
+}
+
+// Guardar Modo Ausencia desde la pestaña de Configuración
+async function guardarModoAusenciaTab() {
+    try {
+        const activa = document.getElementById('config-ausencia-activa').checked;
+        const mensaje = document.getElementById('config-ausencia-mensaje').value;
+        const fecha_fin = document.getElementById('config-ausencia-fecha').value;
+
+        await apiFetch('/api/bot/ausencia', {
+            method: 'POST',
+            body: JSON.stringify({ activa, mensaje, fecha_fin })
+        });
+        alert("✅ Estado de vacaciones/ausencia guardado con éxito.");
+        cargarEstadoControlBot();
+    } catch (e) {
+        alert("Error al guardar: " + e.message);
     }
 }
 
