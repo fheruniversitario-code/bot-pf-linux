@@ -790,6 +790,11 @@ app.post('/api/conversaciones/:jid/enviar', autenticarToken, async (req, res) =>
         // Pausar automáticamente el bot en este chat por 30 minutos
         chatsPausados.set(jid, Date.now());
 
+        // Si el cliente tenía una solicitud de asesor pendiente, marcarla como atendida
+        const telClean = jid.replace(/[^0-9]/g, '');
+        await runQuery("UPDATE solicitudes_asesor SET estado = 'atendido' WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [jid, `%${telClean}%`]);
+        io.emit('solicitud_asesor_actualizada');
+
         io.emit('nuevo_mensaje', {
             chat_id: jid,
             emisor: 'yo',
@@ -2657,6 +2662,10 @@ client.on('message_create', async (msg) => {
                 });
             }
         } catch(eMsg) {}
+
+        // Si el cliente tenía una solicitud de asesor pendiente, marcarla como atendida
+        await runQuery("UPDATE solicitudes_asesor SET estado = 'atendido' WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [targetJid, `%${telClean}%`]);
+        io.emit('solicitud_asesor_actualizada');
 
         io.emit('chat_pausado', { jid: targetJid, pausado_hasta: Date.now() + (minsPausa * 60 * 1000) });
     } catch (err) {

@@ -129,7 +129,12 @@ function cambiarTab(tabId) {
 
     // Cargar datos de la pestaña
     if (tabId === 'ventas') cargarVentasYCRM();
-    if (tabId === 'conversaciones') { cargarListaConversaciones(); cargarSolicitudesAsesor(); }
+    if (tabId === 'conversaciones') { 
+        const badgeNuevos = document.getElementById('badge-mensajes-nuevos');
+        if (badgeNuevos) badgeNuevos.classList.add('hidden');
+        cargarListaConversaciones(); 
+        cargarSolicitudesAsesor(); 
+    }
     if (tabId === 'citas') cargarAgendaCitas();
     if (tabId === 'linktree') cargarLinktreeConfig();
     if (tabId === 'conocimiento') cargarConfiguracion();
@@ -308,18 +313,35 @@ async function eliminarSolicitudAsesor(id) {
     }
 }
 
+let filtroPendientesActivo = false;
+
 async function filtrarChatsPendientesAsesor() {
-    cambiarTab('conversaciones');
     await cargarSolicitudesAsesor();
     const pendientes = listaSolicitudesAsesorMem.filter(s => s.estado === 'pendiente');
-    if (pendientes.length === 0) {
+    
+    if (pendientes.length === 0 && !filtroPendientesActivo) {
         alert("ℹ️ No hay solicitudes de asesor pendientes actualmente.");
         return;
     }
-    // Seleccionar el primer chat pendiente
-    const primero = pendientes[0];
-    if (primero && primero.jid) {
-        seleccionarChat(primero.jid, primero.nombre || primero.telefono);
+
+    filtroPendientesActivo = !filtroPendientesActivo;
+    const badge = document.getElementById('badge-pendientes-asesor');
+    if (badge) {
+        if (filtroPendientesActivo) {
+            badge.className = "cursor-pointer px-2.5 py-1 bg-amber-500/30 text-amber-300 border border-amber-400 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition ring-2 ring-amber-400/60 shadow-md";
+        } else {
+            badge.className = "cursor-pointer px-2.5 py-1 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition";
+        }
+    }
+
+    aplicarFiltrosConversaciones();
+
+    // Si se activa y hay pendientes, seleccionar el primero
+    if (filtroPendientesActivo && pendientes.length > 0) {
+        const primero = pendientes[0];
+        if (primero && primero.jid) {
+            seleccionarChat(primero.jid, primero.nombre || primero.telefono);
+        }
     }
 }
 
@@ -372,6 +394,11 @@ async function cargarEtiquetasFiltro() {
 }
 
 function filtrarPorEtiqueta(etiquetaId) {
+    filtroPendientesActivo = false;
+    const badge = document.getElementById('badge-pendientes-asesor');
+    if (badge) {
+        badge.className = "cursor-pointer px-2.5 py-1 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition";
+    }
     filtroEtiquetaActiva = etiquetaId;
     cargarEtiquetasFiltro();
     aplicarFiltrosConversaciones();
@@ -381,7 +408,16 @@ function aplicarFiltrosConversaciones() {
     const busqueda = (document.getElementById('buscar-chat-input')?.value || '').toLowerCase().trim();
     let filtrados = listaConversacionesMem;
 
-    if (filtroEtiquetaActiva !== 'todas') {
+    if (filtroPendientesActivo) {
+        const pendientes = listaSolicitudesAsesorMem.filter(s => s.estado === 'pendiente');
+        const jidsPendientes = pendientes.map(s => s.jid);
+        const telsPendientes = pendientes.map(s => (s.telefono || '').replace(/[^0-9]/g, '')).filter(t => t.length >= 6);
+
+        filtrados = filtrados.filter(c => {
+            const telC = (c.telefono || c.jid || '').replace(/[^0-9]/g, '');
+            return jidsPendientes.includes(c.jid) || (telC && telsPendientes.some(t => telC.includes(t) || t.includes(telC)));
+        });
+    } else if (filtroEtiquetaActiva !== 'todas') {
         const idNum = parseInt(filtroEtiquetaActiva, 10);
         filtrados = filtrados.filter(c => c.etiquetas_lista && c.etiquetas_lista.some(t => t.id === idNum));
     }
@@ -448,6 +484,14 @@ function renderizarListaConversaciones(chats) {
                    ${(c.nombre || c.pushname || 'C').charAt(0).toUpperCase()}
                </div>`;
 
+        const esPendienteAsesor = listaSolicitudesAsesorMem.some(s => {
+            if (s.estado !== 'pendiente') return false;
+            const telC = (c.telefono || c.jid || '').replace(/[^0-9]/g, '');
+            const telS = (s.telefono || s.jid || '').replace(/[^0-9]/g, '');
+            return s.jid === c.jid || (telC && telS && (telC.includes(telS) || telS.includes(telC)));
+        });
+        const badgePendiente = esPendienteAsesor ? '<span class="text-[9px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded font-bold flex items-center space-x-1 shadow-xs"><i class="fa-solid fa-bell text-[8px]"></i><span>Asesor</span></span>' : '';
+
         const badgeGrupo = esGrupo ? '<span class="text-[9px] px-1.5 py-0.2 bg-pink-500/20 text-pink-300 rounded font-bold">Grupo</span>' : '';
 
         div.innerHTML = `
@@ -456,6 +500,7 @@ function renderizarListaConversaciones(chats) {
                 <div class="flex items-center justify-between">
                     <h4 class="font-bold text-white text-xs truncate">${c.nombre || c.pushname || c.telefono}</h4>
                     <div class="flex items-center space-x-1.5">
+                        ${badgePendiente}
                         ${badgeGrupo}
                         ${badgeIA}
                     </div>
@@ -483,6 +528,21 @@ async function refrescarChatActivo() {
     const btn = document.getElementById('btn-refrescar-chat');
     if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i> <span>Sincronizando...</span>';
     await seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
+}
+
+async function resolverSolicitudAsesorDesdeChat(id) {
+    try {
+        await apiFetch(`/api/solicitudes-asesor/${id}/estado`, {
+            method: 'PUT',
+            body: JSON.stringify({ estado: 'atendido' })
+        });
+        await cargarSolicitudesAsesor();
+        const banner = document.getElementById('banner-asesor-solicitud');
+        if (banner) banner.remove();
+        aplicarFiltrosConversaciones();
+    } catch(e) {
+        alert("Error al resolver solicitud: " + e.message);
+    }
 }
 
 async function seleccionarChat(jid, nombre) {
@@ -535,6 +595,37 @@ async function seleccionarChat(jid, nombre) {
                     <span>${esIgnorado ? 'Contacto Ignorado (Click para Reactivar)' : 'Ignorar Contacto (1 Clic)'}</span>
                 </button>
             `;
+        }
+
+        // Mostrar banner destacado si este paciente solicitó asesor
+        const telContactoLimpio = (jid || '').replace(/[^0-9]/g, '');
+        const solicitudPendiente = listaSolicitudesAsesorMem.find(s => {
+            if (s.estado !== 'pendiente') return false;
+            const telS = (s.telefono || s.jid || '').replace(/[^0-9]/g, '');
+            return s.jid === jid || (telContactoLimpio && telS && (telContactoLimpio.includes(telS) || telS.includes(telContactoLimpio)));
+        });
+
+        const bannerExistente = document.getElementById('banner-asesor-solicitud');
+        if (bannerExistente) bannerExistente.remove();
+
+        if (solicitudPendiente) {
+            const banner = document.createElement('div');
+            banner.id = 'banner-asesor-solicitud';
+            banner.className = 'px-6 py-2.5 bg-amber-950/60 border-b border-amber-500/40 flex items-center justify-between text-xs';
+            banner.innerHTML = `
+                <div class="flex items-center space-x-2 text-amber-300">
+                    <i class="fa-solid fa-bell text-amber-400 text-sm"></i>
+                    <span>Solicitó asesor en vivo: <b>"${solicitudPendiente.motivo || 'Atención personalizada'}"</b> (${solicitudPendiente.fecha_hora || 'reciente'})</span>
+                </div>
+                <button onclick="resolverSolicitudAsesorDesdeChat(${solicitudPendiente.id})" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center space-x-1">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Marcar Atendido</span>
+                </button>
+            `;
+            const header = document.getElementById('chat-header');
+            if (header && header.parentNode) {
+                header.parentNode.insertBefore(banner, header.nextSibling);
+            }
         }
 
         if (!data.mensajes || data.mensajes.length === 0) {
@@ -1318,6 +1409,11 @@ socket.on('nuevo_mensaje', (msg) => {
         const badge = document.getElementById('badge-mensajes-nuevos');
         if (badge) badge.classList.remove('hidden');
     }
+});
+
+socket.on('solicitud_asesor_actualizada', async () => {
+    await cargarSolicitudesAsesor();
+    aplicarFiltrosConversaciones();
 });
 
 // ==============================================================================
