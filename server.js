@@ -1322,15 +1322,16 @@ INSTRUCCIONES CLAVE:
             }
         }
 
-        // Cascada completa de modelos dinámicos válidos
-        const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-1.5-flash';
+        // Cascada completa de modelos Gemini 3 oficiales
+        const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-3.6-flash';
         const listaModelos = Array.from(new Set([
             modeloGuardado,
-            'gemini-1.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-pro',
-            'gemini-2.5-flash'
-        ])).filter(m => m && !m.includes('3.5') && !m.includes('3.6') && !m.includes('latest'));
+            'gemini-3.6-flash',
+            'gemini-3.5-flash',
+            'gemini-flash-latest',
+            'gemini-3.5-pro',
+            'gemini-pro-latest'
+        ])).filter(m => m && !m.includes('1.5') && !m.includes('2.0') && !m.includes('2.5'));
 
         let respuestaIA = null;
         for (const modName of listaModelos) {

@@ -177,6 +177,7 @@ async function inicializarBD() {
         gemini_api_key: "",
         gemini_modelo_ia: "gemini-2.5-flash",
         google_calendar_id: "",
+        gemini_modelo_ia: "gemini-3.6-flash",
         prompt_ia: "Eres el asistente virtual oficial de la empresa. Atiende de manera cordial, profesional, clara y concisa en español.",
         catalogo_servicios: "Servicio General: $450 MXN\nConsulta Especializada: $700 MXN",
         menu_numerico: JSON.stringify([
@@ -207,6 +208,9 @@ async function inicializarBD() {
             await runQuery("INSERT INTO configuracion (clave, valor) VALUES (?, ?)", [clave, valor]);
         }
     }
+
+    // Actualización automática de modelos antiguos a Gemini 3.6
+    await runQuery("UPDATE configuracion SET valor = 'gemini-3.6-flash' WHERE clave = 'gemini_modelo_ia' AND (valor LIKE '%1.5%' OR valor LIKE '%2.0%' OR valor LIKE '%2.5%')");
 
     // Enlaces de muestra para Linktree
     const linksCount = await getQuery("SELECT COUNT(*) as total FROM linktree_links");
