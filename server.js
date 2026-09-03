@@ -1490,7 +1490,6 @@ async function procesarMensajeEntrante(msg) {
     // --------------------------------------------------------------------------
     // 2. EVALUACIÓN Y ENVÍO AUTOMÁTICO DE INFOGRAFÍAS Y FOTOGRAFÍAS (.png, .jpg)
     // --------------------------------------------------------------------------
-    const textoLowerNorm = texto.toLowerCase();
     const infografiasEnviadasMemoria = global.infografiasEnviadasMemoria || (global.infografiasEnviadasMemoria = new Set());
 
     async function enviarImagenSiExiste(palabraClave, captionTitulo) {
