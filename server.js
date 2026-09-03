@@ -502,11 +502,8 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                 for (const lid of ch.labelIds) {
                     const bdEtqId = mapWALabelToBD[String(lid)];
                     if (bdEtqId) {
-                        const yaAsignada = await getQuery("SELECT id FROM contactos_etiquetas WHERE jid = ? AND etiqueta_id = ?", [ch.jid, bdEtqId]);
-                        if (!yaAsignada) {
-                            await runQuery("INSERT INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [ch.jid, bdEtqId, tReal]);
-                            asignacionesTotal++;
-                        }
+                        await runQuery("INSERT OR REPLACE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [ch.jid, bdEtqId, tReal]);
+                        asignacionesTotal++;
                     }
                 }
             }
