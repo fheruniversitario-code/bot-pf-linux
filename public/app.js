@@ -511,7 +511,7 @@ async function eliminarLinktreeLink(id) {
 async function cargarConfiguracion() {
     try {
         const config = await apiFetch('/api/configuracion');
-        if (document.getElementById('config-modelo-ia')) document.getElementById('config-modelo-ia').value = config.gemini_modelo_ia || 'gemini-2.5-flash';
+        if (document.getElementById('config-modelo-ia')) document.getElementById('config-modelo-ia').value = config.gemini_modelo_ia || 'gemini-3.6-flash';
         if (document.getElementById('config-api-key')) document.getElementById('config-api-key').value = config.gemini_api_key || '';
         if (document.getElementById('config-prompt-ia')) document.getElementById('config-prompt-ia').value = config.prompt_ia || '';
         if (document.getElementById('config-catalogo-servicios')) document.getElementById('config-catalogo-servicios').value = config.catalogo_servicios || '';
@@ -701,6 +701,43 @@ async function eliminarOpcionMenu(index) {
     }
 }
 
+// Auto-detectar modelos vigentes de Google Gemini
+async function detectarModelosEnVivo() {
+    const icono = document.getElementById('icono-sync-modelos');
+    if (icono) icono.classList.add('fa-spin');
+    const select = document.getElementById('config-modelo-ia');
+    const valActual = select ? select.value : 'gemini-3.6-flash';
+
+    try {
+        const data = await apiFetch('/api/gemini/modelos');
+        if (data.success && data.modelos && data.modelos.length > 0) {
+            select.innerHTML = '';
+            data.modelos.forEach(mod => {
+                const opt = document.createElement('option');
+                opt.value = mod;
+                if (mod.includes('flash')) {
+                    opt.textContent = `${mod} ⚡ (Flash - Bajo Costo y Alta Velocidad)`;
+                } else if (mod.includes('pro')) {
+                    opt.textContent = `${mod} 🧠 (Pro - Razonamiento Profundo)`;
+                } else {
+                    opt.textContent = mod;
+                }
+                select.appendChild(opt);
+            });
+            if (data.modelos.includes(valActual)) {
+                select.value = valActual;
+            } else {
+                select.value = data.modelos[0];
+            }
+            alert(`✅ Se detectaron ${data.modelos.length} modelos oficiales activos en tu cuenta de Google AI Studio.`);
+        }
+    } catch (e) {
+        alert("No se pudieron consultar los modelos en vivo: " + e.message);
+    } finally {
+        if (icono) icono.classList.remove('fa-spin');
+    }
+}
+
 // Alternar ver / ocultar clave API
 function toggleMostrarApiKey() {
     const input = document.getElementById('config-api-key');
@@ -719,7 +756,7 @@ function toggleMostrarApiKey() {
 async function guardarConocimientoIA() {
     try {
         const apiKey = document.getElementById('config-api-key') ? document.getElementById('config-api-key').value.trim() : '';
-        const modeloIA = document.getElementById('config-modelo-ia') ? document.getElementById('config-modelo-ia').value : 'gemini-1.5-flash';
+        const modeloIA = document.getElementById('config-modelo-ia') ? document.getElementById('config-modelo-ia').value : 'gemini-3.6-flash';
         const promptIA = document.getElementById('config-prompt-ia') ? document.getElementById('config-prompt-ia').value : '';
         const catalogo = document.getElementById('config-catalogo-servicios') ? document.getElementById('config-catalogo-servicios').value : '';
         const googleSheets = document.getElementById('config-google-sheets-url') ? document.getElementById('config-google-sheets-url').value : '';

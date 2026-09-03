@@ -549,6 +549,57 @@ app.delete('/api/imagenes/:nombre', autenticarToken, (req, res) => {
     }
 });
 
+// Auto-descubrimiento dinámico de modelos oficiales de Google Gemini
+let cacheModelosValidos = [];
+let ultimoFetchModelos = 0;
+
+async function obtenerModelosDisponibles(apiKey) {
+    if (!apiKey) return ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+    if (cacheModelosValidos.length > 0 && (Date.now() - ultimoFetchModelos < 3600000)) {
+        return cacheModelosValidos;
+    }
+
+    try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        if (!resp.ok) throw new Error(`Status ${resp.status}`);
+        const data = await resp.json();
+        
+        if (data && data.models && Array.isArray(data.models)) {
+            // Filtrar modelos compatibles con generateContent, preferir Flash (bajo costo y máxima velocidad)
+            const modelosSoportados = data.models
+                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
+                .map(m => m.name.replace('models/', ''))
+                .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('1.5') && !name.includes('2.0') && !name.includes('2.5'));
+
+            // Priorizar modelos Flash (bajo costo) y ordenar de mayor a menor versión
+            const flashModels = modelosSoportados.filter(name => name.includes('flash'));
+            const otherModels = modelosSoportados.filter(name => !name.includes('flash'));
+
+            const listaFinal = Array.from(new Set([...flashModels, ...otherModels]));
+            if (listaFinal.length > 0) {
+                cacheModelosValidos = listaFinal;
+                ultimoFetchModelos = Date.now();
+                return listaFinal;
+            }
+        }
+    } catch (e) {
+        console.warn("⚠️ No se pudo consultar la lista dinámica de modelos de Google:", e.message);
+    }
+
+    return cacheModelosValidos.length > 0 ? cacheModelosValidos : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-pro'];
+}
+
+app.get('/api/gemini/modelos', autenticarToken, async (req, res) => {
+    try {
+        const customApiKey = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_api_key'"))?.valor;
+        const activeKey = (customApiKey && customApiKey.trim()) ? customApiKey.trim() : geminiApiKey;
+        const modelos = await obtenerModelosDisponibles(activeKey);
+        res.json({ success: true, modelos });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Mini-Sitio Linktree
 app.get('/api/linktree', async (req, res) => {
     try {
@@ -1322,27 +1373,37 @@ INSTRUCCIONES CLAVE:
             }
         }
 
-        // Cascada completa de modelos Gemini 3 oficiales
+        // Auto-detección dinámica de modelos vigentes en Google AI
+        const modelosDisponibles = await obtenerModelosDisponibles(activeKey);
         const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-3.6-flash';
+        
         const listaModelos = Array.from(new Set([
             modeloGuardado,
+            ...modelosDisponibles,
             'gemini-3.6-flash',
             'gemini-3.5-flash',
-            'gemini-flash-latest',
-            'gemini-3.5-pro',
-            'gemini-pro-latest'
-        ])).filter(m => m && !m.includes('1.5') && !m.includes('2.0') && !m.includes('2.5'));
+            'gemini-flash-latest'
+        ])).filter(Boolean);
 
         let respuestaIA = null;
+        let modeloExitoso = null;
         for (const modName of listaModelos) {
             try {
                 const model = aiClient.getGenerativeModel({ model: modName, systemInstruction });
                 const result = await model.generateContent(promptContenido);
                 respuestaIA = result.response.text();
-                if (respuestaIA) break;
+                if (respuestaIA) {
+                    modeloExitoso = modName;
+                    break;
+                }
             } catch (errModel) {
-                console.error(`[Error Modelo IA ${modName}]:`, errModel.message);
+                console.warn(`[Modelo ${modName} no disponible]:`, errModel.message);
             }
+        }
+
+        if (modeloExitoso && modeloExitoso !== modeloGuardado) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('gemini_modelo_ia', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [modeloExitoso]);
+            console.log(`🤖 [Auto-Reparación IA]: Modelo actualizado dinámicamente a: ${modeloExitoso}`);
         }
 
         if (!respuestaIA) {
