@@ -980,10 +980,24 @@ setInterval(async () => {
     } catch (e) {}
 }, 60000);
 
+// Helper seguro para simular "escribiendo..." sin que falle si el contexto de Puppeteer está ocupado
+async function simularEscribiendoSeguro(msg, ms = 1000) {
+    try {
+        if (msg && typeof msg.getChat === 'function') {
+            const chat = await msg.getChat().catch(() => null);
+            if (chat && typeof chat.sendStateTyping === 'function') {
+                await chat.sendStateTyping().catch(() => {});
+            }
+        }
+    } catch (e) {}
+    await delay(ms);
+}
+
 // Procesador Inteligente de Mensajes Entrantes
 async function procesarMensajeEntrante(msg) {
-    if (!msg || msg.from === 'status@broadcast') return;
-    if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
+    try {
+        if (!msg || msg.from === 'status@broadcast') return;
+        if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
     // 1. Descartar mensajes antiguos (más de 2 minutos) que WhatsApp entrega al reconectar o reiniciar
     if (msg.timestamp) {
@@ -1238,9 +1252,7 @@ async function procesarMensajeEntrante(msg) {
     }
 
     if (msg.type === 'ptt' || msg.type === 'audio' || msg.type === 'voice') {
-        const chat = await msg.getChat();
-        await chat.sendStateTyping();
-        await delay(1500);
+        await simularEscribiendoSeguro(msg, 1200);
         const resp = "🎙️ *Hola. Por el momento nuestro sistema atiende por mensaje escrito y fotos.*\n\nPor favor, escríbeme tu duda para poder ayudarte.";
         const sent = await msg.reply(resp);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -1276,9 +1288,7 @@ async function procesarMensajeEntrante(msg) {
 
         if (esConfirmacionSinNombre || txtClean.length < 3 || /^\d+$/.test(txtClean)) {
             // No es un nombre: insistir amablemente en el nombre para poder registrarlo correctamente
-            const chat = await msg.getChat();
-            await chat.sendStateTyping();
-            await delay(1000);
+            await simularEscribiendoSeguro(msg, 1000);
 
             const msjPedirNombre = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Excelente! ✍️ Para poder registrar tu expediente e identificarte con nuestro personal de salud, por favor indícame **cuál es tu nombre completo** (o cómo te gustaría que te llamemos):`;
             const sent = await client.sendMessage(remitente, msjPedirNombre);
@@ -1301,9 +1311,7 @@ async function procesarMensajeEntrante(msg) {
         await runQuery("UPDATE contactos SET nombre = ? WHERE jid = ?", [nombreLimpio, remitente]);
         nombreContacto = nombreLimpio;
 
-        const chat = await msg.getChat();
-        await chat.sendStateTyping();
-        await delay(1200);
+        await simularEscribiendoSeguro(msg, 1000);
 
         let msjConfirmado = '';
         if (estadoHorario.enReceso) {
@@ -1349,9 +1357,7 @@ async function procesarMensajeEntrante(msg) {
     // --------------------------------------------------------------------------
     const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
     if (saludos.includes(textoLowerNorm) && mostrarMenuNumerico) {
-        const chat = await msg.getChat();
-        await chat.sendStateTyping();
-        await delay(1200);
+        await simularEscribiendoSeguro(msg, 1000);
 
         const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
         const saludoHeader = nombreMostrar ?
@@ -1391,9 +1397,7 @@ async function procesarMensajeEntrante(msg) {
     const pideAsesorDirecto = textoLowerNorm === '5' || frasesAsesor.some(f => textoLowerNorm === f || (textoLowerNorm.includes(f) && !textoLowerNorm.includes('que') && !textoLowerNorm.includes('como') && !textoLowerNorm.includes('donde')));
 
     if (pideAsesorDirecto) {
-        const chat = await msg.getChat();
-        await chat.sendStateTyping();
-        await delay(1200);
+        await simularEscribiendoSeguro(msg, 1000);
 
         // Si el paciente aún no está registrado con su nombre:
         if (!nombreContacto || nombreContacto === 'Cliente') {
@@ -1456,9 +1460,7 @@ async function procesarMensajeEntrante(msg) {
             const menuOpciones = JSON.parse(menuConfigRaw);
             const opcionEncontrada = menuOpciones.find(o => o.opcion && o.opcion.toString().trim() === texto.trim());
             if (opcionEncontrada) {
-                const chat = await msg.getChat();
-                await chat.sendStateTyping();
-                await delay(1200);
+                await simularEscribiendoSeguro(msg, 1000);
 
                 let respMenu = `${iconoAsistente ? iconoAsistente + ' ' : ''}📌 *${opcionEncontrada.titulo}*\n\n${opcionEncontrada.respuesta}`;
                 if (opcionEncontrada.enlace) {
@@ -1744,12 +1746,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
             }
 
             // Simulación de escritura humana anti-ban
-            try {
-                const chat = await msg.getChat();
-                await chat.sendStateTyping();
-                const delayEscritura = Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500);
-                await delay(delayEscritura);
-            } catch (eTyping) {}
+            await simularEscribiendoSeguro(msg, Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500));
 
             const sent = await client.sendMessage(remitente, textoRespuestaFinal);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -1773,10 +1770,17 @@ INSTRUCCIONES CLAVE DE ATENCIÓN:
     } catch (e) {
         console.error("Error al procesar con IA:", e.message);
     }
+    } catch (errGlobalMsg) {
+        console.error("Error no fatal en procesamiento de mensaje:", errGlobalMsg.message);
+    }
 }
 
 client.on('message', async (msg) => {
-    await procesarMensajeEntrante(msg);
+    try {
+        await procesarMensajeEntrante(msg);
+    } catch (err) {
+        console.error("Error en evento message:", err.message);
+    }
 });
 
 // Iniciar Servidor Web y Base de Datos
