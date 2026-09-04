@@ -680,12 +680,37 @@ async function seleccionarChat(jid, nombre, telefono = '') {
 
         data.mensajes.forEach(m => {
             const isMe = m.es_mio === 1;
-            const isIA = m.es_ia === 1;
+            const cuerpoRaw = (m.cuerpo || '').trim();
+
+            // Detección robusta de si el mensaje proviene de la IA (Gemini / Bot)
+            const esMensajeIA = isMe && (
+                m.es_ia === 1 || 
+                m.emisor === 'bot' || 
+                m.emisor_nombre === 'Asistente IA' || 
+                cuerpoRaw.startsWith('🤖') ||
+                cuerpoRaw.startsWith('👨‍⚕️') ||
+                cuerpoRaw.startsWith('🏥') ||
+                cuerpoRaw.startsWith('🎓') ||
+                cuerpoRaw.startsWith('🌴')
+            );
 
             const row = document.createElement('div');
             row.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
 
-            let badgeEmisor = isIA ? '<span class="text-[10px] font-bold text-emerald-400 ml-1.5">IA</span>' : (isMe ? '<span class="text-[10px] font-bold text-indigo-400 ml-1.5">Asesor</span>' : '');
+            let nombreMostrar = 'Cliente';
+            let badgeEmisor = '';
+
+            if (isMe) {
+                if (esMensajeIA) {
+                    nombreMostrar = 'Asistente IA';
+                    badgeEmisor = '<span class="text-[10px] font-bold text-emerald-400 ml-1.5">IA</span>';
+                } else {
+                    nombreMostrar = 'Asesor Humano';
+                    badgeEmisor = '<span class="text-[10px] font-bold text-indigo-300 ml-1.5">Asesor</span>';
+                }
+            } else {
+                nombreMostrar = m.emisor_nombre || 'Cliente';
+            }
 
             let cuerpoHtml = m.cuerpo || '';
             if (cuerpoHtml.startsWith('/9j/') || cuerpoHtml.startsWith('data:image') || (cuerpoHtml.length > 200 && !cuerpoHtml.includes(' '))) {
@@ -695,9 +720,9 @@ async function seleccionarChat(jid, nombre, telefono = '') {
             }
 
             row.innerHTML = `
-                <div class="max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${isMe ? (isIA ? 'bg-emerald-950/40 border border-emerald-800/40 text-emerald-100 rounded-tr-none' : 'bg-indigo-600 text-white rounded-tr-none') : 'bg-slate-800 border border-slate-700/60 text-slate-100 rounded-tl-none'}">
+                <div class="max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${isMe ? (esMensajeIA ? 'bg-emerald-950/40 border border-emerald-800/40 text-emerald-100 rounded-tr-none' : 'bg-indigo-600 text-white rounded-tr-none') : 'bg-slate-800 border border-slate-700/60 text-slate-100 rounded-tl-none'}">
                     <div class="text-[10px] font-semibold text-slate-400 mb-1 flex items-center">
-                        <span>${m.emisor_nombre || (isMe ? 'Asistente' : 'Cliente')}</span>
+                        <span>${nombreMostrar}</span>
                         ${badgeEmisor}
                     </div>
                     ${cuerpoHtml}

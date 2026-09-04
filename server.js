@@ -861,7 +861,6 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
 
                     for (const m of rawMsgs) {
                         const esMio = m.fromMe ? 1 : 0;
-                        const emisorNombre = esMio ? 'Asesor Humano' : (waChat?.name || waChat?.formattedTitle || contacto?.nombre || 'Cliente');
                         const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
                         let cuerpoTxt = m.body || (m.hasMedia ? '📷 (Infografía / Imagen enviada)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
 
@@ -871,13 +870,23 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                             cuerpoTxt = '📷 (Infografía / Imagen enviada)';
                         }
 
+                        const esMensajeIA = esMio === 1 && (
+                            cuerpoTxt.startsWith('🤖') ||
+                            cuerpoTxt.startsWith('👨‍⚕️') ||
+                            cuerpoTxt.startsWith('🏥') ||
+                            cuerpoTxt.startsWith('🎓') ||
+                            cuerpoTxt.startsWith('🌴')
+                        );
+
+                        const emisorNombre = esMio ? (esMensajeIA ? 'Asistente IA' : 'Asesor Humano') : (waChat?.name || waChat?.formattedTitle || contacto?.nombre || 'Cliente');
+
                         // Deduplicar estrictamente por contenido del texto y emisor dentro de un rango de tiempo
                         const yaExiste = await getQuery(`
-                            SELECT id FROM mensajes 
+                            SELECT id, es_ia, emisor_nombre FROM mensajes 
                             WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
                               AND cuerpo = ?
                               AND es_mio = ?
-                              AND ABS(timestamp - ?) <= 15000
+                              AND ABS(timestamp - ?) <= 25000
                         `, [
                             jid,
                             chatVinculado,
@@ -888,11 +897,15 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                             timestampMs
                         ]);
 
-                        if (!yaExiste) {
+                        if (yaExiste) {
+                            if (esMensajeIA && (yaExiste.es_ia === 0 || yaExiste.emisor_nombre === 'Asesor Humano')) {
+                                await runQuery("UPDATE mensajes SET es_ia = 1, emisor_nombre = 'Asistente IA', emisor = 'bot' WHERE id = ?", [yaExiste.id]);
+                            }
+                        } else {
                             await runQuery(`
                                 INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
-                                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-                            `, [jid, esMio ? 'yo' : (m.from || jid), emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            `, [jid, esMio ? (esMensajeIA ? 'bot' : 'yo') : (m.from || jid), emisorNombre, cuerpoTxt, m.type || 'chat', esMio, esMensajeIA ? 1 : 0, timestampMs]);
                         }
                     }
 
@@ -3236,6 +3249,21 @@ client.on('message_create', async (msg) => {
         // Si el mensaje fue enviado automáticamente por el bot, no pausar
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
+        // Si el cuerpo del mensaje comienza con emojis o identificadores del bot, es un mensaje de IA
+        const cuerpoMsg = (msg.body || '').trim();
+        const esMensajeIA = (
+            cuerpoMsg.startsWith('🤖') ||
+            cuerpoMsg.startsWith('👨‍⚕️') ||
+            cuerpoMsg.startsWith('🏥') ||
+            cuerpoMsg.startsWith('🎓') ||
+            cuerpoMsg.startsWith('🌴')
+        );
+
+        if (esMensajeIA) {
+            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
+            return;
+        }
+
         // Mensaje enviado manualmente por el usuario desde el teléfono físico o WhatsApp Web
         const targetJid = msg.to || msg.from;
         if (!targetJid || targetJid.endsWith('@g.us')) return; // No pausar por mensajes en grupos
@@ -3334,6 +3362,22 @@ inicializarBD().then(async () => {
 
         // 2. Normalizar cualquier mensaje de base64 que se haya guardado
         await runQuery("UPDATE mensajes SET cuerpo = '📷 (Infografía / Imagen enviada)' WHERE cuerpo LIKE '/9j/%' OR cuerpo LIKE 'data:image%'");
+
+        // 2.1. Corregir retroactivamente mensajes de IA que hayan quedado clasificados erróneamente como 'Asesor Humano'
+        await runQuery(`
+            UPDATE mensajes 
+            SET es_ia = 1, emisor_nombre = 'Asistente IA', emisor = 'bot' 
+            WHERE es_mio = 1 
+              AND (
+                  cuerpo LIKE '🤖%' 
+                  OR cuerpo LIKE '👨‍⚕️%' 
+                  OR cuerpo LIKE '🏥%' 
+                  OR cuerpo LIKE '🎓%' 
+                  OR cuerpo LIKE '🌴%'
+                  OR emisor = 'bot'
+              )
+              AND (es_ia = 0 OR emisor_nombre = 'Asesor Humano')
+        `);
 
         // 3. Eliminar contactos @lid vacíos (sin mensajes) para limpiar completamente la lista de chats fantasma
         await runQuery("DELETE FROM contactos WHERE jid LIKE '%@lid' AND (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid) = 0");
