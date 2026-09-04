@@ -146,6 +146,9 @@ function cambiarTab(tabId) {
         cargarReglasSeguimiento(); 
         cargarSeguimientosPendientes(); 
     }
+
+    // Mantener siempre sincronizado el banner de estado del bot en tiempo real
+    cargarEstadoControlBot();
 }
 
 // ------------------------------------------------------------------------------
@@ -1453,6 +1456,7 @@ socket.on('qr_actualizado', ({ qr }) => {
 socket.on('estado_whatsapp', ({ conectado }) => {
     actualizarBadgeWhatsApp(conectado);
     if (conectado) cerrarModalQR();
+    cargarEstadoControlBot();
 });
 
 socket.on('nuevo_mensaje', (msg) => {
@@ -2242,6 +2246,11 @@ socket.on('estado_control_actualizado', () => {
 // Inicializar vista por defecto y estado del bot
 cambiarTab('ventas');
 cargarEstadoControlBot();
+
+// Auto-sincronización periódica en segundo plano cada 15 segundos
+setInterval(() => {
+    cargarEstadoControlBot();
+}, 15000);
 
 // ==============================================================================
 // GESTIÓN DE ACCIONES RÁPIDAS EN LIVE CHAT (INFOGRAFÍAS, ADJUNTOS, ENLACES, RESPUESTAS)

@@ -53,6 +53,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+io.on('connection', (socket) => {
+    socket.emit('estado_whatsapp', { conectado: wsClienteConectado });
+    socket.emit('estado_control_actualizado', { wsClienteConectado });
+});
+
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'omnibot_super_secret_jwt_key_2026';
 
@@ -1782,6 +1787,7 @@ client.on('ready', () => {
     tiempoInicioLoadingSaaS = null;
     ultimoPorcentajeSaaS = null;
     io.emit('estado_whatsapp', { conectado: true });
+    io.emit('estado_control_actualizado', { wsClienteConectado: true });
     console.log('🚀 ¡Motor OmniBot conectado y listo para atender clientes!');
 });
 
@@ -1791,6 +1797,7 @@ client.on('disconnected', (reason) => {
     tiempoInicioLoadingSaaS = null;
     ultimoPorcentajeSaaS = null;
     io.emit('estado_whatsapp', { conectado: false, reason });
+    io.emit('estado_control_actualizado', { wsClienteConectado: false });
     console.log('❌ WhatsApp se ha desconectado:', reason);
 });
 
