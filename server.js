@@ -72,7 +72,8 @@ app.use('/imagenes', express.static(DIR_IMAGENES));
 let wsClienteConectado = false;
 let ultimoQrCode = null;
 let botPausadoGlobal = false;
-const chatsPausados = new Map(); // JID -> Timestamp de inicio de pausa
+const chatsPausados = new Map();
+const chatsEsperandoNombre = new Map(); // JID -> Timestamp de inicio de pausa
 const idsMensajesEnviadosBot = new Set();
 const idsMensajesRecibidos = new Set(); // Para deduplicación estricta de mensajes entrantes
 const chatsEnProceso = new Map(); // JID -> Timestamp inicio (bloqueo concurrente con expiración automática TTL)
@@ -2543,6 +2544,7 @@ function limpiarNombreParaSaludo(nombre) {
     // Buscar si está pausado bajo su número limpio (si remitente es @lid o viceversa)
     if (!estaPausado && telefonoReal && telefonoReal.length >= 10) {
         for (const [pJid, pTime] of chatsPausados.entries()) {
+            if (pJid.includes('_') || pJid.includes('esperando')) continue; // Ignorar claves de control
             if (pJid.includes(telefonoReal) || remitente.includes(pJid.replace(/[^0-9]/g, ''))) {
                 estaPausado = true;
                 tiempoPausa = pTime;
@@ -2660,8 +2662,7 @@ function limpiarNombreParaSaludo(nombre) {
     // --------------------------------------------------------------------------
     // A. CAPTURA Y REGISTRO AUTOMÁTICO DE NOMBRE DEL PACIENTE
     // --------------------------------------------------------------------------
-    const claveEsperandoNombre = `${remitente}_esperando_nombre`;
-    if (chatsPausados.has(claveEsperandoNombre) && !texto.startsWith('!')) {
+    if (chatsEsperandoNombre.has(remitente) && !texto.startsWith('!')) {
         const txtClean = texto.replace(/[\n\r]/g, ' ').trim();
         const txtLower = txtClean.toLowerCase();
 
@@ -2674,8 +2675,12 @@ function limpiarNombreParaSaludo(nombre) {
         ];
 
         const esConfirmacionSinNombre = frasesNoNombre.some(f => txtLower === f || txtLower.startsWith(f + ' ') || txtLower.endsWith(' ' + f));
+        const esPreguntaOServicio = /\b(qu[eé]|cu[aá]nto|cu[aá]ndo|c[oó]mo|d[oó]nde|por qu[eé]|tienen|tienes|costo|precio|servicio|horario|ubicaci[oó]n|requisito|implante|diu|mirena|vasectom[ií]a|parche|pastilla|inyecci[oó]n|cita)\b/i.test(txtLower);
 
-        if (esConfirmacionSinNombre || txtClean.length < 3 || /^\d+$/.test(txtClean)) {
+        if (esPreguntaOServicio) {
+            // Si el cliente envía una duda o pregunta médica, liberar la espera y responderle su duda
+            chatsEsperandoNombre.delete(remitente);
+        } else if (esConfirmacionSinNombre || txtClean.length < 3 || /^\d+$/.test(txtClean)) {
             // No es un nombre: insistir amablemente en el nombre para poder registrarlo correctamente
             await simularEscribiendoSeguro(msg, 1000);
 
@@ -2686,7 +2691,7 @@ function limpiarNombreParaSaludo(nombre) {
         }
 
         // Es un nombre real: limpiamos prefijos ("Me llamo...", "Soy...")
-        chatsPausados.delete(claveEsperandoNombre);
+        chatsEsperandoNombre.delete(remitente);
         let nombreLimpio = txtClean;
         const prefijos = [/^(me llamo|soy|mi nombre es|nombre:?|yo soy)\s+/i];
         for (const pref of prefijos) {
@@ -2871,7 +2876,7 @@ function limpiarNombreParaSaludo(nombre) {
         // Si el paciente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
         if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Paciente (+')) {
             msjTransferido += `\n\n📋 *Para agilizar tu turno al reanudar:* Si aún no has llenado tu registro previo, por favor completa este enlace:\n👉 ${enlacePrivacidad}\n\n✍️ Y escríbenos aquí tu *Nombre Completo* para apartar tu lugar en la lista.`;
-            chatsPausados.set(claveEsperandoNombre, Date.now());
+            chatsEsperandoNombre.set(remitente, Date.now());
         }
 
         msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas realizar preguntas sobre métodos, cuidados o requisitos._`;
@@ -3080,29 +3085,25 @@ function limpiarNombreParaSaludo(nombre) {
         let avisoAusencia = '';
         if (estadoHorario.enReceso) {
             if (estadoHorario.esFestivo) {
-                avisoAusencia = `\n[AVISO DE DÍA FESTIVO OFICIAL / INHÁBIL ACTIVO]:
-- Actualmente es día festivo oficial / inhábil con suspensión de labores presenciales: "${estadoHorario.motivoReceso}".
-- REGLAS ESTRICTAS DE ATENCIÓN CON IA:
-  1. Actúa como vocera médica profesional, cálida y de alto nivel institucional.
-  2. Explica al paciente con amabilidad y respeto cívico que hoy es día festivo oficial no laborable en atención presencial.
-  3. PROHIBICIÓN ESTRICTA: NUNCA digas que "estamos de vacaciones" ni que estamos en "curso médico"; usa el término oficial de día festivo o asueto oficial.
-  4. ATENCIÓN VIRTUAL 24/7: ¡Tú estás 100% activo(a)! Responde de inmediato cualquier duda sobre métodos anticonceptivos, costos, indicaciones y preparaciones.
-  5. CITAS Y PROCEDIMIENTOS: La atención presencial en clínica se reanudará ${estadoHorario.proximoTexto}.
-  6. LISTA DE ESPERA PRIORITARIA: Ofrece registrar su turno con prioridad para ser contactado ${estadoHorario.proximoTexto}.
-  7. SOLICITUD DE ASESOR: Infórmale que por ser día festivo oficial, el personal responderá a primera hora ${estadoHorario.proximoTexto}.\n`;
+                avisoAusencia = `\n[ESTADO DE DÍA FESTIVO OFICIAL / INHÁBIL ACTIVO]:
+- Con motivo de: "${estadoHorario.motivoReceso}".
+- REGLAS DE ATENCIÓN CON IA:
+  1. ATENCIÓN INFORMATIVA Y DUDAS NORMALES (TRABAJO HABITUAL): Responde con normalidad, calidez y precisión a cualquier duda sobre métodos anticonceptivos, requisitos, costos o preparaciones. NO menciones de forma proactiva que es día festivo si el paciente sólo está haciendo preguntas informativas.
+  2. SOLICITUD DE ASESOR O CITA PRESENCIAL: SÓLO si el paciente solicita hablar con un asesor humano o agendar una cita médica presencial, infórmale con amabilidad que por tratarse de un día festivo oficial, las citas presenciales y la atención humana se reanudan: ${estadoHorario.proximoTexto}. Confírmale que queda en la Lista de Espera Prioritaria e invítalo a resolver sus dudas médicas contigo mientras tanto.
+  3. PROHIBICIÓN TOTAL: NUNCA ofrezcas un asesor para hoy ni digas que el personal atenderá a las 2:00 PM de hoy. La atención humana presencial será hasta: ${estadoHorario.proximoTexto}.\n`;
             } else if (estadoHorario.esCurso) {
-                avisoAusencia = `\n[AVISO DE CAPACITACIÓN / CONGRESO MÉDICO ACTIVO]:
-- Actualmente el equipo de salud se encuentra en jornadas de capacitación continua / congreso médico: "${estadoHorario.motivoReceso}".
-- REGLAS ESTRICTAS DE ATENCIÓN CON IA:
-  1. Actúa como vocera médica profesional, cálida y de alto nivel de la clínica.
-  2. Explica al paciente con orgullo y amabilidad que el personal de salud está en actualización médica continua para brindarle siempre el mejor servicio clínico y la mayor seguridad.
-  3. PROHIBICIÓN ESTRICTA: NUNCA digas que "estamos de vacaciones", ni que la clínica "está cerrada", ni des la impresión de inactividad o abandono.
-  4. ATENCIÓN VIRTUAL 24/7: Responde tú mismo(a) de forma completa todas las dudas del paciente sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Kyleena, DIU de cobre/plata, vasectomía sin bisturí, pastillas, inyecciones), costos, indicaciones, preparaciones e infografías.
-  5. CITAS PRESENCIALES Y PROCEDIMIENTOS: Explica con amabilidad que la atención médica presencial (colocación o retiro de implantes, DIU, vasectomías o valoraciones físicas) se reanudará ${estadoHorario.proximoTexto}.
-  6. LISTA DE ESPERA PRIORITARIA: Si el paciente desea agendar cita o requiere atención física, pídele con calidez su nombre completo y el procedimiento de su interés, confirmándole con total certeza que ha quedado anotado en la LISTA DE ESPERA PRIORITARIA para apartar su lugar y coordinar su cita en cuanto el médico regrese.
-  7. SOLICITUD DE ASESOR: Si pide hablar con una persona/asesor, infórmale con tacto que el médico está en sesiones académicas y se comunicará en cuanto concluyan o ${estadoHorario.proximoTexto}.\n`;
+                avisoAusencia = `\n[ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO ACTIVO]:
+- Personal en actualización médica continua: "${estadoHorario.motivoReceso}".
+- REGLAS DE ATENCIÓN CON IA:
+  1. ATENCIÓN INFORMATIVA Y DUDAS NORMALES (TRABAJO HABITUAL): Responde con normalidad, calidez y precisión a cualquier duda sobre métodos anticonceptivos, requisitos, costos o preparaciones. NO menciones de forma proactiva la capacitación si el paciente sólo está haciendo preguntas informativas.
+  2. SOLICITUD DE ASESOR O CITA PRESENCIAL: SÓLO si el paciente solicita hablar con un asesor humano o agendar una cita médica presencial, infórmale con orgullo y calidez que el equipo de salud se encuentra en actualización médica continua y que las citas presenciales y la atención humana se reanudan: ${estadoHorario.proximoTexto}. Confírmale que queda anotado en la Lista de Espera Prioritaria.
+  3. PROHIBICIÓN TOTAL: NUNCA ofrezcas un asesor para hoy ni digas que el personal atenderá hoy. La atención humana será hasta: ${estadoHorario.proximoTexto}.\n`;
             } else {
-                avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${estadoHorario.motivoReceso}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está en receso y su solicitud será atendida al reanudar actividades ${estadoHorario.proximoTexto}.\n`;
+                avisoAusencia = `\n[ESTADO DE RECESO / VACACIONES ACTIVO]:
+- Personal en receso debido a: "${estadoHorario.motivoReceso}".
+- REGLAS DE ATENCIÓN CON IA:
+  1. Responde normalmente las dudas del cliente basándote en el catálogo y servicios.
+  2. SÓLO si el cliente pide atención presencial, agendar cita o hablar con un asesor humano, indícale que las citas y el personal se reanudan: ${estadoHorario.proximoTexto}.\n`;
             }
         }
 
@@ -3185,27 +3186,25 @@ async function obtenerContenidoGoogleSheets(url) {
                 reglaHorarioIA = `
 🇲🇽 ESTADO DE DÍA FESTIVO OFICIAL / INHÁBIL:
 - Con motivo de: "${estadoHorario.motivoReceso}".
-- REGLAS ESTRICTAS DE ATENCIÓN CON IA (PROHIBIDO CORTAR LA CONVERSACIÓN O ACTUAR COMO SIMPLE CONTESTADORA):
-  1. NUNCA respondas únicamente diciendo que el personal no está o que hoy es festivo.
-  2. ¡LA ATENCIÓN INFORMATIVA Y ORIENTACIÓN MÉDICA SIGUE 100% ACTIVA CONTIGO! Responde de inmediato, con calidez y con todo detalle médico cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, efectividad, dudas sobre procedimientos, mitos o efectos secundarios.
-  3. Aclara que por tratarse de un día festivo oficial con suspensión de labores presenciales, la atención humana y citas presenciales en clínica se reanudan ${estadoHorario.proximoTexto}.
-  4. PROHIBIDO decir "vacaciones" o "curso médico"; usa siempre el término de día festivo oficial / asueto institucional.
-  5. Cierra invitando a resolver dudas e indica que el paciente queda registrado en la Lista de Espera Prioritaria para ser contactado ${estadoHorario.proximoTexto}.`;
+- REGLAS DE ATENCIÓN CON IA:
+  1. ¡HAZ TU TRABAJO NORMAL! Responde con calidez médica, claridad y detalle cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, costos o efectos secundarios.
+  2. NO menciones que hoy es festivo de forma anticipada a menos que el paciente pida agendar una cita presencial o hablar con una persona.
+  3. SÓLO si el paciente pide cita presencial o asesor humano, aclara que la atención humana y las citas en clínica se reanudan ${estadoHorario.proximoTexto} por día festivo oficial, y que queda anotado(a) en la Lista de Espera Prioritaria.
+  4. PROHIBIDO decir que un asesor lo atenderá hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
             } else if (estadoHorario.esCurso) {
                 reglaHorarioIA = `
 🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
 - El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
-- REGLAS ESTRICTAS DE ATENCIÓN CON IA (PROHIBIDO CORTAR LA CONVERSACIÓN O ACTUAR COMO SIMPLE CONTESTADORA):
-  1. NUNCA respondas únicamente diciendo que el personal está fuera, en curso o que no hay atención presencial.
-  2. ¡LA ATENCIÓN INFORMATIVA Y ORIENTACIÓN MÉDICA SIGUE 100% ACTIVA CONTIGO! Responde de inmediato, con calidez y con todo detalle médico cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, efectividad, dudas sobre procedimientos, mitos o efectos secundarios.
-  3. Explica con orgullo y calidez médica que el personal de salud está en constante actualización científica para garantizar procedimientos de la máxima calidad y seguridad clínica.
-  4. Para citas presenciales o procedimientos físicos en la unidad, aclara que se reanudarán ${estadoHorario.proximoTexto}.
-  5. Siempre cierra tu respuesta invitando al paciente a seguir consultando dudas y pregúntale con amabilidad si desea que registres su nombre en la Lista de Espera Prioritaria para apartar su lugar en cuanto regrese el personal.`;
+- REGLAS DE ATENCIÓN CON IA:
+  1. ¡HAZ TU TRABAJO NORMAL! Responde de inmediato cualquier duda sobre métodos, costos, indicaciones y preparaciones.
+  2. NO menciones que el personal está en capacitación a menos que el paciente pida agendar una cita médica presencial o hablar con el personal.
+  3. SÓLO si solicita cita presencial o hablar con el médico, explica que el equipo de salud se encuentra en actualización médica continua y que las citas presenciales se reanudan ${estadoHorario.proximoTexto}, dejándolo anotado en la Lista de Espera Prioritaria.
+  4. PROHIBIDO decir que un asesor lo atenderá hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
             } else {
                 reglaHorarioIA = `
 🔴 ESTADO DE RECESO / VACACIONES:
-- Actualmente el personal humano se encuentra en receso/vacaciones debido a: "${estadoHorario.motivoReceso}".
-- REGLA ESTRICTA: NO ofrezcas atención presencial ni "pasar con un asesor ahora mismo". Si el cliente requiere atención médica o cita presencial, indícale amablemente que su solicitud será atendida en línea por este chat ${estadoHorario.proximoTexto}, o invítalo a resolver sus dudas contigo directamente (asistente virtual 24/7).`;
+- Personal en receso debido a: "${estadoHorario.motivoReceso}".
+- REGLA: Responde normalmente las dudas sobre el catálogo. SÓLO si pide cita o asesor, aclara que se reanudan ${estadoHorario.proximoTexto}.`;
             }
         } else if (!estadoHorario.enHorario) {
             reglaHorarioIA = `
