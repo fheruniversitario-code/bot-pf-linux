@@ -533,7 +533,7 @@ async function refrescarChatActivo() {
 async function resolverSolicitudAsesorDesdeChat(id) {
     try {
         await apiFetch(`/api/solicitudes-asesor/${id}/estado`, {
-            method: 'PUT',
+            method: 'POST',
             body: JSON.stringify({ estado: 'atendido' })
         });
         await cargarSolicitudesAsesor();

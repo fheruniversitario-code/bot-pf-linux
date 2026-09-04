@@ -699,32 +699,88 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
     try {
         const { jid } = req.params;
         let contacto = await getQuery("SELECT * FROM contactos WHERE jid = ?", [jid]);
-        const telLimpio = contacto?.telefono || jid.replace(/[^0-9]/g, '');
+        let telLimpio = contacto?.telefono || jid.replace(/[^0-9]/g, '');
 
+        let waChat = null;
         // Sincronizar mensajes recientes de WhatsApp Web para reflejar lo que envías desde el celular oficial
         if (client && wsClienteConectado) {
             try {
-                let waChat = null;
+                // 1. Intentar obtener el chat directamente por JID
                 try {
                     waChat = await client.getChatById(jid);
-                } catch(eChat) {
-                    if (telLimpio && telLimpio.length >= 10) {
-                        waChat = await client.getChatById(`${telLimpio}@c.us`).catch(() => null);
-                    }
+                } catch(e1) {}
+
+                // 2. Si no se encontró (muy común con identificadores @lid), buscar vía contacto de WhatsApp
+                if (!waChat) {
+                    try {
+                        const waContact = await client.getContactById(jid);
+                        if (waContact) {
+                            waChat = await waContact.getChat().catch(() => null);
+                            if (waContact.number && !waContact.number.startsWith('1660')) {
+                                telLimpio = waContact.number;
+                                await runQuery("UPDATE contactos SET telefono = ? WHERE jid = ?", [telLimpio, jid]);
+                                if (contacto) contacto.telefono = telLimpio;
+                            }
+                        }
+                    } catch(e2) {}
                 }
 
+                // 3. Si aún no se encontró y tenemos teléfono limpio válido
+                if (!waChat && telLimpio && telLimpio.length >= 10 && !telLimpio.startsWith('1660')) {
+                    try {
+                        waChat = await client.getChatById(`${telLimpio}@c.us`).catch(() => null);
+                    } catch(e3) {}
+                }
+
+                // 4. Si aún no se encontró, buscar en los chats en memoria por coincidencia de nombre o número
+                if (!waChat) {
+                    try {
+                        const todos = await client.getChats();
+                        waChat = todos.find(c => {
+                            if (c.id?._serialized === jid) return true;
+                            if (contacto?.nombre && c.name && c.name.toLowerCase() === contacto.nombre.toLowerCase()) return true;
+                            if (telLimpio && telLimpio.length >= 8 && !telLimpio.startsWith('1660')) {
+                                const cNum = (c.id?.user || '').replace(/[^0-9]/g, '');
+                                return cNum.endsWith(telLimpio.slice(-8)) || telLimpio.endsWith(cNum.slice(-8));
+                            }
+                            return false;
+                        });
+                    } catch(e4) {}
+                }
+
+                // Si encontramos el chat en WhatsApp Web, traer los últimos 60 mensajes
                 if (waChat) {
-                    const rawMsgs = await waChat.fetchMessages({ limit: 40 });
+                    const rawMsgs = await waChat.fetchMessages({ limit: 60 });
                     if (rawMsgs && rawMsgs.length > 0) {
+                        const ultimos8 = (telLimpio && !telLimpio.startsWith('1660') && telLimpio.length >= 8) ? telLimpio.slice(-8) : '';
+                        const chatVinculado = waChat.id?._serialized || jid;
+
                         for (const m of rawMsgs) {
                             const esMio = m.fromMe ? 1 : 0;
-                            const emisorNombre = esMio ? 'Asesor Humano' : (waChat.name || waChat.formattedTitle || 'Cliente');
+                            const emisorNombre = esMio ? 'Asesor Humano' : (waChat.name || waChat.formattedTitle || contacto?.nombre || 'Cliente');
                             const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
-                            const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : '💬 (Mensaje)');
+                            const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
 
-                            // Evitar duplicar
-                            const existe = await getQuery("SELECT id FROM mensajes WHERE (chat_id = ? OR chat_id LIKE ?) AND timestamp = ?", [jid, `%${telLimpio}%`, timestampMs]);
-                            if (!existe) {
+                            if (!cuerpoTxt) continue;
+
+                            // Comprobar si ya existe por timestamp o por cuerpo y emisor reciente
+                            const yaExiste = await getQuery(`
+                                SELECT id FROM mensajes 
+                                WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
+                                  AND (timestamp = ? OR (timestamp BETWEEN ? AND ? AND cuerpo = ? AND es_mio = ?))
+                            `, [
+                                jid,
+                                chatVinculado,
+                                ultimos8,
+                                `%${ultimos8}%`,
+                                timestampMs,
+                                timestampMs - 6000,
+                                timestampMs + 6000,
+                                cuerpoTxt,
+                                esMio
+                            ]);
+
+                            if (!yaExiste) {
                                 await runQuery(`
                                     INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
                                     VALUES (?, ?, ?, ?, ?, ?, 0, ?)
@@ -751,17 +807,29 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
             }
         }
 
-        // Obtener mensajes unificando por JID y por número telefónico
-        let mensajes = [];
-        if (telLimpio && telLimpio.length >= 10) {
-            mensajes = await allQuery(`
-                SELECT * FROM mensajes 
-                WHERE chat_id = ? OR chat_id LIKE ? 
-                ORDER BY timestamp ASC, id ASC 
-                LIMIT 150
-            `, [jid, `%${telLimpio}%`]);
-        } else {
-            mensajes = await allQuery("SELECT * FROM mensajes WHERE chat_id = ? ORDER BY timestamp ASC, id ASC LIMIT 150", [jid]);
+        // Obtener mensajes unificando por JID, chat vinculado y últimos 8 dígitos del teléfono
+        const ultimos8 = (telLimpio && !telLimpio.startsWith('1660') && telLimpio.length >= 8) ? telLimpio.slice(-8) : '';
+        const chatVinculado = waChat?.id?._serialized || jid;
+
+        const todosMensajes = await allQuery(`
+            SELECT * FROM mensajes 
+            WHERE chat_id = ? 
+               OR chat_id = ? 
+               OR (? != '' AND chat_id LIKE ?)
+            ORDER BY timestamp ASC, id ASC 
+            LIMIT 250
+        `, [jid, chatVinculado, ultimos8, `%${ultimos8}%`]);
+
+        // Deduplicar mensajes en memoria
+        const mensajes = [];
+        const vistos = new Set();
+        for (const m of todosMensajes) {
+            const cuerpoNormalizado = (m.cuerpo || '').trim();
+            const key = `${m.es_mio}_${cuerpoNormalizado}_${Math.round(m.timestamp / 5000)}`;
+            if (!vistos.has(key)) {
+                vistos.add(key);
+                mensajes.push(m);
+            }
         }
 
         const pedido = await getQuery("SELECT * FROM pedidos_cotizaciones WHERE cliente_telefono LIKE ? ORDER BY id DESC LIMIT 1", [`%${telLimpio}%`]);
@@ -931,15 +999,18 @@ app.get('/api/solicitudes-asesor', autenticarToken, async (req, res) => {
     }
 });
 
-app.post('/api/solicitudes-asesor/:id/estado', autenticarToken, async (req, res) => {
+const cambiarEstadoSolicitudHandler = async (req, res) => {
     try {
         const { estado } = req.body; // 'atendido' o 'pendiente'
         await runQuery("UPDATE solicitudes_asesor SET estado = ? WHERE id = ?", [estado || 'atendido', req.params.id]);
+        io.emit('solicitud_asesor_actualizada');
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
-});
+};
+app.post('/api/solicitudes-asesor/:id/estado', autenticarToken, cambiarEstadoSolicitudHandler);
+app.put('/api/solicitudes-asesor/:id/estado', autenticarToken, cambiarEstadoSolicitudHandler);
 
 app.delete('/api/solicitudes-asesor/:id', autenticarToken, async (req, res) => {
     try {
@@ -2634,12 +2705,24 @@ client.on('message_create', async (msg) => {
         // 1. Pausar inmediatamente el chat para este destinatario
         chatsPausados.set(targetJid, Date.now());
 
-        // 2. Si el número tiene otros identificadores asociados (ej: @c.us y @lid), pausar ambos
-        const telClean = targetJid.replace(/[^0-9]/g, '');
+        // 2. Si el número tiene otros identificadores asociados (ej: @c.us y @lid), pausar ambos y emitir a ambos
         let jidsAsociados = [targetJid];
-        if (telClean.length >= 10) {
+        let telClean = targetJid.replace(/[^0-9]/g, '');
+
+        try {
+            const c = await msg.getContact();
+            if (c) {
+                if (c.number) telClean = c.number;
+                if (c.id?._serialized && !jidsAsociados.includes(c.id._serialized)) {
+                    jidsAsociados.push(c.id._serialized);
+                }
+            }
+        } catch(eC) {}
+
+        const ultimos8 = (telClean && !telClean.startsWith('1660') && telClean.length >= 8) ? telClean.slice(-8) : '';
+        if (ultimos8) {
             try {
-                const asociados = await allQuery("SELECT jid FROM contactos WHERE telefono LIKE ? OR jid LIKE ?", [`%${telClean}%`, `%${telClean}%`]);
+                const asociados = await allQuery("SELECT jid FROM contactos WHERE telefono LIKE ? OR jid LIKE ?", [`%${ultimos8}%`, `%${ultimos8}%`]);
                 for (const a of asociados) {
                     chatsPausados.set(a.jid, Date.now());
                     if (!jidsAsociados.includes(a.jid)) jidsAsociados.push(a.jid);
