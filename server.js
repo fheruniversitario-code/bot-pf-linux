@@ -261,15 +261,29 @@ function formatearTiempoRelativo(timestampMs) {
 // Lista de Conversaciones Mejorada (Live Chat con Etiquetas y Tiempo Relativo)
 app.get('/api/conversaciones', autenticarToken, async (req, res) => {
     try {
+        const queryBusqueda = (req.query.q || '').trim();
+        let whereClause = '';
+        let params = [];
+
+        if (queryBusqueda) {
+            whereClause = `WHERE (c.nombre LIKE ? OR c.telefono LIKE ? OR c.jid LIKE ? OR c.pushname LIKE ?)`;
+            const likeParam = `%${queryBusqueda}%`;
+            params = [likeParam, likeParam, likeParam, likeParam];
+        }
+
         const chats = await allQuery(`
             SELECT c.jid, c.telefono, c.nombre, c.pushname, c.es_ignorado, c.ultimo_contacto,
-                   (SELECT cuerpo FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as ultimo_mensaje,
-                   (SELECT timestamp FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as hora_ultimo_mensaje,
-                   (SELECT es_ia FROM mensajes WHERE chat_id = c.jid ORDER BY id DESC LIMIT 1) as ultimo_fue_ia
+                   (SELECT cuerpo FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_mensaje,
+                   (SELECT timestamp FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as hora_ultimo_mensaje,
+                   (SELECT es_ia FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_fue_ia
             FROM contactos c
-            ORDER BY c.ultimo_contacto DESC
-            LIMIT 100
-        `);
+            ${whereClause}
+            ORDER BY COALESCE(
+                (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%'),
+                c.ultimo_contacto
+            ) DESC
+            LIMIT 300
+        `, params);
 
         // Obtener etiquetas asignadas para cada contacto
         const resultado = await Promise.all(chats.map(async (c) => {
@@ -423,23 +437,41 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                     const labelIds = (c.labels || []).map(id => String(id));
                     const lastMsg = c.lastMessage;
                     const contact = c.contact;
+                    const isLid = c.id && c.id._serialized && c.id._serialized.endsWith('@lid');
 
                     let uTxt = '';
-                    if (lastMsg) {
-                        if (lastMsg.body) {
+                    if (lastMsg && (!lastMsg.type || !lastMsg.type.includes('notification'))) {
+                        if (lastMsg.body && !lastMsg.body.includes('e2e_notification')) {
                             uTxt = lastMsg.body;
                         } else if (lastMsg.hasMedia) {
                             uTxt = lastMsg.caption ? `📷 ${lastMsg.caption}` : '📷 (Multimedia / Archivo)';
                         }
                     }
 
+                    let tel = '';
+                    if (c.isGroup) {
+                        tel = 'Grupo';
+                    } else if (!isLid && c.id && c.id.user) {
+                        tel = c.id.user;
+                    } else if (contact && contact.number && !contact.number.startsWith('1660') && contact.number.length <= 13) {
+                        tel = contact.number;
+                    }
+
+                    let nombreCalculado = tit;
+                    if (!nombreCalculado && contact) {
+                        nombreCalculado = contact.name || contact.pushname || '';
+                    }
+                    if (!nombreCalculado) {
+                        nombreCalculado = (tel && tel !== 'Grupo') ? `Paciente (+${tel})` : 'Paciente';
+                    }
+
                     chatsParsed.push({
                         jid: c.id ? c.id._serialized : null,
-                        telefono: c.isGroup ? 'Grupo' : (c.id ? c.id.user : ''),
-                        nombre: tit || (contact ? (contact.name || contact.pushname) : '') || (c.id ? c.id.user : 'Cliente'),
+                        telefono: tel,
+                        nombre: nombreCalculado,
                         esGrupo: c.isGroup ? 1 : 0,
                         labelIds: labelIds,
-                        timestamp: (lastMsg && lastMsg.t ? lastMsg.t : c.t) || 0,
+                        timestamp: (lastMsg && lastMsg.t && uTxt ? lastMsg.t : 0),
                         ultimoTexto: uTxt,
                         esMio: lastMsg && lastMsg.fromMe ? 1 : 0
                     });
@@ -491,28 +523,30 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
         // 3. Procesar chats con sus etiquetas, nombres y fechas reales
         for (const ch of dataWA.chats) {
             if (!ch.jid) continue;
-            const tReal = ch.timestamp > 0 ? ch.timestamp * 1000 : Date.now();
+            // Solo considerar tReal si el chat realmente tiene mensajes válidos
+            const tReal = (ch.timestamp > 0 && ch.ultimoTexto) ? ch.timestamp * 1000 : 0;
             let nomLimpio = ch.nombre;
-            if (!nomLimpio || nomLimpio === 'Cliente' || nomLimpio.toLowerCase().includes('usuario desconocido')) {
-                nomLimpio = (ch.telefono && ch.telefono !== 'Grupo' && !ch.telefono.startsWith('1660')) ? `Paciente (+${ch.telefono})` : 'Paciente';
+            if (!nomLimpio || nomLimpio === 'Cliente' || nomLimpio.toLowerCase().includes('usuario desconocido') || nomLimpio.startsWith('Paciente (+994')) {
+                nomLimpio = (ch.telefono && ch.telefono !== 'Grupo' && !ch.telefono.startsWith('1660') && ch.telefono.length <= 13) ? `Paciente (+${ch.telefono})` : 'Paciente';
             }
 
             await runQuery(`
                 INSERT INTO contactos (jid, telefono, nombre, pushname, ultimo_contacto)
                 VALUES (?, ?, ?, '', ?)
                 ON CONFLICT(jid) DO UPDATE SET
-                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre NOT LIKE '%desconocido%' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
-                    ultimo_contacto = ?
-            `, [ch.jid, ch.telefono, nomLimpio, tReal, tReal]);
+                    telefono = CASE WHEN excluded.telefono != '' THEN excluded.telefono ELSE contactos.telefono END,
+                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre NOT LIKE '%desconocido%' AND excluded.nombre != 'Paciente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                    ultimo_contacto = CASE WHEN ? > 0 THEN ? ELSE contactos.ultimo_contacto END
+            `, [ch.jid, ch.telefono, nomLimpio, tReal, tReal, tReal]);
 
-            // Guardar último mensaje para vista previa en el panel
-            if (ch.ultimoTexto) {
+            // Guardar último mensaje para vista previa en el panel si no existe y no es notificación
+            if (ch.ultimoTexto && !ch.ultimoTexto.includes('e2e_notification')) {
                 const yaMsg = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? LIMIT 1", [ch.jid]);
                 if (!yaMsg) {
                     await runQuery(`
                         INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
                         VALUES (?, ?, ?, ?, 'chat', ?, 0, ?)
-                    `, [ch.jid, ch.jid, ch.esMio ? 'Asesor' : nomLimpio, ch.ultimoTexto, ch.esMio, tReal]);
+                    `, [ch.jid, ch.jid, ch.esMio ? 'Asesor' : nomLimpio, ch.ultimoTexto, ch.esMio, tReal || Date.now()]);
                 }
             }
 
@@ -521,7 +555,7 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                 for (const lid of ch.labelIds) {
                     const bdEtqId = mapWALabelToBD[String(lid)];
                     if (bdEtqId) {
-                        await runQuery("INSERT OR REPLACE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [ch.jid, bdEtqId, tReal]);
+                        await runQuery("INSERT OR REPLACE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [ch.jid, bdEtqId, tReal || Date.now()]);
                         asignacionesTotal++;
                     }
                 }
@@ -2829,7 +2863,23 @@ client.on('message_create', async (msg) => {
 });
 
 // Iniciar Servidor Web y Base de Datos
-inicializarBD().then(() => {
+inicializarBD().then(async () => {
+    try {
+        // Auto-limpieza de notificaciones y contactos fantasma importados por error
+        await runQuery("DELETE FROM mensajes WHERE cuerpo LIKE '(e2e_notification)%' OR cuerpo = '(e2e_notification)'");
+        await runQuery("UPDATE contactos SET ultimo_contacto = 0 WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid) = 0");
+        await runQuery(`
+            UPDATE contactos 
+            SET ultimo_contacto = (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '(e2e_notification)%')
+            WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '(e2e_notification)%') > 0
+        `);
+        await runQuery("UPDATE contactos SET telefono = '' WHERE jid LIKE '%@lid' AND LENGTH(telefono) > 12");
+        await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Paciente' END WHERE (nombre LIKE 'Paciente (+994%' OR nombre LIKE 'Paciente (+%') AND jid LIKE '%@lid'");
+        console.log("🧹 [DB-CLEAN] Limpieza de notificaciones y reordenamiento canónico de conversaciones completado exitosamente.");
+    } catch (eClean) {
+        console.error("Error en auto-limpieza BD:", eClean.message);
+    }
+
     client.initialize().catch(err => console.error("Error inicializando WhatsApp Web:", err.message));
     server.listen(PORT, () => {
         console.log(`🌐 Servidor OmniBot SaaS activo en: http://localhost:${PORT}`);

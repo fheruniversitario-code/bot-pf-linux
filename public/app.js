@@ -404,8 +404,11 @@ function filtrarPorEtiqueta(etiquetaId) {
     aplicarFiltrosConversaciones();
 }
 
+let debounceTimerBusqueda = null;
+
 function aplicarFiltrosConversaciones() {
     const busqueda = (document.getElementById('buscar-chat-input')?.value || '').toLowerCase().trim();
+    const telDigits = busqueda.replace(/[^0-9]/g, '');
     let filtrados = listaConversacionesMem;
 
     if (filtroPendientesActivo) {
@@ -423,15 +426,45 @@ function aplicarFiltrosConversaciones() {
     }
 
     if (busqueda) {
-        filtrados = filtrados.filter(c => 
-            (c.nombre && c.nombre.toLowerCase().includes(busqueda)) ||
-            (c.pushname && c.pushname.toLowerCase().includes(busqueda)) ||
-            (c.telefono && c.telefono.includes(busqueda)) ||
-            (c.ultimo_mensaje && c.ultimo_mensaje.toLowerCase().includes(busqueda))
-        );
+        filtrados = filtrados.filter(c => {
+            const telC = (c.telefono || '').replace(/[^0-9]/g, '');
+            const jidClean = (c.jid || '').toLowerCase();
+            return (c.nombre && c.nombre.toLowerCase().includes(busqueda)) ||
+                (c.pushname && c.pushname.toLowerCase().includes(busqueda)) ||
+                (c.telefono && c.telefono.includes(busqueda)) ||
+                (telDigits.length >= 4 && telC.includes(telDigits)) ||
+                (jidClean.includes(busqueda)) ||
+                (c.ultimo_mensaje && c.ultimo_mensaje.toLowerCase().includes(busqueda));
+        });
     }
 
     renderizarListaConversaciones(filtrados);
+
+    // Si la búsqueda tiene al menos 3 caracteres, buscar también en el servidor para traer conversaciones no cargadas en memoria
+    if (busqueda.length >= 3) {
+        clearTimeout(debounceTimerBusqueda);
+        debounceTimerBusqueda = setTimeout(async () => {
+            try {
+                const resServidor = await apiFetch(`/api/conversaciones?q=${encodeURIComponent(busqueda)}`);
+                if (resServidor && resServidor.length > 0) {
+                    for (const r of resServidor) {
+                        const idx = listaConversacionesMem.findIndex(x => x.jid === r.jid);
+                        if (idx >= 0) {
+                            listaConversacionesMem[idx] = r;
+                        } else {
+                            listaConversacionesMem.unshift(r);
+                        }
+                    }
+                    const busqActual = (document.getElementById('buscar-chat-input')?.value || '').toLowerCase().trim();
+                    if (busqActual === busqueda) {
+                        renderizarListaConversaciones(resServidor);
+                    }
+                }
+            } catch (errBusq) {
+                console.error("Error en búsqueda remota:", errBusq);
+            }
+        }, 350);
+    }
 }
 
 // Búsqueda en tiempo real
@@ -460,7 +493,7 @@ function renderizarListaConversaciones(chats) {
     chats.forEach(c => {
         const div = document.createElement('div');
         div.className = `p-3.5 cursor-pointer hover:bg-slate-800/60 transition flex items-start space-x-3 ${chatActivoJid === c.jid ? 'bg-slate-800/80 border-l-4 border-indigo-500' : ''}`;
-        div.onclick = () => seleccionarChat(c.jid, c.nombre || c.pushname || c.telefono);
+        div.onclick = () => seleccionarChat(c.jid, c.nombre || c.pushname || c.telefono, c.telefono);
 
         const badgeIA = c.ultimo_fue_ia ? '<span class="text-[9px] px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 rounded font-bold">IA</span>' : '';
         const tiempoRelativo = c.tiempo_relativo || 'reciente';
@@ -545,10 +578,12 @@ async function resolverSolicitudAsesorDesdeChat(id) {
     }
 }
 
-async function seleccionarChat(jid, nombre) {
+async function seleccionarChat(jid, nombre, telefono = '') {
     chatActivoJid = jid;
     document.getElementById('chat-nombre-cliente').textContent = nombre;
-    document.getElementById('chat-telefono-cliente').textContent = jid.replace('@c.us', '');
+    let telMostrar = telefono || (jid.endsWith('@c.us') ? jid.replace('@c.us', '') : '');
+    if (telMostrar && (telMostrar.startsWith('1660') || telMostrar.length > 13)) telMostrar = '';
+    document.getElementById('chat-telefono-cliente').textContent = telMostrar ? `+${telMostrar}` : (jid.endsWith('@lid') ? 'WhatsApp' : jid.replace('@c.us', ''));
     document.getElementById('chat-avatar').textContent = (nombre || 'C').charAt(0).toUpperCase();
 
     // Mostrar botón de gestionar etiquetas
