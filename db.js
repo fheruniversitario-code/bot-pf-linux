@@ -229,6 +229,20 @@ async function inicializarBD() {
         )
     `);
 
+    // 15. Calendario de Eventos y Días Festivos Programados (Ausencias y Cursos Automáticos)
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS eventos_ausencia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT DEFAULT 'festivo', -- 'festivo', 'curso', 'vacaciones'
+            titulo TEXT,
+            fecha_inicio TEXT, -- 'YYYY-MM-DD'
+            fecha_fin TEXT,    -- 'YYYY-MM-DD'
+            reanudacion_texto TEXT, -- ej: 'el próximo martes a primera hora'
+            activo INTEGER DEFAULT 1,
+            creado_en INTEGER
+        )
+    `);
+
     // Seed Inicial de Etiquetas Universales si no existen
     const totalEtiquetas = (await getQuery("SELECT COUNT(*) as total FROM etiquetas"))?.total || 0;
     if (totalEtiquetas === 0) {

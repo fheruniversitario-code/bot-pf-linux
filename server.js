@@ -1558,19 +1558,26 @@ app.get('/api/backup/descargar', autenticarToken, (req, res) => {
 app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
     try {
         const pausadoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'bot_pausado_global'"))?.valor === '1';
-        const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
-        const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
-        const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
-        const ausenciaFecha = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
+        const ausenciaActivaManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
+        const ausenciaTipoManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
+        const ausenciaMsgManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
+        const ausenciaFechaManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
         const ignoradosCount = (await getQuery("SELECT COUNT(*) as total FROM contactos WHERE es_ignorado = 1"))?.total || 0;
         
+        const estadoHorarioActual = await obtenerEstadoHorarioMexico();
+        const estaEnReceso = ausenciaActivaManual || !!estadoHorarioActual.enReceso;
+        const tipoFinal = estadoHorarioActual.enReceso ? estadoHorarioActual.tipoReceso : ausenciaTipoManual;
+        const msgFinal = estadoHorarioActual.enReceso ? estadoHorarioActual.motivoReceso : ausenciaMsgManual;
+        const fechaFinal = estadoHorarioActual.enReceso ? estadoHorarioActual.proximoTexto : ausenciaFechaManual;
+
         res.json({
             wsClienteConectado,
             botPausadoGlobal: botPausadoGlobal || pausadoConf,
-            ausenciaActiva,
-            ausenciaTipo,
-            ausenciaMsg,
-            ausenciaFecha,
+            ausenciaActiva: estaEnReceso,
+            ausenciaTipo: tipoFinal,
+            ausenciaMsg: msgFinal,
+            ausenciaFecha: fechaFinal,
+            esProgramado: !!estadoHorarioActual.esProgramado,
             chatsPausadosCount: chatsPausados.size,
             ignoradosCount
         });
@@ -1579,17 +1586,23 @@ app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
     }
 });
 
-// Parser Inteligente de Expresiones de Tiempo y Motivo para Modo Receso / Curso
+// Parser Inteligente de Expresiones de Tiempo y Motivo para Modo Receso / Curso / Festivo
 function parsearComandoReceso(textoCompleto, tipoPorDefecto = 'curso') {
     const partes = textoCompleto.trim().split(/\s+/);
     const resto = partes.slice(1).join(' ').trim();
+
+    const getMotivoDefault = (t) => {
+        if (t === 'curso') return 'Capacitación y Actualización Médica Continua';
+        if (t === 'festivo') return 'Día Festivo Oficial / Inhábil';
+        return 'Periodo Vacacional';
+    };
 
     if (!resto) {
         return {
             activo: true,
             tipo: tipoPorDefecto,
-            motivo: tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional',
-            fechaFin: 'en breve'
+            motivo: getMotivoDefault(tipoPorDefecto),
+            fechaFin: tipoPorDefecto === 'festivo' ? 'mañana a primera hora' : 'en breve'
         };
     }
 
@@ -1598,7 +1611,7 @@ function parsearComandoReceso(textoCompleto, tipoPorDefecto = 'curso') {
         return { activo: false, tipo: tipoPorDefecto };
     }
 
-    let motivo = tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional';
+    let motivo = getMotivoDefault(tipoPorDefecto);
     let fechaFin = '';
 
     const diasSemana = {
@@ -1663,7 +1676,7 @@ function parsearComandoReceso(textoCompleto, tipoPorDefecto = 'curso') {
     return {
         activo: true,
         tipo: tipoPorDefecto,
-        motivo: motivo || (tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional'),
+        motivo: motivo || getMotivoDefault(tipoPorDefecto),
         fechaFin: fechaFin || 'próximamente'
     };
 }
@@ -1690,30 +1703,70 @@ async function obtenerEstadoHorarioMexico() {
 
     const minutosActuales = hora * 60 + minuto;
 
-    // 1. Verificar si hay Receso / Vacaciones / Curso activo
-    const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
-    const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
-    const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
-    const ausenciaFechaFin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
+    // 1. Verificar si hay Receso / Vacaciones / Curso / Festivo activo (Manual o Programado en Calendario)
+    const ausenciaActivaManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
+    const ausenciaTipoManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
+    const ausenciaMsgManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
+    const ausenciaFechaFinManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
 
-    if (ausenciaActiva) {
-        const esCurso = (ausenciaTipo === 'curso');
-        let proximoTexto = esCurso ? 'al reanudar actividades tras la jornada de capacitación médica' : 'al reanudar actividades tras el periodo vacacional';
-        if (ausenciaFechaFin) {
-            const fFinLower = ausenciaFechaFin.toLowerCase().trim();
-            if (fFinLower.startsWith('mañana') || fFinLower.startsWith('hoy') || fFinLower.startsWith('el ') || fFinLower.startsWith('en ')) {
-                proximoTexto = `${ausenciaFechaFin} a primera hora`;
+    let eventoActivo = null;
+    if (ausenciaActivaManual) {
+        eventoActivo = {
+            tipo: ausenciaTipoManual,
+            motivo: ausenciaMsgManual,
+            fechaFin: ausenciaFechaFinManual,
+            esProgramado: false
+        };
+    } else {
+        // Consultar si hay algún evento programado en el calendario para el día de hoy (hora de México)
+        const hoyMexicoStr = ahora.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // 'YYYY-MM-DD'
+        try {
+            const ev = await getQuery(`
+                SELECT * FROM eventos_ausencia 
+                WHERE activo = 1 
+                  AND date(fecha_inicio) <= date(?) 
+                  AND date(fecha_fin) >= date(?)
+                ORDER BY id DESC LIMIT 1
+            `, [hoyMexicoStr, hoyMexicoStr]);
+            if (ev) {
+                eventoActivo = {
+                    tipo: ev.tipo || 'festivo',
+                    motivo: ev.titulo,
+                    fechaFin: ev.reanudacion_texto || ev.fecha_fin,
+                    esProgramado: true
+                };
+            }
+        } catch(eEv) {}
+    }
+
+    if (eventoActivo) {
+        const tipoReceso = eventoActivo.tipo || 'vacaciones';
+        const esCurso = (tipoReceso === 'curso');
+        const esFestivo = (tipoReceso === 'festivo');
+        let proximoTexto = esCurso
+            ? 'al reanudar actividades tras la jornada de capacitación médica'
+            : (esFestivo ? 'al reanudar labores tras el día festivo oficial' : 'al reanudar actividades tras el periodo vacacional');
+
+        if (eventoActivo.fechaFin) {
+            const fFinLower = eventoActivo.fechaFin.toLowerCase().trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fFinLower)) {
+                const partes = fFinLower.split('-');
+                proximoTexto = `el día ${partes[2]}/${partes[1]}/${partes[0]} a primera hora`;
+            } else if (fFinLower.startsWith('mañana') || fFinLower.startsWith('hoy') || fFinLower.startsWith('el ') || fFinLower.startsWith('en ') || fFinLower.startsWith('al ')) {
+                proximoTexto = `${eventoActivo.fechaFin} a primera hora`;
             } else {
-                proximoTexto = `el próximo ${ausenciaFechaFin} a primera hora`;
+                proximoTexto = `el próximo ${eventoActivo.fechaFin} a primera hora`;
             }
         }
         return {
             enHorario: false,
             enReceso: true,
             esCurso,
-            tipoReceso: ausenciaTipo,
-            motivoReceso: ausenciaMsg || (esCurso ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional'),
-            proximoTexto
+            esFestivo,
+            tipoReceso,
+            motivoReceso: eventoActivo.motivo || (esCurso ? 'Capacitación y Actualización Médica Continua' : (esFestivo ? 'Día Festivo Oficial / Inhábil' : 'Periodo Vacacional')),
+            proximoTexto,
+            esProgramado: !!eventoActivo.esProgramado
         };
     }
 
@@ -1788,7 +1841,7 @@ app.post('/api/bot/reactivar', autenticarToken, async (req, res) => {
 app.post('/api/bot/ausencia', autenticarToken, async (req, res) => {
     try {
         const { activa, tipo, mensaje, fecha_fin } = req.body;
-        const tipoFinal = tipo === 'curso' ? 'curso' : 'vacaciones';
+        const tipoFinal = ['curso', 'festivo', 'vacaciones'].includes(tipo) ? tipo : 'vacaciones';
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [activa ? '1' : '0']);
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [tipoFinal]);
         if (mensaje !== undefined) {
@@ -1806,6 +1859,76 @@ app.post('/api/bot/ausencia', autenticarToken, async (req, res) => {
             fecha_fin
         });
         res.json({ success: true, ausenciaActiva: !!activa, ausenciaTipo: tipoFinal });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/bot/festivo', autenticarToken, async (req, res) => {
+    try {
+        const { activa, motivo, fecha_fin } = req.body;
+        const motivoFinal = motivo || 'Día Festivo Oficial / Inhábil';
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [activa ? '1' : '0']);
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'festivo') ON CONFLICT(clave) DO UPDATE SET valor = 'festivo'");
+        if (motivo !== undefined) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [motivoFinal]);
+        }
+        if (fecha_fin !== undefined) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [fecha_fin]);
+        }
+        io.emit('estado_control_actualizado', {
+            ausenciaActiva: !!activa,
+            ausenciaTipo: 'festivo',
+            ausenciaMsg: motivoFinal,
+            ausenciaFecha: fecha_fin,
+            mensaje: motivoFinal,
+            fecha_fin
+        });
+        res.json({ success: true, ausenciaActiva: !!activa, ausenciaTipo: 'festivo' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------------------
+// ENDPOINTS PARA CALENDARIO DE EVENTOS Y FESTIVOS PROGRAMADOS CON ANTERIORIDAD
+// ------------------------------------------------------------------------------
+app.get('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
+    try {
+        const eventos = await allQuery("SELECT * FROM eventos_ausencia ORDER BY fecha_inicio ASC, id ASC");
+        res.json(eventos || []);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
+    try {
+        const { tipo, titulo, fecha_inicio, fecha_fin, reanudacion_texto } = req.body;
+        if (!titulo || !fecha_inicio) {
+            return res.status(400).json({ error: "Título y fecha de inicio son requeridos" });
+        }
+        const tipoFinal = ['curso', 'festivo', 'vacaciones'].includes(tipo) ? tipo : 'festivo';
+        const fechaFinFinal = fecha_fin || fecha_inicio;
+        const reanudacionFinal = reanudacion_texto || `al concluir ${titulo}`;
+
+        const resultado = await runQuery(`
+            INSERT INTO eventos_ausencia (tipo, titulo, fecha_inicio, fecha_fin, reanudacion_texto, activo, creado_en)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+        `, [tipoFinal, titulo.trim(), fecha_inicio, fechaFinFinal, reanudacionFinal.trim(), Date.now()]);
+
+        io.emit('eventos_ausencia_actualizados');
+        res.json({ success: true, id: resultado.id, mensaje: "Evento programado con éxito" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/bot/eventos-ausencia/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM eventos_ausencia WHERE id = ?", [req.params.id]);
+        io.emit('eventos_ausencia_actualizados');
+        res.json({ success: true, mensaje: "Evento eliminado con éxito" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -2274,6 +2397,46 @@ function limpiarNombreParaSaludo(nombre) {
                 return;
             }
 
+            // ------------------------------------------------------------------
+            // COMANDO: !festivo / !feriado / !asueto / !inhabil (Modo Suspensión Oficial de Labores)
+            // ------------------------------------------------------------------
+            if (textoLower.startsWith('!festivo') || textoLower.startsWith('!feriado') || textoLower.startsWith('!asueto') || textoLower.startsWith('!inhabil') || textoLower.startsWith('!inhábil')) {
+                const parsed = parsearComandoReceso(texto, 'festivo');
+                if (!parsed.activo) {
+                    await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
+                    io.emit('estado_control_actualizado', { ausenciaActiva: false, ausenciaTipo: 'festivo' });
+                    const sent = await client.sendMessage(remitente, "🇲🇽 *MODO DÍA FESTIVO DESACTIVADO.*\n\nEl bot y el personal reanudan la atención y agenda de citas presenciales habitual.");
+                    if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                    return;
+                }
+
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'festivo') ON CONFLICT(clave) DO UPDATE SET valor = 'festivo'");
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.motivo]);
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.fechaFin]);
+
+                io.emit('estado_control_actualizado', {
+                    ausenciaActiva: true,
+                    ausenciaTipo: 'festivo',
+                    ausenciaMsg: parsed.motivo,
+                    ausenciaFecha: parsed.fechaFin,
+                    mensaje: parsed.motivo,
+                    fecha_fin: parsed.fechaFin
+                });
+
+                const sent = await client.sendMessage(remitente,
+                    `🇲🇽 *MODO DÍA FESTIVO / INHÁBIL ACTIVADO*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📌 *Conmemoración / Motivo:* ${parsed.motivo}\n` +
+                    `🗓️ *Reanudación estimada:* ${parsed.fechaFin}\n` +
+                    `🤖 *Rol de la IA:* Activa 24/7 explicando con calidez institucional la suspensión de labores, resolviendo dudas sobre métodos anticonceptivos y anotando citas en lista prioritaria para el regreso.\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `💡 _Para desactivar envía \`!festivo off\` o \`!reactivar\`._`
+                );
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
             if (textoLower.startsWith('!ignorar')) {
                 const partes = texto.split(' ');
                 const num = partes[1] ? partes[1].replace(/[^0-9]/g, '') : '';
@@ -2536,7 +2699,11 @@ function limpiarNombreParaSaludo(nombre) {
 
         let msjConfirmado = '';
         if (estadoHorario.enReceso) {
-            if (estadoHorario.esCurso) {
+            if (estadoHorario.esFestivo) {
+                msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                    `🇲🇽 Con motivo del día festivo oficial (*${estadoHorario.motivoReceso}*), has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme en cualquier momento sobre cualquier método anticonceptivo (implante, DIU, vasectomía, etc.), requisitos o preparaciones y con gusto resolveré tus dudas al instante. ☺️`;
+            } else if (estadoHorario.esCurso) {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                     `🎓 Nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*). Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
                     `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme en cualquier momento sobre cualquier método anticonceptivo (implante, DIU, vasectomía, etc.), requisitos o preparaciones y con gusto resolveré tus dudas al instante. ☺️`;
@@ -2661,7 +2828,11 @@ function limpiarNombreParaSaludo(nombre) {
             `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.\n\n`;
 
         if (estadoHorario.enReceso) {
-            if (estadoHorario.esCurso) {
+            if (estadoHorario.esFestivo) {
+                msjTransferido += `🇲🇽 *Aviso de Día Festivo / Inhábil Oficial:*\n${saludoPersonal} Te informamos que hoy es día festivo oficial con suspensión de labores presenciales (*${estadoHorario.motivoReceso}*).\n\n` +
+                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria** (${estadoHorario.proximoTexto}).\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este momento!* Puedes preguntarme aquí cualquier duda sobre métodos anticonceptivos (implante, DIU de cobre o plata, Mirena, vasectomía, inyecciones, pastillas, parches, etc.), requisitos o preparaciones. Con gusto te daré la información detallada de inmediato. ☺️\n\n`;
+            } else if (estadoHorario.esCurso) {
                 msjTransferido += `🎓 *Aviso de Capacitación y Actualización Médica:*\n${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
                     `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria** (${estadoHorario.proximoTexto}).\n\n` +
                     `💬 *¡El asistente virtual sigue 100% activo en este momento!* Puedes preguntarme aquí cualquier duda sobre métodos anticonceptivos (implante, DIU de cobre o plata, Mirena, vasectomía, inyecciones, pastillas, parches, etc.), requisitos o preparaciones. Con gusto te daré la información detallada de inmediato. ☺️\n\n`;
@@ -2885,15 +3056,23 @@ function limpiarNombreParaSaludo(nombre) {
         const mapsLink = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '';
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
         
-        // Estado de Ausencia / Vacaciones / Curso
-        const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor;
-        const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
-        const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor;
+        // Estado de Ausencia / Vacaciones / Curso / Festivo (Manual o Programado en Calendario)
         let avisoAusencia = '';
-        if (ausenciaActiva === '1') {
-            if (ausenciaTipo === 'curso') {
+        if (estadoHorario.enReceso) {
+            if (estadoHorario.esFestivo) {
+                avisoAusencia = `\n[AVISO DE DÍA FESTIVO OFICIAL / INHÁBIL ACTIVO]:
+- Actualmente es día festivo oficial / inhábil con suspensión de labores presenciales: "${estadoHorario.motivoReceso}".
+- REGLAS ESTRICTAS DE ATENCIÓN CON IA:
+  1. Actúa como vocera médica profesional, cálida y de alto nivel institucional.
+  2. Explica al paciente con amabilidad y respeto cívico que hoy es día festivo oficial no laborable en atención presencial.
+  3. PROHIBICIÓN ESTRICTA: NUNCA digas que "estamos de vacaciones" ni que estamos en "curso médico"; usa el término oficial de día festivo o asueto oficial.
+  4. ATENCIÓN VIRTUAL 24/7: ¡Tú estás 100% activo(a)! Responde de inmediato cualquier duda sobre métodos anticonceptivos, costos, indicaciones y preparaciones.
+  5. CITAS Y PROCEDIMIENTOS: La atención presencial en clínica se reanudará ${estadoHorario.proximoTexto}.
+  6. LISTA DE ESPERA PRIORITARIA: Ofrece registrar su turno con prioridad para ser contactado ${estadoHorario.proximoTexto}.
+  7. SOLICITUD DE ASESOR: Infórmale que por ser día festivo oficial, el personal responderá a primera hora ${estadoHorario.proximoTexto}.\n`;
+            } else if (estadoHorario.esCurso) {
                 avisoAusencia = `\n[AVISO DE CAPACITACIÓN / CONGRESO MÉDICO ACTIVO]:
-- Actualmente el equipo de salud se encuentra en jornadas de capacitación continua / congreso médico: "${ausenciaMsg || 'Capacitación y Actualización Médica'}".
+- Actualmente el equipo de salud se encuentra en jornadas de capacitación continua / congreso médico: "${estadoHorario.motivoReceso}".
 - REGLAS ESTRICTAS DE ATENCIÓN CON IA:
   1. Actúa como vocera médica profesional, cálida y de alto nivel de la clínica.
   2. Explica al paciente con orgullo y amabilidad que el personal de salud está en actualización médica continua para brindarle siempre el mejor servicio clínico y la mayor seguridad.
@@ -2903,7 +3082,7 @@ function limpiarNombreParaSaludo(nombre) {
   6. LISTA DE ESPERA PRIORITARIA: Si el paciente desea agendar cita o requiere atención física, pídele con calidez su nombre completo y el procedimiento de su interés, confirmándole con total certeza que ha quedado anotado en la LISTA DE ESPERA PRIORITARIA para apartar su lugar y coordinar su cita en cuanto el médico regrese.
   7. SOLICITUD DE ASESOR: Si pide hablar con una persona/asesor, infórmale con tacto que el médico está en sesiones académicas y se comunicará en cuanto concluyan o ${estadoHorario.proximoTexto}.\n`;
             } else {
-                avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${ausenciaMsg || 'Vacaciones'}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está en receso y su solicitud será atendida al reanudar actividades ${estadoHorario.proximoTexto}.\n`;
+                avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${estadoHorario.motivoReceso}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está en receso y su solicitud será atendida al reanudar actividades ${estadoHorario.proximoTexto}.\n`;
             }
         }
 
@@ -2982,7 +3161,17 @@ async function obtenerContenidoGoogleSheets(url) {
 
         let reglaHorarioIA = '';
         if (estadoHorario.enReceso) {
-            if (estadoHorario.esCurso) {
+            if (estadoHorario.esFestivo) {
+                reglaHorarioIA = `
+🇲🇽 ESTADO DE DÍA FESTIVO OFICIAL / INHÁBIL:
+- Con motivo de: "${estadoHorario.motivoReceso}".
+- REGLAS ESTRICTAS DE ATENCIÓN CON IA (PROHIBIDO CORTAR LA CONVERSACIÓN O ACTUAR COMO SIMPLE CONTESTADORA):
+  1. NUNCA respondas únicamente diciendo que el personal no está o que hoy es festivo.
+  2. ¡LA ATENCIÓN INFORMATIVA Y ORIENTACIÓN MÉDICA SIGUE 100% ACTIVA CONTIGO! Responde de inmediato, con calidez y con todo detalle médico cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, efectividad, dudas sobre procedimientos, mitos o efectos secundarios.
+  3. Aclara que por tratarse de un día festivo oficial con suspensión de labores presenciales, la atención humana y citas presenciales en clínica se reanudan ${estadoHorario.proximoTexto}.
+  4. PROHIBIDO decir "vacaciones" o "curso médico"; usa siempre el término de día festivo oficial / asueto institucional.
+  5. Cierra invitando a resolver dudas e indica que el paciente queda registrado en la Lista de Espera Prioritaria para ser contactado ${estadoHorario.proximoTexto}.`;
+            } else if (estadoHorario.esCurso) {
                 reglaHorarioIA = `
 🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
 - El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
@@ -3023,7 +3212,7 @@ async function obtenerContenidoGoogleSheets(url) {
             : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
 
         const reglaHorarioBase = estadoHorario.enReceso
-            ? `3. REGLA ESTRICTA POR RECESO / CAPACITACIÓN: Actualmente el personal humano de salud se encuentra en ${estadoHorario.esCurso ? 'jornadas de capacitación médica y congreso' : 'receso vacacional'}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy o de mañana mientras estemos en receso/capacitación.`
+            ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'CAPACITACIÓN MÉDICA' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el personal de salud se encuentra en jornadas de capacitación médica' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
             : `3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.`;
 
         const systemInstruction = `

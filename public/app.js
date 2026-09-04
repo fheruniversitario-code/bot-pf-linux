@@ -1653,9 +1653,18 @@ function actualizarUIEstadoControl(data) {
     }
 
     if (data.ausenciaActiva) {
-        if (data.ausenciaTipo === 'curso') {
+        const programadoTag = data.esProgramado ? ' (Auto Calendario)' : '';
+        if (data.ausenciaTipo === 'festivo') {
+            if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse";
+            if (statusText) statusText.textContent = `Día Festivo Oficial / Inhábil${programadoTag}`;
+            if (statusBadge) {
+                statusBadge.className = "px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full";
+                statusBadge.textContent = "🇲🇽 Día Festivo";
+            }
+            if (statusSub) statusSub.textContent = `Asueto oficial: "${data.ausenciaMsg || 'Día Festivo Oficial'}" (Reanudación: ${data.ausenciaFecha || 'Próximamente'}). IA atendiendo dudas 24/7.`;
+        } else if (data.ausenciaTipo === 'curso') {
             if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-indigo-500 animate-pulse";
-            if (statusText) statusText.textContent = "Personal en Capacitación / Congreso Médico";
+            if (statusText) statusText.textContent = `Personal en Capacitación / Congreso Médico${programadoTag}`;
             if (statusBadge) {
                 statusBadge.className = "px-2.5 py-0.5 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full";
                 statusBadge.textContent = "🎓 Modo Curso";
@@ -1663,7 +1672,7 @@ function actualizarUIEstadoControl(data) {
             if (statusSub) statusSub.textContent = `Aviso activo: "${data.ausenciaMsg || 'Capacitación Médica Continua'}" (Reanudación: ${data.ausenciaFecha || 'Próximamente'}). IA atendiendo dudas 24/7.`;
         } else {
             if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-sky-500 animate-pulse";
-            if (statusText) statusText.textContent = "Modo Ausencia / Vacaciones Activo";
+            if (statusText) statusText.textContent = `Modo Ausencia / Vacaciones Activo${programadoTag}`;
             if (statusBadge) {
                 statusBadge.className = "px-2 py-0.5 text-[10px] font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full";
                 statusBadge.textContent = "🏖️ Vacaciones";
@@ -1704,26 +1713,55 @@ async function ejecutarPausarBot() {
     }
 }
 
-function abrirModalAusencia(tipoPreseleccionado = null) {
+function abrirModalAusencia(tipoPreseleccionado = null, vistaInicial = 'inmediato') {
+    cambiarVistaModalAusencia(vistaInicial);
     apiFetch('/api/bot/estado-control').then(data => {
         const tipoFinal = tipoPreseleccionado || data.ausenciaTipo || 'curso';
         seleccionarTipoModalAusencia(tipoFinal);
-        document.getElementById('modal-ausencia-activa').checked = !!data.ausenciaActiva;
-        document.getElementById('modal-ausencia-mensaje').value = data.ausenciaMsg || '';
-        document.getElementById('modal-ausencia-fecha').value = data.ausenciaFecha || '';
+        const switchActiva = document.getElementById('modal-ausencia-activa');
+        if (switchActiva) switchActiva.checked = !!data.ausenciaActiva;
+        const inputMsg = document.getElementById('modal-ausencia-mensaje');
+        if (inputMsg && data.ausenciaMsg) inputMsg.value = data.ausenciaMsg;
+        const inputFecha = document.getElementById('modal-ausencia-fecha');
+        if (inputFecha && data.ausenciaFecha) inputFecha.value = data.ausenciaFecha;
         document.getElementById('modal-ausencia').classList.remove('hidden');
     }).catch(() => {
         seleccionarTipoModalAusencia(tipoPreseleccionado || 'curso');
         document.getElementById('modal-ausencia').classList.remove('hidden');
     });
+
+    if (vistaInicial === 'calendario') {
+        cargarListaEventosAusencia();
+    }
+}
+
+function cambiarVistaModalAusencia(vista) {
+    const secInmediato = document.getElementById('seccion-modal-inmediato');
+    const secCalendario = document.getElementById('seccion-modal-calendario');
+    const btnInmediato = document.getElementById('btn-vista-inmediato');
+    const btnCalendario = document.getElementById('btn-vista-calendario');
+
+    if (vista === 'calendario') {
+        if (secInmediato) secInmediato.classList.add('hidden');
+        if (secCalendario) secCalendario.classList.remove('hidden');
+        if (btnCalendario) btnCalendario.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30";
+        if (btnInmediato) btnInmediato.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+        cargarListaEventosAusencia();
+    } else {
+        if (secInmediato) secInmediato.classList.remove('hidden');
+        if (secCalendario) secCalendario.classList.add('hidden');
+        if (btnInmediato) btnInmediato.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30";
+        if (btnCalendario) btnCalendario.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+    }
 }
 
 function seleccionarTipoModalAusencia(tipo) {
     const tipoInput = document.getElementById('modal-ausencia-tipo');
     if (tipoInput) tipoInput.value = tipo;
 
-    const btnVac = document.getElementById('btn-tab-modal-vacaciones');
     const btnCur = document.getElementById('btn-tab-modal-curso');
+    const btnFes = document.getElementById('btn-tab-modal-festivo');
+    const btnVac = document.getElementById('btn-tab-modal-vacaciones');
     const iconoDiv = document.getElementById('modal-ausencia-icono');
     const iconoI = document.getElementById('modal-ausencia-icono-i');
     const tituloModal = document.getElementById('modal-ausencia-titulo');
@@ -1733,12 +1771,22 @@ function seleccionarTipoModalAusencia(tipo) {
     const labelMotivo = document.getElementById('label-modal-ausencia-motivo');
     const textareaMotivo = document.getElementById('modal-ausencia-mensaje');
     const chipsCur = document.getElementById('chips-sugerencias-curso');
+    const chipsFes = document.getElementById('chips-sugerencias-festivo');
+    const chipsVac = document.getElementById('chips-sugerencias-vacaciones');
     const notaModal = document.getElementById('nota-modal-ausencia');
     const btnSubmit = document.getElementById('btn-submit-modal-ausencia');
 
+    const btnInactivo = "py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 text-slate-400 hover:text-white border border-transparent";
+    if (btnCur) btnCur.className = btnInactivo;
+    if (btnFes) btnFes.className = btnInactivo;
+    if (btnVac) btnVac.className = btnInactivo;
+
+    if (chipsCur) chipsCur.classList.add('hidden');
+    if (chipsFes) chipsFes.classList.add('hidden');
+    if (chipsVac) chipsVac.classList.add('hidden');
+
     if (tipo === 'curso') {
-        if (btnCur) btnCur.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30";
-        if (btnVac) btnVac.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+        if (btnCur) btnCur.className = "py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30";
         if (iconoDiv) iconoDiv.className = "w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg";
         if (iconoI) iconoI.className = "fa-solid fa-graduation-cap";
         if (tituloModal) tituloModal.textContent = "Modo Curso / Capacitación Médica";
@@ -1747,14 +1795,28 @@ function seleccionarTipoModalAusencia(tipo) {
         if (toggleBg) toggleBg.className = "w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500";
         if (labelMotivo) labelMotivo.textContent = "Nombre del Curso, Taller o Congreso Médico";
         if (chipsCur) chipsCur.classList.remove('hidden');
-        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('periodo vacacional') || textareaMotivo.value.includes('descanso'))) {
+        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('vacacional') || textareaMotivo.value.includes('Festivo'))) {
             textareaMotivo.value = "Capacitación y Actualización Médica Continua";
         }
         if (notaModal) notaModal.innerHTML = `<span class="text-indigo-400 font-bold">🎓 Rol de la IA:</span> Explicará con calidez y prestigio médico que el equipo está en actualización continua, responderá dudas de métodos 24/7 y registrará pacientes en la <b>Lista de Espera Prioritaria</b>.`;
         if (btnSubmit) btnSubmit.className = "flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition";
+    } else if (tipo === 'festivo') {
+        if (btnFes) btnFes.className = "py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-emerald-600/30 text-emerald-300 border border-emerald-500/30";
+        if (iconoDiv) iconoDiv.className = "w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg";
+        if (iconoI) iconoI.className = "fa-solid fa-flag text-emerald-400";
+        if (tituloModal) tituloModal.textContent = "Modo Día Festivo Oficial";
+        if (labelSwitch) labelSwitch.textContent = "Activar Modo Día Festivo";
+        if (subSwitch) subSwitch.textContent = "Aviso institucional de asueto oficial. IA atiende dudas 24/7";
+        if (toggleBg) toggleBg.className = "w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500";
+        if (labelMotivo) labelMotivo.textContent = "Nombre del Festivo Oficial o Motivo de Asueto";
+        if (chipsFes) chipsFes.classList.remove('hidden');
+        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('Capacitación') || textareaMotivo.value.includes('vacacional'))) {
+            textareaMotivo.value = "Día Festivo Oficial / Inhábil";
+        }
+        if (notaModal) notaModal.innerHTML = `<span class="text-emerald-400 font-bold">🇲🇽 Rol de la IA:</span> Notifica con respeto institucional la suspensión de labores presenciales por día festivo, atiende consultas informativas 24/7 y registra citas en la <b>Lista de Espera Prioritaria</b> para atender a primera hora del día laboral.`;
+        if (btnSubmit) btnSubmit.className = "flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md transition";
     } else {
-        if (btnVac) btnVac.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-sky-600/30 text-sky-300 border border-sky-500/30";
-        if (btnCur) btnCur.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+        if (btnVac) btnVac.className = "py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 bg-sky-600/30 text-sky-300 border border-sky-500/30";
         if (iconoDiv) iconoDiv.className = "w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg";
         if (iconoI) iconoI.className = "fa-solid fa-umbrella-beach";
         if (tituloModal) tituloModal.textContent = "Modo Vacaciones / Receso";
@@ -1762,8 +1824,8 @@ function seleccionarTipoModalAusencia(tipo) {
         if (subSwitch) subSwitch.textContent = "El bot avisará a los clientes que el equipo está en descanso";
         if (toggleBg) toggleBg.className = "w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500";
         if (labelMotivo) labelMotivo.textContent = "Mensaje o Motivo de Vacaciones";
-        if (chipsCur) chipsCur.classList.add('hidden');
-        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('Capacitación'))) {
+        if (chipsVac) chipsVac.classList.remove('hidden');
+        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('Capacitación') || textareaMotivo.value.includes('Festivo'))) {
             textareaMotivo.value = "Periodo Vacacional de Temporada";
         }
         if (notaModal) notaModal.innerHTML = `<span class="text-sky-400 font-bold">🏖️ Rol de la IA:</span> Informará con amabilidad que el equipo está en periodo de descanso y responderá dudas generales de métodos.`;
@@ -1819,11 +1881,143 @@ async function guardarModoAusencia(e) {
             body: JSON.stringify({ activa, tipo, mensaje, fecha_fin })
         });
 
-        alert(tipo === 'curso' ? "🎓 Modo Curso / Congreso guardado con éxito." : "🏖️ Estado de vacaciones guardado con éxito.");
+        const msjExito = tipo === 'festivo'
+            ? "🇲🇽 Modo Día Festivo guardado con éxito."
+            : (tipo === 'curso' ? "🎓 Modo Curso / Congreso guardado con éxito." : "🏖️ Estado de vacaciones guardado con éxito.");
+        alert(msjExito);
         cerrarModalAusencia();
         cargarEstadoControlBot();
     } catch (err) {
         alert("Error al guardar modo ausencia: " + err.message);
+    }
+}
+
+async function cargarListaEventosAusencia() {
+    const cont = document.getElementById('lista-eventos-ausencia-container');
+    if (!cont) return;
+    try {
+        const eventos = await apiFetch('/api/bot/eventos-ausencia');
+        if (!eventos || eventos.length === 0) {
+            cont.innerHTML = `<div class="p-4 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">No hay eventos ni festivos programados en el calendario. Registra uno arriba para automatizarlo.</div>`;
+            return;
+        }
+
+        const hoy = new Date().toISOString().split('T')[0];
+
+        cont.innerHTML = eventos.map(ev => {
+            const esHoy = (ev.fecha_inicio <= hoy && ev.fecha_fin >= hoy);
+            const esPasado = (ev.fecha_fin < hoy);
+            
+            let badgeTipo = `<span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 rounded-md border border-emerald-500/30">🇲🇽 Festivo</span>`;
+            if (ev.tipo === 'curso') badgeTipo = `<span class="px-2 py-0.5 text-[10px] font-bold bg-indigo-500/20 text-indigo-300 rounded-md border border-indigo-500/30">🎓 Curso</span>`;
+            if (ev.tipo === 'vacaciones') badgeTipo = `<span class="px-2 py-0.5 text-[10px] font-bold bg-sky-500/20 text-sky-300 rounded-md border border-sky-500/30">🏖️ Vacaciones</span>`;
+
+            let badgeEstado = `<span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-800 text-slate-400 rounded-md">🗓️ Próximo</span>`;
+            if (esHoy) {
+                badgeEstado = `<span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 rounded-md animate-pulse">🟢 EN CURSO HOY (Auto)</span>`;
+            } else if (esPasado) {
+                badgeEstado = `<span class="px-2 py-0.5 text-[10px] font-semibold bg-slate-900 text-slate-600 rounded-md">⌛ Concluido</span>`;
+            }
+
+            const formatFecha = (fStr) => {
+                if (!fStr) return '';
+                const p = fStr.split('-');
+                return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fStr;
+            };
+
+            const rangoTexto = ev.fecha_inicio === ev.fecha_fin 
+                ? formatFecha(ev.fecha_inicio) 
+                : `${formatFecha(ev.fecha_inicio)} al ${formatFecha(ev.fecha_fin)}`;
+
+            return `
+                <div class="p-3 bg-slate-900/90 border ${esHoy ? 'border-emerald-500/40' : 'border-slate-800'} rounded-xl flex items-center justify-between space-x-3 text-xs">
+                    <div class="space-y-1 min-w-0 flex-1">
+                        <div class="flex items-center space-x-2">
+                            ${badgeTipo}
+                            ${badgeEstado}
+                            <span class="text-slate-400 text-[11px] font-medium">${rangoTexto}</span>
+                        </div>
+                        <div class="text-white font-semibold truncate">${ev.titulo}</div>
+                        ${ev.reanudacion_texto ? `<div class="text-[11px] text-slate-400 truncate">Reanuda: <span class="text-slate-300">${ev.reanudacion_texto}</span></div>` : ''}
+                    </div>
+                    <button type="button" onclick="eliminarEventoAusencia(${ev.id})" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="Eliminar evento">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch(err) {
+        cont.innerHTML = `<div class="p-3 text-center text-xs text-rose-400">Error al cargar eventos: ${err.message}</div>`;
+    }
+}
+
+async function guardarEventoAusencia(e) {
+    e.preventDefault();
+    try {
+        const tipo = document.getElementById('nuevo-evento-tipo').value;
+        const titulo = document.getElementById('nuevo-evento-titulo').value.trim();
+        const fecha_inicio = document.getElementById('nuevo-evento-inicio').value;
+        const fecha_fin = document.getElementById('nuevo-evento-fin').value;
+        const reanudacion_texto = document.getElementById('nuevo-evento-reanudacion').value.trim();
+
+        if (!titulo || !fecha_inicio || !fecha_fin) {
+            alert("Por favor completa el título y las fechas de inicio y fin.");
+            return;
+        }
+
+        await apiFetch('/api/bot/eventos-ausencia', {
+            method: 'POST',
+            body: JSON.stringify({ tipo, titulo, fecha_inicio, fecha_fin, reanudacion_texto })
+        });
+
+        alert("✅ Evento programado exitosamente. El bot lo activará y desactivará automáticamente en las fechas fijadas.");
+        document.getElementById('nuevo-evento-titulo').value = '';
+        document.getElementById('nuevo-evento-reanudacion').value = '';
+        cargarListaEventosAusencia();
+        cargarEstadoControlBot();
+    } catch (err) {
+        alert("Error al programar evento: " + err.message);
+    }
+}
+
+async function eliminarEventoAusencia(id) {
+    if (!confirm("¿Deseas eliminar este evento programado?")) return;
+    try {
+        await apiFetch(`/api/bot/eventos-ausencia/${id}`, { method: 'DELETE' });
+        cargarListaEventosAusencia();
+        cargarEstadoControlBot();
+    } catch (err) {
+        alert("Error al eliminar evento: " + err.message);
+    }
+}
+
+function autollenarFestivoOficial(nombre, mmDdInicio, mmDdFin) {
+    const anioActual = new Date().getFullYear();
+    const tipoSelect = document.getElementById('nuevo-evento-tipo');
+    if (tipoSelect) tipoSelect.value = 'festivo';
+    
+    const tituloInput = document.getElementById('nuevo-evento-titulo');
+    if (tituloInput) tituloInput.value = nombre;
+    
+    const inicioInput = document.getElementById('nuevo-evento-inicio');
+    if (inicioInput) inicioInput.value = `${anioActual}-${mmDdInicio}`;
+    
+    const finInput = document.getElementById('nuevo-evento-fin');
+    if (finInput) finInput.value = `${anioActual}-${mmDdFin}`;
+
+    const reanudacionInput = document.getElementById('nuevo-evento-reanudacion');
+    if (reanudacionInput) reanudacionInput.value = 'al día hábil siguiente a primera hora';
+}
+
+function actualizarSugerenciasNuevoEvento() {
+    const tipo = document.getElementById('nuevo-evento-tipo').value;
+    const tituloInput = document.getElementById('nuevo-evento-titulo');
+    if (tipo === 'festivo' && (!tituloInput.value || tituloInput.value.includes('Curso') || tituloInput.value.includes('Vacaciones'))) {
+        tituloInput.placeholder = "Ej: Aniversario de la Independencia";
+    } else if (tipo === 'curso' && (!tituloInput.value || tituloInput.value.includes('Festivo') || tituloInput.value.includes('Vacaciones'))) {
+        tituloInput.placeholder = "Ej: Congreso de Actualización Médica Continua";
+    } else if (tipo === 'vacaciones') {
+        tituloInput.placeholder = "Ej: Periodo Vacacional de Invierno";
     }
 }
 
@@ -2363,6 +2557,11 @@ function alternarTema() {
 
 // Escuchar actualizaciones de estado de control en tiempo real vía Socket.io
 socket.on('estado_control_actualizado', () => {
+    cargarEstadoControlBot();
+});
+
+socket.on('eventos_ausencia_actualizados', () => {
+    cargarListaEventosAusencia();
     cargarEstadoControlBot();
 });
 
