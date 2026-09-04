@@ -2047,14 +2047,14 @@ const client = new Client({
 });
 
 // Interceptor seguro de client.sendMessage para registrar de inmediato mensajes salientes del bot
+// CRÍTICO: se registra el chatId real (JID del destinatario) para que message_create
+// nunca confunda mensajes del bot con mensajes humanos y no active auto-pausa.
 const origSendMessage = client.sendMessage.bind(client);
 client.sendMessage = async function(chatId, content, options) {
     try {
-        if (typeof content === 'string') {
-            registrarTextoEnviadoBot(content);
-        } else if (options && options.caption) {
-            registrarTextoEnviadoBot(options.caption);
-        }
+        // Registrar el JID real del destinatario + el texto para evitar auto-pausa
+        const textContent = typeof content === 'string' ? content : (options?.caption || '');
+        if (typeof registrarEnvioBot === 'function') registrarEnvioBot(chatId, textContent);
     } catch(eReg) {}
     const res = await origSendMessage(chatId, content, options);
     try {
