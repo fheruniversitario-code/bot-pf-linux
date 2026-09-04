@@ -1979,8 +1979,10 @@ async function simularEscribiendoSeguro(msg, ms = 1000) {
 
 // Procesador Inteligente de Mensajes Entrantes
 async function procesarMensajeEntrante(msg) {
+    let remitente = null;
     try {
         if (!msg || msg.from === 'status@broadcast') return;
+        remitente = msg.from;
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         // Deduplicación estricta por ID de mensaje de WhatsApp
@@ -2005,7 +2007,6 @@ async function procesarMensajeEntrante(msg) {
         }
 
         const esGrupo = msg.from.endsWith('@g.us');
-        const remitente = msg.from;
         const texto = msg.body ? msg.body.trim() : '';
 
     // En grupos normales, el bot se mantiene 100% sordo y mudo
@@ -2502,8 +2503,8 @@ function limpiarNombreParaSaludo(nombre) {
         if (estadoHorario.enReceso) {
             if (estadoHorario.esCurso) {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                    `🎓 Nuestro equipo de salud se encuentra en: *${estadoHorario.motivoReceso}*. Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos con gusto **${estadoHorario.proximoTexto}**.\n\n` +
-                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+                    `🎓 Nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*). Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme en cualquier momento sobre cualquier método anticonceptivo (implante, DIU, vasectomía, etc.), requisitos o preparaciones y con gusto resolveré tus dudas al instante. ☺️`;
             } else {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                     `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
@@ -2626,8 +2627,9 @@ function limpiarNombreParaSaludo(nombre) {
 
         if (estadoHorario.enReceso) {
             if (estadoHorario.esCurso) {
-                msjTransferido += `🎓 *Aviso de Capacitación Médica Continua:*\n${saludoPersonal} En este momento nuestro equipo de salud se encuentra en: *${estadoHorario.motivoReceso}* con la finalidad de mantenernos siempre actualizados para brindarte la mejor atención médica.\n\n` +
-                    `🗓️ Tu mensaje y solicitud han quedado registrados en nuestra **Lista de Espera Prioritaria**. Nuestro personal te contactará con gusto **${estadoHorario.proximoTexto}** para agendar tu cita.\n\n`;
+                msjTransferido += `🎓 *Aviso de Capacitación y Actualización Médica:*\n${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
+                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria** (${estadoHorario.proximoTexto}).\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este momento!* Puedes preguntarme aquí cualquier duda sobre métodos anticonceptivos (implante, DIU de cobre o plata, Mirena, vasectomía, inyecciones, pastillas, parches, etc.), requisitos o preparaciones. Con gusto te daré la información detallada de inmediato. ☺️\n\n`;
             } else {
                 msjTransferido += `🌴 *Aviso de Receso / Vacaciones:*\n${saludoPersonal} Por el momento nuestro personal se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
                     `🗓️ Tu solicitud ha quedado registrada en espera. El personal te atenderá **${estadoHorario.proximoTexto}**.\n\n`;
@@ -2949,7 +2951,12 @@ async function obtenerContenidoGoogleSheets(url) {
                 reglaHorarioIA = `
 🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
 - El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
-- REGLAS DE ATENCIÓN: Resuelve 24/7 todas las dudas médicas (métodos, costos, requisitos, preparaciones) con calidez y precisión médica. Para citas presenciales o procedimientos físicos, aclara con orgullo médico que se reanudarán ${estadoHorario.proximoTexto} y anota al paciente en la Lista de Espera Prioritaria.`;
+- REGLAS ESTRICTAS DE ATENCIÓN CON IA (PROHIBIDO CORTAR LA CONVERSACIÓN O ACTUAR COMO SIMPLE CONTESTADORA):
+  1. NUNCA respondas únicamente diciendo que el personal está fuera, en curso o que no hay atención presencial.
+  2. ¡LA ATENCIÓN INFORMATIVA Y ORIENTACIÓN MÉDICA SIGUE 100% ACTIVA CONTIGO! Responde de inmediato, con calidez y con todo detalle médico cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, efectividad, dudas sobre procedimientos, mitos o efectos secundarios.
+  3. Explica con orgullo y calidez médica que el personal de salud está en constante actualización científica para garantizar procedimientos de la máxima calidad y seguridad clínica.
+  4. Para citas presenciales o procedimientos físicos en la unidad, aclara que se reanudarán ${estadoHorario.proximoTexto}.
+  5. Siempre cierra tu respuesta invitando al paciente a seguir consultando dudas y pregúntale con amabilidad si desea que registres su nombre en la Lista de Espera Prioritaria para apartar su lugar en cuanto regrese el personal.`;
             } else {
                 reglaHorarioIA = `
 🔴 ESTADO DE RECESO / VACACIONES:
