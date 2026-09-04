@@ -80,13 +80,28 @@ const chatsEnProceso = new Map(); // JID -> Timestamp inicio (bloqueo concurrent
 const ultimosTextosEnviadosBot = new Map(); // Texto limpio -> Timestamp (para evitar que el bot se auto-pause a sí mismo)
 const colasProcesamiento = new Map();
 
-function registrarTextoEnviadoBot(texto) {
-    if (!texto) return;
+const ultimosJidsEnviadosBot = new Map(); // JID / últimos 8 dígitos -> Timestamp
+
+function registrarEnvioBot(jid, texto) {
     const ahora = Date.now();
-    for (const [t, ts] of ultimosTextosEnviadosBot.entries()) {
-        if (ahora - ts > 30000) ultimosTextosEnviadosBot.delete(t);
+    if (jid) {
+        ultimosJidsEnviadosBot.set(jid, ahora);
+        const num = jid.replace(/[^0-9]/g, '');
+        if (num && num.length >= 8) ultimosJidsEnviadosBot.set(num.slice(-8), ahora);
     }
-    ultimosTextosEnviadosBot.set(texto.trim(), ahora);
+    if (texto) {
+        ultimosTextosEnviadosBot.set(texto.trim(), ahora);
+    }
+    for (const [j, ts] of ultimosJidsEnviadosBot.entries()) {
+        if (ahora - ts > 45000) ultimosJidsEnviadosBot.delete(j);
+    }
+    for (const [t, ts] of ultimosTextosEnviadosBot.entries()) {
+        if (ahora - ts > 45000) ultimosTextosEnviadosBot.delete(t);
+    }
+}
+
+function registrarTextoEnviadoBot(texto) {
+    registrarEnvioBot(null, texto);
 }
 
 // ------------------------------------------------------------------------------
@@ -1475,7 +1490,7 @@ async function obtenerModelosDisponibles(apiKey) {
                 .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('tts') && !name.includes('transcribe'));
 
             // Priorizar explícitamente los modelos Flash modernos y de alta disponibilidad (3.6 y 3.5) que no sufren 503
-            const flashModernos = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview']
+            const flashModernos = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview']
                 .filter(m => modelosSoportados.includes(m));
 
             const otrosFlash = modelosSoportados.filter(name => name.includes('flash') && !flashModernos.includes(name) && !name.includes('-exp'));
@@ -2574,14 +2589,15 @@ function limpiarNombreParaSaludo(nombre) {
 
     if (!texto) return;
 
-    // Bloqueo de concurrencia inteligente con expiración automática TTL (25s)
+    // Bloqueo de concurrencia inteligente con expiración automática TTL (12s)
     if (!esGrupo) {
         const tiempoInicioProc = chatsEnProceso.get(remitente);
-        if (tiempoInicioProc && (Date.now() - tiempoInicioProc < 25000)) {
-            console.log(`⏳ Mensaje registrado en historial. Ya hay una respuesta procesándose para ${remitente}. Omitiendo respuesta concurrente.`);
+        if (tiempoInicioProc && (Date.now() - tiempoInicioProc < 12000)) {
+            console.log(`⏳ Chat ${remitente} ya está siendo procesado concurrentemente. Omitiendo respuesta duplicada.`);
             return;
         }
         chatsEnProceso.set(remitente, Date.now());
+        if (typeof registrarEnvioBot === 'function') registrarEnvioBot(remitente);
     }
 
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
@@ -3301,13 +3317,13 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
         
         const listaModelos = Array.from(new Set([
             'gemini-3.6-flash',
+            'gemini-3.1-flash-lite',
+            'gemini-flash-latest',
             'gemini-3-flash-preview',
             modeloGuardado,
             ...modelosDisponibles,
             'gemini-3.5-flash',
             'gemini-3.5-flash-lite',
-            'gemini-flash-latest',
-            'gemini-flash-lite-latest',
             'gemini-3.5-pro',
             'gemini-pro-latest'
         ])).filter(Boolean);
@@ -3318,8 +3334,33 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
             let intentos = 2;
             while (intentos > 0) {
                 try {
-                    const model = aiClient.getGenerativeModel({ model: modName, systemInstruction });
-                    const result = await model.generateContent(promptContenido);
+                    let model;
+                    try {
+                        model = aiClient.getGenerativeModel({
+                            model: modName,
+                            systemInstruction,
+                            generationConfig: {
+                                thinkingConfig: {
+                                    thinkingLevel: 'low'
+                                }
+                            }
+                        });
+                    } catch (eMod) {
+                        model = aiClient.getGenerativeModel({ model: modName, systemInstruction });
+                    }
+
+                    let result;
+                    try {
+                        result = await model.generateContent(promptContenido);
+                    } catch (errGen) {
+                        if (errGen.message && (errGen.message.includes('thinkingConfig') || errGen.message.includes('invalid argument'))) {
+                            const modelFallback = aiClient.getGenerativeModel({ model: modName, systemInstruction });
+                            result = await modelFallback.generateContent(promptContenido);
+                        } else {
+                            throw errGen;
+                        }
+                    }
+
                     respuestaIA = result.response.text();
                     if (respuestaIA) {
                         modeloExitoso = modName;
@@ -3329,8 +3370,8 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
                     intentos--;
                     const es503o429 = errModel.message && (errModel.message.includes('503') || errModel.message.includes('429'));
                     if (intentos > 0 && es503o429) {
-                        // Spikes temporales de demanda en Google AI: reintento rápido tras 700ms
-                        await delay(700);
+                        // Spikes temporales de demanda en Google AI: reintento rápido tras 500ms
+                        await delay(500);
                     } else {
                         console.warn(`[Modelo ${modName} no disponible]:`, errModel.message);
                         break;
@@ -3365,8 +3406,8 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
             if (iconoAsistente && !textoRespuestaFinal.startsWith(iconoAsistente)) {
                 textoRespuestaFinal = `${iconoAsistente} ${textoRespuestaFinal}`;
             }
-            // Registrar texto antes de enviar para garantizar que coincida en message_create
-            registrarTextoEnviadoBot(textoRespuestaFinal);
+            // Registrar texto y destinatario antes de enviar para garantizar que coincida en message_create y no auto-pause
+            registrarEnvioBot(remitente, textoRespuestaFinal);
 
             // Simulación de escritura humana anti-ban
             await simularEscribiendoSeguro(msg, Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500));
@@ -3518,6 +3559,17 @@ client.on('message_create', async (msg) => {
         // 1. Si el mensaje fue enviado automáticamente por el bot (registrado por ID), no pausar
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
+        // 2. Si el bot acaba de procesar o enviar mensaje a este destino en los últimos 45 segundos, no auto-pausar
+        const targetJid = msg.to || msg.from;
+        if (targetJid) {
+            const telClean = targetJid.replace(/[^0-9]/g, '');
+            const ultimos8 = (telClean && telClean.length >= 8) ? telClean.slice(-8) : '';
+            if (ultimosJidsEnviadosBot.has(targetJid) || (ultimos8 && ultimosJidsEnviadosBot.has(ultimos8))) {
+                if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
+                return;
+            }
+        }
+
         const cuerpoMsg = (msg.body || '').trim();
 
         // 2. Si este texto exacto o su inicio fue registrado como emitido por el bot en los últimos 30 segundos, no pausar
@@ -3573,7 +3625,6 @@ client.on('message_create', async (msg) => {
         }
 
         // Mensaje enviado manualmente por el usuario desde el teléfono físico o WhatsApp Web
-        const targetJid = msg.to || msg.from;
         if (!targetJid || targetJid.endsWith('@g.us')) return; // No pausar por mensajes en grupos
 
         const minsPausa = parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'tiempo_pausa_humano_mins'"))?.valor || '30', 10);
