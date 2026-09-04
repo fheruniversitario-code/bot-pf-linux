@@ -612,7 +612,7 @@ async function seleccionarChat(jid, nombre, telefono = '') {
             `).join('');
         }
 
-        // Botón de Sincronizar, Etiquetas e Ignorar / Reactivar Contacto en 1 Clic
+        // Botón de Sincronizar, Etiquetas, Reanudar Bot e Ignorar / Reactivar Contacto en 1 Clic
         const accionesCont = document.getElementById('chat-acciones');
         if (accionesCont) {
             const esIgnorado = data.contacto && data.contacto.es_ignorado === 1;
@@ -620,6 +620,10 @@ async function seleccionarChat(jid, nombre, telefono = '') {
                 <button id="btn-refrescar-chat" onclick="refrescarChatActivo()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Sincronizar mensajes de WhatsApp">
                     <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>
                     <span>Sincronizar</span>
+                </button>
+                <button id="btn-reanudar-bot-chat" onclick="reanudarBotChatActivo('${jid}')" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="El bot continuará atendiendo a este cliente con IA manteniendo el contexto">
+                    <i class="fa-solid fa-robot text-emerald-400"></i>
+                    <span>Reanudar Bot</span>
                 </button>
                 <button id="btn-gestionar-etiquetas" onclick="abrirModalEtiquetasContacto()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Asignar Etiquetas / Listas">
                     <i class="fa-solid fa-tags text-indigo-400"></i>
@@ -677,13 +681,20 @@ async function seleccionarChat(jid, nombre, telefono = '') {
 
             let badgeEmisor = isIA ? '<span class="text-[10px] font-bold text-emerald-400 ml-1.5">IA</span>' : (isMe ? '<span class="text-[10px] font-bold text-indigo-400 ml-1.5">Asesor</span>' : '');
 
+            let cuerpoHtml = m.cuerpo || '';
+            if (cuerpoHtml.startsWith('/9j/') || cuerpoHtml.startsWith('data:image') || (cuerpoHtml.length > 200 && !cuerpoHtml.includes(' '))) {
+                cuerpoHtml = `<div class="flex items-center space-x-2 py-1"><i class="fa-solid fa-image text-sm text-indigo-300"></i> <span class="font-medium">📷 (Infografía / Imagen enviada)</span></div>`;
+            } else {
+                cuerpoHtml = `<div class="whitespace-pre-wrap leading-relaxed">${cuerpoHtml}</div>`;
+            }
+
             row.innerHTML = `
                 <div class="max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm ${isMe ? (isIA ? 'bg-emerald-950/40 border border-emerald-800/40 text-emerald-100 rounded-tr-none' : 'bg-indigo-600 text-white rounded-tr-none') : 'bg-slate-800 border border-slate-700/60 text-slate-100 rounded-tl-none'}">
                     <div class="text-[10px] font-semibold text-slate-400 mb-1 flex items-center">
                         <span>${m.emisor_nombre || (isMe ? 'Asistente' : 'Cliente')}</span>
                         ${badgeEmisor}
                     </div>
-                    <div class="whitespace-pre-wrap leading-relaxed">${m.cuerpo}</div>
+                    ${cuerpoHtml}
                     <div class="text-[9px] text-right mt-1 opacity-60">${new Date(m.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true })}</div>
                 </div>
             `;
@@ -693,6 +704,17 @@ async function seleccionarChat(jid, nombre, telefono = '') {
         stream.scrollTop = stream.scrollHeight;
     } catch (e) {
         console.error("Error al obtener mensajes:", e);
+    }
+}
+
+async function reanudarBotChatActivo(jid) {
+    const targetJid = jid || chatActivoJid;
+    if (!targetJid) return alert("Selecciona un chat primero");
+    try {
+        await apiFetch(`/api/conversaciones/${encodeURIComponent(targetJid)}/reactivar`, { method: 'POST' });
+        alert("🤖 ¡Bot reanudado para este chat! A partir de su próximo mensaje, el asistente responderá con IA manteniendo el hilo y contexto de la conversación.");
+    } catch (e) {
+        alert("Error al reanudar bot: " + e.message);
     }
 }
 

@@ -273,15 +273,20 @@ app.get('/api/conversaciones', autenticarToken, async (req, res) => {
 
         const chats = await allQuery(`
             SELECT c.jid, c.telefono, c.nombre, c.pushname, c.es_ignorado, c.ultimo_contacto,
-                   (SELECT cuerpo FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_mensaje,
-                   (SELECT timestamp FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as hora_ultimo_mensaje,
-                   (SELECT es_ia FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_fue_ia
+                   (SELECT CASE 
+                        WHEN cuerpo LIKE '/9j/%' OR cuerpo LIKE 'data:image%' THEN '📷 (Imagen / Infografía)'
+                        ELSE cuerpo 
+                    END FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '%e2e_notification%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_mensaje,
+                   (SELECT timestamp FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '%e2e_notification%' ORDER BY timestamp DESC, id DESC LIMIT 1) as hora_ultimo_mensaje,
+                   (SELECT es_ia FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '%e2e_notification%' ORDER BY timestamp DESC, id DESC LIMIT 1) as ultimo_fue_ia
             FROM contactos c
             ${whereClause}
-            ORDER BY COALESCE(
-                (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '(e2e_notification)%'),
-                c.ultimo_contacto
-            ) DESC
+            ORDER BY 
+                CASE WHEN (SELECT COUNT(*) FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '%e2e_notification%') > 0 THEN 1 ELSE 0 END DESC,
+                COALESCE(
+                    (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = c.jid AND cuerpo NOT LIKE '%e2e_notification%'),
+                    c.ultimo_contacto
+                ) DESC
             LIMIT 300
         `, params);
 
@@ -522,7 +527,7 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
 
         // 3. Procesar chats con sus etiquetas, nombres y fechas reales
         for (const ch of dataWA.chats) {
-            if (!ch.jid) continue;
+            if (!ch.jid || (ch.jid.endsWith('@lid') && !ch.ultimoTexto)) continue;
             // Solo considerar tReal si el chat realmente tiene mensajes válidos
             const tReal = (ch.timestamp > 0 && ch.ultimoTexto) ? ch.timestamp * 1000 : 0;
             let nomLimpio = ch.nombre;
@@ -853,9 +858,13 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                         const esMio = m.fromMe ? 1 : 0;
                         const emisorNombre = esMio ? 'Asesor Humano' : (waChat?.name || waChat?.formattedTitle || contacto?.nombre || 'Cliente');
                         const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
-                        const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
+                        let cuerpoTxt = m.body || (m.hasMedia ? '📷 (Infografía / Imagen enviada)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
 
-                        if (!cuerpoTxt) continue;
+                        if (!cuerpoTxt || cuerpoTxt.includes('e2e_notification')) continue;
+
+                        if (cuerpoTxt.startsWith('/9j/') || cuerpoTxt.startsWith('data:image') || (cuerpoTxt.length > 200 && !cuerpoTxt.includes(' '))) {
+                            cuerpoTxt = '📷 (Infografía / Imagen enviada)';
+                        }
 
                         // Deduplicar estrictamente por contenido del texto y emisor dentro de un rango de tiempo
                         const yaExiste = await getQuery(`
@@ -906,19 +915,26 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
 
         const todosMensajes = await allQuery(`
             SELECT * FROM mensajes 
-            WHERE chat_id = ? 
-               OR chat_id = ? 
-               OR (? != '' AND chat_id LIKE ?)
+            WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
+              AND cuerpo NOT LIKE '%e2e_notification%'
             ORDER BY timestamp ASC, id ASC 
             LIMIT 250
         `, [jid, chatVinculado, ultimos8, `%${ultimos8}%`]);
 
-        // Deduplicar mensajes en memoria
+        // Deduplicar mensajes en memoria y normalizar multimedia/infografías
         const mensajes = [];
         const vistos = new Set();
         for (const m of todosMensajes) {
-            const cuerpoNormalizado = (m.cuerpo || '').trim();
-            const key = `${m.es_mio}_${cuerpoNormalizado}_${Math.round(m.timestamp / 5000)}`;
+            let cuerpoNormalizado = (m.cuerpo || '').trim();
+            if (cuerpoNormalizado.startsWith('/9j/') || cuerpoNormalizado.startsWith('data:image') || (cuerpoNormalizado.length > 200 && !cuerpoNormalizado.includes(' '))) {
+                cuerpoNormalizado = '📷 (Infografía / Imagen enviada)';
+                m.cuerpo = cuerpoNormalizado;
+            } else if (cuerpoNormalizado === '📷 (Multimedia enviado desde teléfono)' || cuerpoNormalizado === '📷 (Archivo multimedia)') {
+                cuerpoNormalizado = '📷 (Infografía / Imagen enviada)';
+                m.cuerpo = cuerpoNormalizado;
+            }
+
+            const key = `${m.es_mio}_${cuerpoNormalizado}_${Math.round(m.timestamp / 10000)}`;
             if (!vistos.has(key)) {
                 vistos.add(key);
                 mensajes.push(m);
@@ -967,6 +983,28 @@ app.post('/api/conversaciones/:jid/enviar', autenticarToken, async (req, res) =>
         });
 
         res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Reanudar Bot en un chat específico (Quitar pausa de asesor humano y volver a IA)
+app.post('/api/conversaciones/:jid/reactivar', autenticarToken, async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        chatsPausados.delete(jid);
+
+        // Limpiar también jids y teléfonos asociados
+        const telClean = jid.replace(/[^0-9]/g, '');
+        for (const [pJid] of chatsPausados.entries()) {
+            if ((telClean.length >= 8 && pJid.includes(telClean)) || jid.includes(pJid.replace(/[^0-9]/g, ''))) {
+                chatsPausados.delete(pJid);
+            }
+        }
+
+        io.emit('chat_reactivado', { jid });
+        console.log(`🤖 [BOT REANUDADO] El bot volverá a responder con IA en el chat ${jid}`);
+        res.json({ success: true, message: 'Bot reanudado para este cliente exitosamente' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -2139,7 +2177,18 @@ function limpiarNombreParaSaludo(nombre) {
     // B. SALUDO INICIAL Y MENÚ INTERACTIVO DE BIENVENIDA (OPCIONAL)
     // --------------------------------------------------------------------------
     const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
-    if (saludos.includes(textoLowerNorm) && mostrarMenuNumerico) {
+    
+    // Si ya existe una conversación reciente (últimas 12 horas), NO reiniciar con el menú para mantener la fluidez de la charla
+    const telUltimos8Sal = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
+    const charlaReciente = await getQuery(`
+        SELECT COUNT(*) as total FROM mensajes 
+        WHERE (chat_id = ? OR (? != '' AND chat_id LIKE ?))
+          AND timestamp > ?
+    `, [remitente, telUltimos8Sal, `%${telUltimos8Sal}%`, Date.now() - (12 * 60 * 60 * 1000)]);
+    const esConversacionEnCurso = (charlaReciente?.total || 0) > 1;
+    const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones'].includes(textoLowerNorm);
+
+    if ((pideMenuExplicito || (!esConversacionEnCurso && saludos.includes(textoLowerNorm))) && mostrarMenuNumerico) {
         await simularEscribiendoSeguro(msg, 1000);
 
         const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
@@ -2441,9 +2490,21 @@ function limpiarNombreParaSaludo(nombre) {
             avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${ausenciaMsg || 'Vacaciones / Capacitación'}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está ausente y su solicitud será atendida prioritariamente al reanudar actividades.\n`;
         }
 
-        // Historial reciente de la conversación
-        const ultimosMensajes = await allQuery("SELECT emisor_nombre, cuerpo, es_mio FROM mensajes WHERE chat_id = ? ORDER BY id DESC LIMIT 8", [remitente]);
-        let contextoHistorial = ultimosMensajes.reverse().map(m => `${m.es_mio ? 'Asistente' : 'Cliente'}: ${m.cuerpo}`).join('\n');
+        // Historial reciente de la conversación (unificando por JID y teléfono)
+        const telUltimos8H = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
+        const ultimosMensajes = await allQuery(`
+            SELECT emisor_nombre, cuerpo, es_mio 
+            FROM mensajes 
+            WHERE (chat_id = ? OR (? != '' AND chat_id LIKE ?))
+              AND cuerpo NOT LIKE '%e2e_notification%'
+            ORDER BY id DESC 
+            LIMIT 10
+        `, [remitente, telUltimos8H, `%${telUltimos8H}%`]);
+        let contextoHistorial = ultimosMensajes.reverse().map(m => {
+            let txt = m.cuerpo || '';
+            if (txt.startsWith('/9j/') || txt.startsWith('data:image')) txt = '📷 (Infografía / Imagen enviada)';
+            return `${m.es_mio ? 'Asistente' : 'Cliente'}: ${txt}`;
+        }).join('\n');
 
 // Cache para Google Sheets en vivo (TTL de 60 segundos)
 let cacheGoogleSheets = { url: '', contenido: '', timestamp: 0 };
@@ -2555,6 +2616,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
   3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.
   4. ADVIERTE SIEMPRE: "Recuerda que toda atención presencial en la unidad es exclusivamente con cita previa. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este medio, ya que no es posible atenderte sin un espacio reservado en la agenda."
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
+- REGLA DE CONTINUIDAD TRAS INTERVENCIÓN HUMANA: Si en el historial reciente aparece que un asesor humano (o tú mismo) ya estuvo conversando con el paciente (enviando infografías, aclarando métodos, dudas de implante/vasectomía o agendando), RETOMA la plática con total naturalidad manteniendo el hilo de la conversación previa. NUNCA reinicies con menús ni saludos fríos de bienvenida. Si el paciente pregunta algo corto, hace referencia a una infografía o expresa una duda, respóndele de forma directa, cálida y contextualizada con base en lo que se venía hablando.
 - REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
 - Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.
@@ -2827,11 +2889,28 @@ client.on('message_create', async (msg) => {
 
         // 3. Guardar el mensaje humano en la BD para que aparezca en el panel web
         try {
-            const textoCuerpo = msg.body || (msg.hasMedia ? '📷 (Multimedia enviado desde teléfono)' : '');
+            let textoCuerpo = msg.body || '';
+            const esBase64Img = textoCuerpo.startsWith('/9j/') || textoCuerpo.startsWith('data:image') || (textoCuerpo.length > 200 && !textoCuerpo.includes(' '));
+
+            if (esBase64Img) {
+                textoCuerpo = '📷 (Infografía / Imagen enviada)';
+            } else if (msg.hasMedia) {
+                textoCuerpo = msg.caption ? `📷 ${msg.caption}` : '📷 (Infografía / Imagen enviada)';
+            }
+
             const tsMs = (msg.timestamp || Math.floor(Date.now() / 1000)) * 1000;
 
             for (const jidDestino of jidsAsociados) {
-                const yaGuardado = await getQuery("SELECT id FROM mensajes WHERE chat_id = ? AND timestamp = ?", [jidDestino, tsMs]);
+                // Deduplicar si en los últimos 4 segundos ya se guardó un mensaje multimedia idéntico
+                const yaGuardado = await getQuery(`
+                    SELECT id FROM mensajes 
+                    WHERE chat_id = ? 
+                      AND (
+                          timestamp = ? 
+                          OR (timestamp >= ? AND (cuerpo LIKE '📷%' OR cuerpo = ?))
+                      )
+                `, [jidDestino, tsMs, tsMs - 4000, textoCuerpo]);
+
                 if (!yaGuardado) {
                     await runQuery(
                         "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 0, ?)",
@@ -2865,17 +2944,29 @@ client.on('message_create', async (msg) => {
 // Iniciar Servidor Web y Base de Datos
 inicializarBD().then(async () => {
     try {
-        // Auto-limpieza de notificaciones y contactos fantasma importados por error
-        await runQuery("DELETE FROM mensajes WHERE cuerpo LIKE '(e2e_notification)%' OR cuerpo = '(e2e_notification)'");
+        // 1. Eliminar cualquier mensaje de notificación o residuo de WhatsApp Web
+        await runQuery("DELETE FROM mensajes WHERE cuerpo LIKE '%e2e_notification%' OR cuerpo = '(e2e_notification)'");
+
+        // 2. Normalizar cualquier mensaje de base64 que se haya guardado
+        await runQuery("UPDATE mensajes SET cuerpo = '📷 (Infografía / Imagen enviada)' WHERE cuerpo LIKE '/9j/%' OR cuerpo LIKE 'data:image%'");
+
+        // 3. Eliminar contactos @lid vacíos (sin mensajes) para limpiar completamente la lista de chats fantasma
+        await runQuery("DELETE FROM contactos WHERE jid LIKE '%@lid' AND (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid) = 0");
+
+        // 4. Resetear ultimo_contacto a 0 para cualquier contacto sin mensajes
         await runQuery("UPDATE contactos SET ultimo_contacto = 0 WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid) = 0");
+
+        // 5. Alinear canónicamente ultimo_contacto con el último mensaje real existente
         await runQuery(`
             UPDATE contactos 
-            SET ultimo_contacto = (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '(e2e_notification)%')
-            WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '(e2e_notification)%') > 0
+            SET ultimo_contacto = (SELECT MAX(timestamp) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '%e2e_notification%')
+            WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '%e2e_notification%') > 0
         `);
+
+        // 6. Limpiar números falsos de @lid y nombres raros
         await runQuery("UPDATE contactos SET telefono = '' WHERE jid LIKE '%@lid' AND LENGTH(telefono) > 12");
-        await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Paciente' END WHERE (nombre LIKE 'Paciente (+994%' OR nombre LIKE 'Paciente (+%') AND jid LIKE '%@lid'");
-        console.log("🧹 [DB-CLEAN] Limpieza de notificaciones y reordenamiento canónico de conversaciones completado exitosamente.");
+        await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Paciente' END WHERE nombre LIKE 'Paciente (+%' AND (jid LIKE '%@lid' OR LENGTH(telefono) > 12)");
+        console.log("🧹 [DB-CLEAN] Limpieza integral de BD completada: sin notificaciones, sin códigos base64 y chats ordenados canónicamente.");
     } catch (eClean) {
         console.error("Error en auto-limpieza BD:", eClean.message);
     }
