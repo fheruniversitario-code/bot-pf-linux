@@ -216,6 +216,19 @@ async function inicializarBD() {
         )
     `);
 
+    // 14. Enlaces Rápidos y Formularios Personalizables para el Chat (mínimo 4 espacios)
+    await runQuery(`
+        CREATE TABLE IF NOT EXISTS enlaces_rapidos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            descripcion TEXT,
+            url TEXT NOT NULL,
+            icono TEXT DEFAULT 'fa-link',
+            color TEXT DEFAULT 'text-indigo-400',
+            orden INTEGER DEFAULT 0
+        )
+    `);
+
     // Seed Inicial de Etiquetas Universales si no existen
     const totalEtiquetas = (await getQuery("SELECT COUNT(*) as total FROM etiquetas"))?.total || 0;
     if (totalEtiquetas === 0) {
@@ -243,6 +256,36 @@ async function inicializarBD() {
                 ?
             )
         `, [etqVasectomia ? etqVasectomia.id : null, Date.now()]);
+    }
+
+    // Seed Inicial de Respuestas Rápidas Predeterminadas si no existen
+    const totalRespuestas = (await getQuery("SELECT COUNT(*) as total FROM respuestas_rapidas"))?.total || 0;
+    if (totalRespuestas === 0) {
+        await runQuery("INSERT OR IGNORE INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [
+            'ubicacion',
+            '📍 Ubicación y Google Maps',
+            '📍 *Nuestra Ubicación:* Te esperamos en nuestras instalaciones. Puedes abrir la ruta en Google Maps aquí:\n👉 https://maps.app.goo.gl/9ZpL9i'
+        ]);
+        await runQuery("INSERT OR IGNORE INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [
+            'registro',
+            '📋 Formulario de Registro y Privacidad',
+            '📋 *Registro de Paciente:* Para agilizar tu atención y expediente, por favor completa este breve formulario confidencial:\n👉 https://forms.gle/zJxZeXXj1TwWGF9N8'
+        ]);
+        await runQuery("INSERT OR IGNORE INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [
+            'horarios',
+            '⏰ Horarios de Atención en Línea',
+            '⏰ *Horarios de Atención:* Nuestro horario de atención por este chat es de Lunes a Viernes de 2:00 PM a 8:30 PM. 🏥 Recuerda que toda atención presencial médica es exclusivamente mediante cita previa confirmada.'
+        ]);
+        await runQuery("INSERT OR IGNORE INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [
+            'requisitos_vasectomia',
+            '✂️ Requisitos Vasectomía sin Bisturí',
+            '📋 *Requisitos para Vasectomía sin Bisturí:*\n1️⃣ Baño corporal previo y rasurado de la zona escrotal el día del procedimiento.\n2️⃣ Desayuno ligero.\n3️⃣ Acudir con ropa interior ajustada o suspensorio.\n4️⃣ Llevar identificación oficial.\n5️⃣ Cita previa agendada y confirmada.'
+        ]);
+        await runQuery("INSERT OR IGNORE INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [
+            'requisitos_implante',
+            '💊 Requisitos Implante Subdérmico',
+            '📋 *Requisitos para Implante Subdérmico:*\n1️⃣ Estar preferentemente dentro de los primeros días del periodo menstrual (o prueba de embarazo negativa reciente).\n2️⃣ Presentar identificación oficial (INE o CURP).\n3️⃣ Cita agendada y confirmada en nuestro horario de atención.'
+        ]);
     }
 
     // Crear usuario administrador por defecto si no existe (admin / admin123)
@@ -313,6 +356,18 @@ async function inicializarBD() {
         await runQuery("INSERT INTO linktree_links (titulo, url, icono, orden) VALUES (?, ?, ?, ?)", ['Escríbenos por WhatsApp', 'https://wa.me/', 'whatsapp', 1]);
         await runQuery("INSERT INTO linktree_links (titulo, url, icono, orden) VALUES (?, ?, ?, ?)", ['Ver Catálogo y Precios', '#catalogo', 'catalog', 2]);
         await runQuery("INSERT INTO linktree_links (titulo, url, icono, orden) VALUES (?, ?, ?, ?)", ['Facebook Oficial', 'https://facebook.com', 'facebook', 3]);
+    }
+
+    // Semillas para Enlaces Rápidos y Formularios del Live Chat (4 espacios personalizables)
+    const countEnlacesRapidos = (await getQuery("SELECT COUNT(*) as total FROM enlaces_rapidos"))?.total || 0;
+    if (countEnlacesRapidos === 0) {
+        await runQuery(`
+            INSERT INTO enlaces_rapidos (titulo, descripcion, url, icono, color, orden) VALUES
+            ('Formulario de Privacidad / Registro', 'Registro oficial de datos y aviso de privacidad', 'https://forms.gle/zJxZeXXj1TwWGF9N8', 'fa-file-signature', 'text-indigo-400', 1),
+            ('Formulario de Valoración / Cuestionario', 'Cuestionario médico y antecedentes de salud', 'https://forms.gle/', 'fa-notes-medical', 'text-emerald-400', 2),
+            ('Formulario de Consentimiento / Control', 'Consentimiento informado y seguimiento', 'https://forms.gle/', 'fa-file-lines', 'text-amber-400', 3),
+            ('Ubicación en Google Maps', 'Ubicación física e indicaciones del CAISES', 'https://maps.google.com', 'fa-location-dot', 'text-rose-400', 4)
+        `);
     }
 
     console.log("💾 Base de Datos SQLite inicializada con éxito.");

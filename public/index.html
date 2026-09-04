@@ -488,10 +488,34 @@
                         </div>
                     </div>
 
+                    <!-- Barra de Acciones Rápidas del Chat (Infografías, Adjuntos, Enlaces y Respuestas Rápidas) -->
+                    <div id="chat-barra-acciones-rapidas" class="px-4 py-2 bg-slate-900 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                        <div class="flex items-center space-x-2 flex-wrap gap-1.5">
+                            <button type="button" onclick="abrirModalInfografias()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Enviar infografía del servidor por WhatsApp">
+                                <i class="fa-solid fa-image text-indigo-400"></i>
+                                <span>Infografías</span>
+                            </button>
+                            <button type="button" onclick="document.getElementById('input-archivo-adjunto-chat').click()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Enviar imagen desde tu computadora">
+                                <i class="fa-solid fa-paperclip text-slate-400"></i>
+                                <span>Adjuntar de PC</span>
+                            </button>
+                            <input type="file" id="input-archivo-adjunto-chat" accept="image/*" class="hidden" onchange="enviarImagenLocalChat(event)">
+                            
+                            <button type="button" onclick="abrirModalEnlacesRapidos()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Insertar enlaces útiles (Maps, Privacidad, Linktree)">
+                                <i class="fa-solid fa-link text-emerald-400"></i>
+                                <span>Enlaces Útiles</span>
+                            </button>
+                            <button type="button" onclick="abrirModalRespuestasRapidas()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Respuestas rápidas predeterminadas">
+                                <i class="fa-solid fa-bolt text-amber-400"></i>
+                                <span>Respuestas Rápidas</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Input Box para Asesor Humano -->
-                    <form id="form-enviar-mensaje" class="p-4 border-t border-slate-800/80 bg-slate-900 flex items-center space-x-3">
+                    <form id="form-enviar-mensaje" class="p-4 bg-slate-900 border-t border-slate-800/40 flex items-center space-x-3">
                         <input type="text" id="input-mensaje-texto" placeholder="Escribe una respuesta como asesor humano (el bot se pausará automáticamente)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
-                        <button type="submit" class="w-11 h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-600/20 transition flex-shrink-0">
+                        <button type="submit" class="w-11 h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-600/20 transition flex-shrink-0" title="Enviar Mensaje">
                             <i class="fa-solid fa-paper-plane text-sm"></i>
                         </button>
                     </form>
@@ -1699,6 +1723,181 @@
                 <div class="flex items-center space-x-3 pt-2">
                     <button type="button" onclick="cerrarModalReglaSeguimiento()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
                     <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black rounded-xl shadow-md transition">Guardar Regla</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL ENVIAR INFOGRAFÍAS Y FOTOGRAFÍAS -->
+    <!-- ==================================================================== -->
+    <div id="modal-infografias" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-image text-indigo-400"></i>
+                    <h3 class="font-bold text-white text-base">Enviar Infografía o Fotografía</h3>
+                </div>
+                <button onclick="cerrarModalInfografias()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <p class="text-xs text-slate-400">Selecciona la infografía o imagen que deseas enviar por WhatsApp a este cliente:</p>
+
+            <div id="galeria-infografias-grid" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
+                <!-- Se rellena dinámicamente con JavaScript -->
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Pie de foto / Mensaje adjunto (opcional):</label>
+                    <input type="text" id="input-infografia-caption" placeholder="Ej: Te comparto la información detallada con los cuidados y requisitos ☺️" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span id="label-infografia-seleccionada" class="text-xs text-indigo-300 font-medium">Ninguna imagen seleccionada</span>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="cerrarModalInfografias()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
+                        <button type="button" id="btn-enviar-infografia-confirmar" onclick="confirmarEnvioInfografia()" disabled class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl font-bold transition shadow-md flex items-center space-x-1.5">
+                            <i class="fa-solid fa-paper-plane text-xs"></i>
+                            <span>Enviar por WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- ==================================================================== -->
+    <!-- MODAL ENLACES RÁPIDOS Y FORMULARIOS (MÍNIMO 4 ESPACIOS PERSONALIZABLES) -->
+    <!-- ==================================================================== -->
+    <div id="modal-enlaces-rapidos" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-link text-emerald-400"></i>
+                    <h3 class="font-bold text-white text-base">Enlaces Rápidos y Formularios</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="abrirModalCrearEnlaceRapido()" class="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center space-x-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Nuevo Enlace</span>
+                    </button>
+                    <button onclick="cerrarModalEnlacesRapidos()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400">Haz clic en <b>Pegar</b> para insertar cualquier formulario o enlace en tu mensaje de WhatsApp, o edita las URLs para personalizarlas:</p>
+
+            <div class="space-y-2.5 flex-1 overflow-y-auto p-1" id="lista-enlaces-sistema">
+                <!-- Se llena dinámicamente con JS -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 space-y-2 text-xs">
+                <h4 class="font-bold text-slate-300 flex items-center space-x-1.5">
+                    <i class="fa-solid fa-pen text-indigo-400"></i>
+                    <span>Pegar Enlace Temporal Único:</span>
+                </h4>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="text" id="input-enlace-personalizado-desc" placeholder="Texto descriptivo (opcional)..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                    <input type="url" id="input-enlace-personalizado-url" placeholder="https://..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                    <button type="button" onclick="insertarEnlacePersonalizado()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition flex items-center justify-center space-x-1.5 flex-shrink-0">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Pegar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR / CREAR ENLACE RÁPIDO O FORMULARIO -->
+    <div id="modal-editar-enlace-rapido" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-sm" id="titulo-modal-editar-enlace">Personalizar Enlace / Formulario</h3>
+                <button onclick="cerrarModalEditarEnlaceRapido()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="guardarEnlaceRapido(event)" class="space-y-3.5 text-xs">
+                <input type="hidden" id="input-enlace-id">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Título del Enlace o Formulario *</label>
+                    <input type="text" id="input-enlace-titulo" required placeholder="Ej: Formulario de Valoración Inicial" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Descripción breve (opcional)</label>
+                    <input type="text" id="input-enlace-desc" placeholder="Ej: Cuestionario previo para consulta de métodos" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Enlace / URL completa *</label>
+                    <input type="url" id="input-enlace-url" required placeholder="https://forms.gle/..." class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="flex items-center space-x-3 pt-2">
+                    <button type="button" onclick="cerrarModalEditarEnlaceRapido()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black rounded-xl shadow-md transition">Guardar Enlace</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL RESPUESTAS RÁPIDAS PREDETERMINADAS -->
+    <!-- ==================================================================== -->
+    <div id="modal-respuestas-rapidas" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <h3 class="font-bold text-white text-base">Respuestas Rápidas</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="abrirModalCrearRespuestaRapida()" class="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center space-x-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Nueva</span>
+                    </button>
+                    <button onclick="cerrarModalRespuestasRapidas()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400">Haz clic en cualquier plantilla para pegarla en el mensaje o enviarla:</p>
+
+            <div id="lista-respuestas-rapidas-container" class="flex-1 overflow-y-auto space-y-2.5 p-1">
+                <!-- Se llena dinámicamente con JS -->
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 flex justify-end">
+                <button type="button" onclick="cerrarModalRespuestasRapidas()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-bold transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL CREAR / EDITAR RESPUESTA RÁPIDA -->
+    <!-- ==================================================================== -->
+    <div id="modal-crear-respuesta-rapida" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-sm">Nueva Respuesta Rápida</h3>
+                <button onclick="cerrarModalCrearRespuestaRapida()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="guardarNuevaRespuestaRapida(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Título Descriptivo *</label>
+                    <input type="text" id="input-resp-titulo" required placeholder="Ej: Requisitos de Consulta / Horarios" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Atajo o palabra clave (opcional)</label>
+                    <input type="text" id="input-resp-atajo" placeholder="Ej: /requisitos o /horario" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Texto del Mensaje *</label>
+                    <textarea id="input-resp-contenido" rows="4" required placeholder="Escribe el contenido completo del mensaje..." class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500 leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-2">
+                    <button type="button" onclick="cerrarModalCrearRespuestaRapida()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition">Cancelar</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black rounded-xl shadow-md transition">Guardar</button>
                 </div>
             </form>
         </div>

@@ -1010,6 +1010,156 @@ app.post('/api/conversaciones/:jid/reactivar', autenticarToken, async (req, res)
     }
 });
 
+// Enviar Infografía o Imagen desde el Panel Web por WhatsApp
+app.post('/api/conversaciones/:jid/enviar-imagen', autenticarToken, uploadImagen.single('imagen'), async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        const { nombre_imagen, caption } = req.body;
+        let rutaArchivo = null;
+
+        if (req.file) {
+            rutaArchivo = req.file.path;
+        } else if (nombre_imagen) {
+            const ruta = path.join(DIR_IMAGENES, path.basename(nombre_imagen));
+            if (fs.existsSync(ruta)) {
+                rutaArchivo = ruta;
+            }
+        }
+
+        if (!rutaArchivo || !fs.existsSync(rutaArchivo)) {
+            return res.status(400).json({ error: 'No se encontró la imagen especificada para enviar' });
+        }
+
+        if (!client || !wsClienteConectado) {
+            return res.status(400).json({ error: 'El bot no está conectado a WhatsApp en este momento' });
+        }
+
+        const media = MessageMedia.fromFilePath(rutaArchivo);
+        const options = {};
+        if (caption && caption.trim()) {
+            options.caption = caption.trim();
+        }
+
+        const sent = await client.sendMessage(jid, media, options);
+        if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+
+        const textoGuardar = caption && caption.trim() ? `📷 ${caption.trim()}` : '📷 (Infografía / Imagen enviada)';
+        const tsMs = Date.now();
+
+        await runQuery(
+            "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, 'yo', 'Asesor Humano', ?, 'image', 1, 0, ?)",
+            [jid, textoGuardar, tsMs]
+        );
+
+        await runQuery("UPDATE contactos SET ultimo_contacto = ? WHERE jid = ?", [tsMs, jid]);
+
+        // Pausar automáticamente el bot en este chat por 30 minutos
+        chatsPausados.set(jid, tsMs);
+
+        // Si el cliente tenía una solicitud de asesor pendiente, marcarla como atendida
+        const telClean = jid.replace(/[^0-9]/g, '');
+        await runQuery("UPDATE solicitudes_asesor SET estado = 'atendido' WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [jid, `%${telClean}%`]);
+        io.emit('solicitud_asesor_actualizada');
+
+        io.emit('nuevo_mensaje', {
+            chat_id: jid,
+            emisor: 'yo',
+            emisor_nombre: 'Asesor Humano',
+            cuerpo: textoGuardar,
+            tipo: 'image',
+            es_mio: 1,
+            es_ia: 0,
+            timestamp: tsMs
+        });
+
+        res.json({ success: true, message: 'Imagen enviada exitosamente por WhatsApp' });
+    } catch (e) {
+        console.error("Error al enviar imagen por WhatsApp:", e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Obtener lista de respuestas rápidas predeterminadas
+app.get('/api/respuestas-rapidas', autenticarToken, async (req, res) => {
+    try {
+        const respuestas = await allQuery("SELECT * FROM respuestas_rapidas ORDER BY id ASC");
+        res.json(respuestas);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Guardar o editar respuesta rápida
+app.post('/api/respuestas-rapidas', autenticarToken, async (req, res) => {
+    try {
+        const { id, atajo, titulo, contenido } = req.body;
+        if (!titulo || !contenido) return res.status(400).json({ error: 'Título y contenido son obligatorios' });
+
+        if (id) {
+            await runQuery("UPDATE respuestas_rapidas SET atajo = ?, titulo = ?, contenido = ? WHERE id = ?", [atajo || '', titulo, contenido, id]);
+        } else {
+            await runQuery("INSERT INTO respuestas_rapidas (atajo, titulo, contenido) VALUES (?, ?, ?)", [atajo || '', titulo, contenido]);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Eliminar respuesta rápida
+app.delete('/api/respuestas-rapidas/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM respuestas_rapidas WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Obtener enlaces rápidos del sistema y formularios personalizables
+app.get('/api/enlaces-rapidos', autenticarToken, async (req, res) => {
+    try {
+        const enlaces = await allQuery("SELECT * FROM enlaces_rapidos ORDER BY orden ASC, id ASC");
+        res.json(enlaces);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Guardar o editar enlace rápido o formulario
+app.post('/api/enlaces-rapidos', autenticarToken, async (req, res) => {
+    try {
+        const { id, titulo, descripcion, url, icono, color } = req.body;
+        if (!titulo || !url) return res.status(400).json({ error: 'Título y URL son obligatorios' });
+
+        if (id) {
+            await runQuery(
+                "UPDATE enlaces_rapidos SET titulo = ?, descripcion = ?, url = ?, icono = ?, color = ? WHERE id = ?",
+                [titulo.trim(), (descripcion || '').trim(), url.trim(), icono || 'fa-link', color || 'text-indigo-400', id]
+            );
+        } else {
+            const maxOrd = (await getQuery("SELECT MAX(orden) as max_ord FROM enlaces_rapidos"))?.max_ord || 0;
+            await runQuery(
+                "INSERT INTO enlaces_rapidos (titulo, descripcion, url, icono, color, orden) VALUES (?, ?, ?, ?, ?, ?)",
+                [titulo.trim(), (descripcion || '').trim(), url.trim(), icono || 'fa-link', color || 'text-indigo-400', maxOrd + 1]
+            );
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Eliminar enlace rápido
+app.delete('/api/enlaces-rapidos/:id', autenticarToken, async (req, res) => {
+    try {
+        await runQuery("DELETE FROM enlaces_rapidos WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // CRM: Pedidos y Cotizaciones
 app.get('/api/pedidos', autenticarToken, async (req, res) => {
     try {
@@ -2225,64 +2375,53 @@ function limpiarNombreParaSaludo(nombre) {
     // --------------------------------------------------------------------------
     // C. SOLICITUD DIRECTA DE ASESOR / AGENDAR CITA (OPCIÓN 5 O PALABRAS CLAVE)
     // --------------------------------------------------------------------------
-    const frasesAsesor = ['asesor', '!asesor', 'humano', 'agente', 'hablar con alguien', 'hablar con un asesor', 'hablar con una persona', 'quiero un asesor', 'solicitar asesor', 'transferir', 'cita', 'agendar'];
-    const pideAsesorDirecto = textoLowerNorm === '5' || frasesAsesor.some(f => textoLowerNorm === f || (textoLowerNorm.includes(f) && !textoLowerNorm.includes('que') && !textoLowerNorm.includes('como') && !textoLowerNorm.includes('donde')));
+    const regexPideAsesor = /\b(asesor|humano|persona|agente|personal|transferir|agendar|cita|atenci[oó]n presencial)\b/i;
+    const esOpcionMenuAsesor = textoLowerNorm === '5' || textoLowerNorm === '3';
+    
+    // Pide asesor si es opción de menú o si solicita hablar con alguien/agendar cita
+    const pideAsesorDirecto = esOpcionMenuAsesor || (
+        regexPideAsesor.test(textoLowerNorm) && (
+            textoLowerNorm.length < 40 || 
+            textoLowerNorm.includes('hablar') || 
+            textoLowerNorm.includes('quiero') || 
+            textoLowerNorm.includes('comunicar') || 
+            textoLowerNorm.includes('solicitar') ||
+            textoLowerNorm.includes('con un') ||
+            textoLowerNorm.includes('con una') ||
+            textoLowerNorm.includes('por favor') ||
+            textoLowerNorm.includes('pasar')
+        )
+    );
 
     if (pideAsesorDirecto) {
         await simularEscribiendoSeguro(msg, 1000);
 
-        // Si el paciente aún no está registrado con su nombre:
-        if (!nombreContacto || nombreContacto === 'Cliente') {
-            chatsPausados.set(claveEsperandoNombre, Date.now());
-            const msjRegistro = `${iconoAsistente ? iconoAsistente + ' ' : ''}📋 *REGISTRO Y AVISO DE PRIVACIDAD* 🔒\n\n` +
-                `Para comunicarte con nuestro personal de salud de ${nombreNegocio}, completa estos 2 rápidos pasos:\n\n` +
-                `1️⃣ *Abre este enlace y llena tus datos (1 min):*\n👉 ${enlacePrivacidad}\n\n` +
-                `2️⃣ *Escribe aquí tu NOMBRE COMPLETO* para confirmar tu registro y transferirte. ✍️✅\n\n` +
-                `_(Tu información es 100% confidencial y protegida)_ 🏥✨`;
-
-            const sent = await client.sendMessage(remitente, msjRegistro);
-            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
-
-            await runQuery(
-                "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, 'chat', 1, 1, ?)",
-                [remitente, 'bot', 'Asistente IA', msjRegistro, Date.now()]
-            );
-            io.emit('nuevo_mensaje', {
-                chat_id: remitente,
-                emisor: 'bot',
-                emisor_nombre: 'Asistente IA',
-                cuerpo: msjRegistro,
-                tipo: 'chat',
-                es_mio: 1,
-                es_ia: 1,
-                timestamp: Date.now()
-            });
-
-            return;
-        }
-
-        // Si ya está registrado con su nombre (evitar códigos alfanuméricos como 211223DERR):
         const nomSaludo = limpiarNombreParaSaludo(nombreContacto);
         const saludoPersonal = nomSaludo ? `Hola, *${nomSaludo}*.` : 'Hola, un gusto saludarte.';
         const saludoEntendido = nomSaludo ? `Entendido, *${nomSaludo}*.` : 'Entendido.';
 
-        let msjTransferido = '';
+        let msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
+            `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.\n\n`;
+
         if (estadoHorario.enReceso) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *AVISO DE RECESO / VACACIONES*\n\n` +
-                `${saludoPersonal} Por el momento nuestro personal de ${nombreNegocio} se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
-                `🗓️ Tu solicitud ha quedado registrada. Nuestro personal te atenderá **${estadoHorario.proximoTexto}**.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder todas tus preguntas sobre métodos y requisitos._`;
+            msjTransferido += `🌴 *Aviso de Receso / Vacaciones:*\n${saludoPersonal} Por el momento nuestro personal se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
+                `🗓️ Tu solicitud ha quedado registrada en espera. El personal te atenderá **${estadoHorario.proximoTexto}**.\n\n`;
         } else if (!estadoHorario.enHorario) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *FUERA DE HORARIO DE ATENCIÓN EN LÍNEA*\n\n` +
-                `${saludoPersonal} Por el momento nos encontramos fuera de nuestro horario de atención por este chat.\n\n` +
+            msjTransferido += `⏰ *Fuera de Horario de Atención en Línea:*\nEl horario de atención en línea por este chat de WhatsApp es de Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n` +
                 `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
-                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 para responder cualquier consulta sobre métodos o requisitos._`;
+                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.\n\n`;
         } else {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
-                `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta presencial o en algún procedimiento médico.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas hacer más preguntas o consultar cualquier otro tema._`;
+            msjTransferido += `🕒 Nuestro personal en turno revisará tus mensajes y te responderá por aquí en cuanto se desocupe de la atención a pacientes.\n\n`;
         }
+
+        // Si el paciente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
+        if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Paciente (+')) {
+            msjTransferido += `📋 *Para agilizar tu turno:* Si aún no has llenado tu registro, por favor completa este enlace:\n👉 ${enlacePrivacidad}\n\n` +
+                `✍️ Y escríbenos aquí tu *Nombre Completo*.\n\n`;
+            chatsPausados.set(claveEsperandoNombre, Date.now());
+        }
+
+        msjTransferido += `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas realizar preguntas sobre métodos, cuidados o requisitos._`;
 
         const sent = await client.sendMessage(remitente, msjTransferido);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
@@ -2303,18 +2442,19 @@ function limpiarNombreParaSaludo(nombre) {
             timestamp: Date.now()
         });
 
-        // Si fue fuera de horario o en receso, registrar en solicitudes pendientes de asesor
-        if (!estadoHorario.enHorario || estadoHorario.enReceso) {
-            try {
-                const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
-                const yaExiste = await getQuery("SELECT id FROM solicitudes_asesor WHERE jid = ? AND estado = 'pendiente'", [remitente]);
-                if (!yaExiste) {
-                    await runQuery(
-                        "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
-                        [remitente, telLimpio, nombreContacto || 'Paciente', texto, obtenerFechaHoraLocal(), Date.now()]
-                    );
-                }
-            } catch(eSol) {}
+        // Registrar SIEMPRE en solicitudes pendientes de asesor para que aparezca en el panel (tanto en turno como fuera de horario)
+        try {
+            const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
+            const yaExiste = await getQuery("SELECT id FROM solicitudes_asesor WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [remitente, `%${telLimpio}%`]);
+            if (!yaExiste) {
+                await runQuery(
+                    "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
+                    [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Paciente', texto, obtenerFechaHoraLocal(), Date.now()]
+                );
+                io.emit('solicitud_asesor_actualizada');
+            }
+        } catch(eSol) {
+            console.error("Error al registrar solicitud de asesor:", eSol.message);
         }
 
         return;
@@ -2493,17 +2633,24 @@ function limpiarNombreParaSaludo(nombre) {
         // Historial reciente de la conversación (unificando por JID y teléfono)
         const telUltimos8H = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
         const ultimosMensajes = await allQuery(`
-            SELECT emisor_nombre, cuerpo, es_mio 
+            SELECT id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp 
             FROM mensajes 
             WHERE (chat_id = ? OR (? != '' AND chat_id LIKE ?))
               AND cuerpo NOT LIKE '%e2e_notification%'
             ORDER BY id DESC 
-            LIMIT 10
+            LIMIT 16
         `, [remitente, telUltimos8H, `%${telUltimos8H}%`]);
-        let contextoHistorial = ultimosMensajes.reverse().map(m => {
+
+        // Evitar duplicar en el historial el mensaje que acaba de enviar el cliente
+        const historialSinUltimo = (ultimosMensajes.length > 0 && !ultimosMensajes[0].es_mio) ? ultimosMensajes.slice(1) : ultimosMensajes;
+        let contextoHistorial = historialSinUltimo.reverse().map(m => {
             let txt = m.cuerpo || '';
             if (txt.startsWith('/9j/') || txt.startsWith('data:image')) txt = '📷 (Infografía / Imagen enviada)';
-            return `${m.es_mio ? 'Asistente' : 'Cliente'}: ${txt}`;
+            let emisorTag = 'Cliente';
+            if (m.es_mio) {
+                emisorTag = (m.emisor_nombre === 'Asesor Humano' || m.emisor === 'yo') ? 'Asesor Humano (Personal de Salud)' : 'Asistente IA';
+            }
+            return `${emisorTag}: ${txt}`;
         }).join('\n');
 
 // Cache para Google Sheets en vivo (TTL de 60 segundos)
@@ -2572,13 +2719,13 @@ async function obtenerContenidoGoogleSheets(url) {
   2. Aclara SIEMPRE que el horario (ej: lunes a viernes de 2:00 PM a 8:30 PM) es de ATENCIÓN EN LÍNEA POR WHATSAPP para responder dudas y agendar citas.
   3. Para cualquier procedimiento médico presencial (retiro o colocación de implante subdérmico, DIU, vasectomía, revisiones, etc.), la atención en la clínica es EXCLUSIVAMENTE CON CITA PREVIA CONFIRMADA.
   4. Adviértele con amabilidad pero firmeza que NO acuda a la unidad sin una cita confirmada, ya que no se brinda atención médica sin un espacio previamente agendado.
-  5. Puede escribir la palabra 'asesor' si desea dejar su solicitud registrada para agendar una cita cuando inicie el turno en línea.`;
+  5. Si el paciente pide explícitamente una cita médica presencial, confírmale que su solicitud quedó registrada para coordinarla en cuanto inicie el turno en línea.`;
         } else {
             reglaHorarioIA = `
 🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO DE CHAT):
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
 - Actualmente el personal humano de salud está EN TURNO atendiendo mensajes por este chat.
-- REGLA DE ATENCIÓN MÉDICA: La atención médica presencial (retiro o colocación de implante, vasectomía, DIU, etc.) es EXCLUSIVAMENTE MEDIANTE CITA PREVIA. Puedes invitar al usuario a escribir 'asesor' si desea que el personal en turno le agende su cita.`;
+- REGLA DE ATENCIÓN MÉDICA Y CONTINUIDAD: Toda atención presencial en la clínica es EXCLUSIVAMENTE CON CITA PREVIA CONFIRMADA. Responde tú mismo con calidez y precisión las dudas sobre métodos, requisitos, cuidados y preparaciones. NUNCA le digas al paciente que 'escriba asesor' o que 'hable con un asesor' si tú tienes la información para resolver su duda o si la conversación ya está en curso.`;
         }
 
         const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
@@ -2616,7 +2763,11 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
   3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.
   4. ADVIERTE SIEMPRE: "Recuerda que toda atención presencial en la unidad es exclusivamente con cita previa. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este medio, ya que no es posible atenderte sin un espacio reservado en la agenda."
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
-- REGLA DE CONTINUIDAD TRAS INTERVENCIÓN HUMANA: Si en el historial reciente aparece que un asesor humano (o tú mismo) ya estuvo conversando con el paciente (enviando infografías, aclarando métodos, dudas de implante/vasectomía o agendando), RETOMA la plática con total naturalidad manteniendo el hilo de la conversación previa. NUNCA reinicies con menús ni saludos fríos de bienvenida. Si el paciente pregunta algo corto, hace referencia a una infografía o expresa una duda, respóndele de forma directa, cálida y contextualizada con base en lo que se venía hablando.
+- REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
+  * Si un asesor humano (personal de salud) estuvo platicando con el paciente o si el bot fue reanudado, TÚ DEBES TOMAR EL RELEVO Y CONTINUAR LA CONVERSACIÓN NATURALMENTE.
+  * Lee con máxima atención el 'Historial reciente' donde aparecen los mensajes de 'Asesor Humano (Personal de Salud)': infografías enviadas, recomendaciones, indicaciones o métodos tratados.
+  * PROHIBICIÓN TOTAL: NO reinicies la plática, NO envíes menús, NO des saludos largos de bienvenida, y BAJO NINGUNA CIRCUNSTANCIA le digas al cliente que 'escriba asesor' o que 'se comunique con un asesor'.
+  * RESPONDE TÚ DIRECTAMENTE a la duda del paciente (sobre la infografía, dolor, preparación, dudas médicas, citas o tiempos) como un personal de salud cálido, empático y experto.
 - REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
 - Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.

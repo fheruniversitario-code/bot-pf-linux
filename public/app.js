@@ -19,10 +19,13 @@ let listaReglasSeguimientoMem = [];
 // 1. HELPERS DE API CON AUTENTICACIÓN
 // ------------------------------------------------------------------------------
 async function apiFetch(endpoint, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const defaultHeaders = {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
     };
+    if (!isFormData) {
+        defaultHeaders['Content-Type'] = 'application/json';
+    }
 
     const res = await fetch(endpoint, {
         ...options,
@@ -2239,4 +2242,512 @@ socket.on('estado_control_actualizado', () => {
 // Inicializar vista por defecto y estado del bot
 cambiarTab('ventas');
 cargarEstadoControlBot();
+
+// ==============================================================================
+// GESTIÓN DE ACCIONES RÁPIDAS EN LIVE CHAT (INFOGRAFÍAS, ADJUNTOS, ENLACES, RESPUESTAS)
+// ==============================================================================
+
+let infografiaSeleccionada = null;
+
+const MAPA_NOMBRES_INFOGRAFIAS = {
+    'implante.png': 'Implante Subdérmico',
+    'vasectomia.png': 'Vasectomía sin Bisturí',
+    'preparacion_vasectomia.png': 'Preparación Vasectomía',
+    'diu_cobre.png': 'DIU de Cobre (T de Cobre)',
+    'diu_medicado.png': 'DIU Medicado (Mirena / Levonorgestrel)',
+    'metodos.png': 'Catálogo Completo de Métodos',
+    'emergencia.png': 'Pastilla Anticonceptiva de Emergencia',
+    'parche.png': 'Parche Anticonceptivo Transdérmico',
+    'pastillas.png': 'Pastillas Anticonceptivas Orales',
+    'inyeccion_mensual.png': 'Inyección Mensual',
+    'inyeccion_bimensual.png': 'Inyección Bimensual (2 meses)',
+    'inyeccion_trimestral.png': 'Inyección Trimestral (3 meses)'
+};
+
+function formatearNombreInfografia(archivo) {
+    if (MAPA_NOMBRES_INFOGRAFIAS[archivo]) return MAPA_NOMBRES_INFOGRAFIAS[archivo];
+    return archivo.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+}
+
+async function abrirModalInfografias() {
+    if (!chatActivoJid) {
+        alert("Por favor selecciona una conversación en la lista antes de enviar una infografía.");
+        return;
+    }
+    const modal = document.getElementById('modal-infografias');
+    if (!modal) return;
+
+    infografiaSeleccionada = null;
+    const captionInput = document.getElementById('input-infografia-caption');
+    if (captionInput) captionInput.value = '';
+
+    const labelSel = document.getElementById('label-infografia-seleccionada');
+    if (labelSel) labelSel.textContent = 'Ninguna infografía seleccionada';
+
+    const btnConfirmar = document.getElementById('btn-enviar-infografia-confirmar');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = `<i class="fa-solid fa-paper-plane text-xs"></i> <span>Enviar por WhatsApp</span>`;
+    }
+
+    modal.classList.remove('hidden');
+
+    const grid = document.getElementById('galeria-infografias-grid');
+    if (grid) {
+        grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-base text-indigo-400 mr-2"></i>Cargando infografías del servidor...</div>`;
+    }
+
+    try {
+        const imagenes = await apiFetch('/api/imagenes');
+        if (!grid) return;
+
+        if (!Array.isArray(imagenes) || imagenes.length === 0) {
+            grid.innerHTML = `<div class="col-span-full py-8 text-center text-slate-400 text-xs">No hay imágenes disponibles en el servidor actualmente.</div>`;
+            return;
+        }
+
+        grid.innerHTML = imagenes.map(img => {
+            const titulo = formatearNombreInfografia(img.nombre);
+            const kb = img.tamano ? (img.tamano / 1024).toFixed(0) + ' KB' : '';
+            return `
+                <div class="tarjeta-infografia-item cursor-pointer group bg-slate-950/60 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/60 rounded-2xl p-2.5 flex flex-col transition text-left" 
+                     data-archivo="${img.nombre}" 
+                     data-titulo="${titulo}" 
+                     onclick="seleccionarInfografiaTarjeta('${img.nombre}', '${titulo.replace(/'/g, "\\'")}', this)">
+                    <div class="h-28 w-full bg-slate-900 rounded-xl overflow-hidden mb-2 border border-slate-800/60 relative flex items-center justify-center">
+                        <img src="/imagenes/${encodeURIComponent(img.nombre)}" alt="${titulo}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
+                        <div class="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition"></div>
+                    </div>
+                    <div class="font-bold text-slate-200 text-xs truncate group-hover:text-indigo-300" title="${titulo}">${titulo}</div>
+                    <div class="text-[10px] text-slate-500 flex items-center justify-between mt-1">
+                        <span class="truncate">${img.nombre}</span>
+                        ${kb ? `<span>${kb}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        if (grid) {
+            grid.innerHTML = `<div class="col-span-full py-8 text-center text-rose-400 text-xs">Error al cargar infografías: ${err.message}</div>`;
+        }
+    }
+}
+
+function seleccionarInfografiaTarjeta(nombreArchivo, tituloAmigable, elementoHtml) {
+    infografiaSeleccionada = nombreArchivo;
+
+    document.querySelectorAll('.tarjeta-infografia-item').forEach(el => {
+        el.classList.remove('border-indigo-500', 'bg-indigo-950/40', 'ring-2', 'ring-indigo-500/50');
+    });
+
+    if (elementoHtml) {
+        elementoHtml.classList.add('border-indigo-500', 'bg-indigo-950/40', 'ring-2', 'ring-indigo-500/50');
+    }
+
+    const labelSel = document.getElementById('label-infografia-seleccionada');
+    if (labelSel) {
+        labelSel.innerHTML = `<span class="text-indigo-400 font-bold">Seleccionada:</span> ${tituloAmigable}`;
+    }
+
+    const btnConfirmar = document.getElementById('btn-enviar-infografia-confirmar');
+    if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+    }
+}
+
+function cerrarModalInfografias() {
+    const modal = document.getElementById('modal-infografias');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function confirmarEnvioInfografia() {
+    if (!chatActivoJid) return alert("Selecciona una conversación primero.");
+    if (!infografiaSeleccionada) return alert("Por favor selecciona una infografía de la galería.");
+
+    const btnConfirmar = document.getElementById('btn-enviar-infografia-confirmar');
+    const caption = document.getElementById('input-infografia-caption')?.value || '';
+
+    if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> <span>Enviando...</span>`;
+    }
+
+    try {
+        await apiFetch(`/api/conversaciones/${encodeURIComponent(chatActivoJid)}/enviar-imagen`, {
+            method: 'POST',
+            body: JSON.stringify({
+                nombre_imagen: infografiaSeleccionada,
+                caption: caption
+            })
+        });
+
+        cerrarModalInfografias();
+
+        const nomElem = document.getElementById('chat-nombre-cliente');
+        seleccionarChat(chatActivoJid, nomElem ? nomElem.textContent : '');
+    } catch (err) {
+        alert("Error al enviar infografía por WhatsApp: " + err.message);
+        if (btnConfirmar) {
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = `<i class="fa-solid fa-paper-plane text-xs"></i> <span>Enviar por WhatsApp</span>`;
+        }
+    }
+}
+
+async function enviarImagenLocalChat(event) {
+    if (!chatActivoJid) {
+        alert("Por favor selecciona una conversación antes de adjuntar un archivo.");
+        event.target.value = '';
+        return;
+    }
+
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const confirma = confirm(`¿Deseas enviar la imagen "${file.name}" a este cliente por WhatsApp?`);
+    if (!confirma) {
+        event.target.value = '';
+        return;
+    }
+
+    const caption = prompt("Pie de foto o mensaje adjunto para la imagen (opcional):", "") || "";
+
+    const formData = new FormData();
+    formData.append('imagen', file);
+    if (caption.trim()) {
+        formData.append('caption', caption.trim());
+    }
+
+    try {
+        await apiFetch(`/api/conversaciones/${encodeURIComponent(chatActivoJid)}/enviar-imagen`, {
+            method: 'POST',
+            body: formData
+        });
+
+        event.target.value = '';
+
+        const nomElem = document.getElementById('chat-nombre-cliente');
+        seleccionarChat(chatActivoJid, nomElem ? nomElem.textContent : '');
+    } catch (err) {
+        alert("Error al enviar archivo por WhatsApp: " + err.message);
+        event.target.value = '';
+    }
+}
+
+// ------------------------------------------------------------------------------
+// ENLACES RÁPIDOS Y FORMULARIOS (Google Maps, Privacidad, Cuestionarios, etc.)
+// ------------------------------------------------------------------------------
+let listaEnlacesRapidosMem = [];
+
+async function abrirModalEnlacesRapidos() {
+    if (!chatActivoJid) {
+        alert("Por favor selecciona una conversación en la lista.");
+        return;
+    }
+
+    const modal = document.getElementById('modal-enlaces-rapidos');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    await cargarEnlacesRapidosModal();
+}
+
+function cerrarModalEnlacesRapidos() {
+    const modal = document.getElementById('modal-enlaces-rapidos');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function cargarEnlacesRapidosModal() {
+    const lista = document.getElementById('lista-enlaces-sistema');
+    if (!lista) return;
+
+    lista.innerHTML = `<div class="py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Cargando enlaces y formularios...</div>`;
+
+    try {
+        const enlaces = await apiFetch('/api/enlaces-rapidos');
+        listaEnlacesRapidosMem = Array.isArray(enlaces) ? enlaces : [];
+
+        if (listaEnlacesRapidosMem.length === 0) {
+            lista.innerHTML = `<div class="py-4 text-center text-slate-400 text-xs">No hay enlaces guardados. Haz clic en "Nuevo Enlace" para agregar uno.</div>`;
+            return;
+        }
+
+        lista.innerHTML = listaEnlacesRapidosMem.map(item => {
+            const tieneUrlValida = item.url && item.url.trim() && item.url.startsWith('http');
+            const textoPegar = `🔗 *${item.titulo}:* ${item.url}`;
+            const icono = item.icono || 'fa-link';
+            const color = item.color || 'text-indigo-400';
+
+            return `
+                <div class="bg-slate-950/60 border border-slate-800 hover:border-slate-700 rounded-2xl p-3 flex items-center justify-between gap-3 transition">
+                    <div class="flex items-center space-x-3 overflow-hidden flex-1 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid ${icono} ${color} text-sm"></i>
+                        </div>
+                        <div class="overflow-hidden flex-1 min-w-0">
+                            <div class="flex items-center space-x-1.5">
+                                <span class="font-bold text-slate-200 text-xs truncate">${item.titulo}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 truncate">${item.descripcion || item.url}</div>
+                            ${!tieneUrlValida ? `<div class="text-[9px] text-amber-400 font-semibold mt-0.5">⚠️ URL pendiente de configurar (haz clic en Editar)</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1.5 flex-shrink-0">
+                        ${tieneUrlValida ? `
+                            <a href="${item.url}" target="_blank" class="w-7 h-7 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg flex items-center justify-center text-xs transition" title="Abrir enlace en nueva pestaña">
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        ` : ''}
+                        <button type="button" onclick="abrirModalEditarEnlaceRapido(${item.id})" class="w-7 h-7 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-indigo-300 rounded-lg flex items-center justify-center text-xs transition" title="Editar título, descripción o URL">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                        <button type="button" onclick="insertarEnlaceEnInput('${textoPegar.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1">
+                            <i class="fa-solid fa-arrow-turn-down text-[10px]"></i>
+                            <span>Pegar</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        lista.innerHTML = `<div class="py-4 text-center text-rose-400 text-xs">Error al cargar enlaces: ${err.message}</div>`;
+    }
+}
+
+function abrirModalCrearEnlaceRapido() {
+    const modal = document.getElementById('modal-editar-enlace-rapido');
+    if (!modal) return;
+    document.getElementById('titulo-modal-editar-enlace').textContent = "Nuevo Enlace o Formulario";
+    document.getElementById('input-enlace-id').value = "";
+    document.getElementById('input-enlace-titulo').value = "";
+    document.getElementById('input-enlace-desc').value = "";
+    document.getElementById('input-enlace-url').value = "";
+    modal.classList.remove('hidden');
+}
+
+function abrirModalEditarEnlaceRapido(id) {
+    const modal = document.getElementById('modal-editar-enlace-rapido');
+    if (!modal) return;
+    const item = listaEnlacesRapidosMem.find(e => e.id === id);
+    if (!item) return;
+
+    document.getElementById('titulo-modal-editar-enlace').textContent = "Personalizar Enlace / Formulario";
+    document.getElementById('input-enlace-id').value = item.id;
+    document.getElementById('input-enlace-titulo').value = item.titulo || "";
+    document.getElementById('input-enlace-desc').value = item.descripcion || "";
+    document.getElementById('input-enlace-url').value = item.url || "";
+    modal.classList.remove('hidden');
+}
+
+function cerrarModalEditarEnlaceRapido() {
+    const modal = document.getElementById('modal-editar-enlace-rapido');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function guardarEnlaceRapido(event) {
+    event.preventDefault();
+    const id = document.getElementById('input-enlace-id')?.value;
+    const titulo = document.getElementById('input-enlace-titulo')?.value?.trim();
+    const descripcion = document.getElementById('input-enlace-desc')?.value?.trim();
+    const url = document.getElementById('input-enlace-url')?.value?.trim();
+
+    if (!titulo || !url) return alert("El título y la URL son obligatorios.");
+
+    try {
+        await apiFetch('/api/enlaces-rapidos', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: id ? parseInt(id, 10) : undefined,
+                titulo,
+                descripcion,
+                url
+            })
+        });
+
+        cerrarModalEditarEnlaceRapido();
+        await cargarEnlacesRapidosModal();
+    } catch (err) {
+        alert("Error al guardar enlace: " + err.message);
+    }
+}
+
+async function eliminarEnlaceRapido(id) {
+    if (!confirm("¿Deseas eliminar este enlace rápido?")) return;
+    try {
+        await apiFetch(`/api/enlaces-rapidos/${id}`, { method: 'DELETE' });
+        await cargarEnlacesRapidosModal();
+    } catch (err) {
+        alert("Error al eliminar enlace: " + err.message);
+    }
+}
+
+function insertarEnlaceEnInput(texto) {
+    const input = document.getElementById('input-mensaje-texto');
+    if (input) {
+        if (input.value && input.value.trim()) {
+            input.value = input.value.trim() + '\n' + texto;
+        } else {
+            input.value = texto;
+        }
+        input.focus();
+    }
+    cerrarModalEnlacesRapidos();
+}
+
+function insertarEnlacePersonalizado() {
+    const descInput = document.getElementById('input-enlace-personalizado-desc');
+    const urlInput = document.getElementById('input-enlace-personalizado-url');
+
+    const desc = descInput ? descInput.value.trim() : '';
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!url) return alert("Por favor ingresa una URL válida.");
+
+    const texto = desc ? `🔗 *${desc}:* ${url}` : url;
+    insertarEnlaceEnInput(texto);
+
+    if (descInput) descInput.value = '';
+    if (urlInput) urlInput.value = '';
+}
+
+// ------------------------------------------------------------------------------
+// RESPUESTAS RÁPIDAS
+// ------------------------------------------------------------------------------
+async function abrirModalRespuestasRapidas() {
+    if (!chatActivoJid) {
+        alert("Por favor selecciona una conversación en la lista.");
+        return;
+    }
+
+    const modal = document.getElementById('modal-respuestas-rapidas');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    await cargarRespuestasRapidasModal();
+}
+
+function cerrarModalRespuestasRapidas() {
+    const modal = document.getElementById('modal-respuestas-rapidas');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function cargarRespuestasRapidasModal() {
+    const container = document.getElementById('lista-respuestas-rapidas-container');
+    if (!container) return;
+
+    container.innerHTML = `<div class="py-6 text-center text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Cargando respuestas rápidas...</div>`;
+
+    try {
+        const respuestas = await apiFetch('/api/respuestas-rapidas');
+        if (!Array.isArray(respuestas) || respuestas.length === 0) {
+            container.innerHTML = `<div class="py-6 text-center text-slate-400 text-xs">No hay respuestas rápidas guardadas. Haz clic en "Nueva" para crear una.</div>`;
+            return;
+        }
+
+        container.innerHTML = respuestas.map(r => `
+            <div class="bg-slate-950/60 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-3.5 space-y-2 transition">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-white text-xs">${r.titulo}</span>
+                        ${r.atajo ? `<span class="px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-mono">${r.atajo}</span>` : ''}
+                    </div>
+                    <button onclick="eliminarRespuestaRapida(${r.id})" class="text-slate-500 hover:text-rose-400 text-xs p-1" title="Eliminar plantilla">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <p class="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap line-clamp-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/40">${r.contenido}</p>
+                <div class="flex items-center justify-end space-x-2 pt-1">
+                    <button type="button" onclick="insertarRespuestaRapida('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-arrow-turn-down text-[10px] text-indigo-400"></i>
+                        <span>Pegar en Mensaje</span>
+                    </button>
+                    <button type="button" onclick="enviarRespuestaRapidaDirecta('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm">
+                        <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                        <span>Enviar Ahora</span>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<div class="py-6 text-center text-rose-400 text-xs">Error al cargar respuestas: ${err.message}</div>`;
+    }
+}
+
+function insertarRespuestaRapida(contenido) {
+    const input = document.getElementById('input-mensaje-texto');
+    if (input) {
+        if (input.value && input.value.trim()) {
+            input.value = input.value.trim() + '\n\n' + contenido;
+        } else {
+            input.value = contenido;
+        }
+        input.focus();
+    }
+    cerrarModalRespuestasRapidas();
+}
+
+async function enviarRespuestaRapidaDirecta(contenido) {
+    if (!chatActivoJid) return alert("Selecciona una conversación en la lista.");
+    const confirma = confirm(`¿Deseas enviar este mensaje por WhatsApp de inmediato al cliente?\n\n"${contenido.substring(0, 80)}..."`);
+    if (!confirma) return;
+
+    try {
+        await apiFetch(`/api/conversaciones/${encodeURIComponent(chatActivoJid)}/enviar`, {
+            method: 'POST',
+            body: JSON.stringify({ texto: contenido })
+        });
+        cerrarModalRespuestasRapidas();
+        const nomElem = document.getElementById('chat-nombre-cliente');
+        seleccionarChat(chatActivoJid, nomElem ? nomElem.textContent : '');
+    } catch (err) {
+        alert("Error al enviar respuesta rápida: " + err.message);
+    }
+}
+
+function abrirModalCrearRespuestaRapida() {
+    const modal = document.getElementById('modal-crear-respuesta-rapida');
+    if (modal) {
+        document.getElementById('input-resp-titulo').value = '';
+        document.getElementById('input-resp-atajo').value = '';
+        document.getElementById('input-resp-contenido').value = '';
+        modal.classList.remove('hidden');
+    }
+}
+
+function cerrarModalCrearRespuestaRapida() {
+    const modal = document.getElementById('modal-crear-respuesta-rapida');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function guardarNuevaRespuestaRapida(event) {
+    event.preventDefault();
+    const titulo = document.getElementById('input-resp-titulo')?.value?.trim();
+    const atajo = document.getElementById('input-resp-atajo')?.value?.trim();
+    const contenido = document.getElementById('input-resp-contenido')?.value?.trim();
+
+    if (!titulo || !contenido) return alert("El título y contenido son obligatorios.");
+
+    try {
+        await apiFetch('/api/respuestas-rapidas', {
+            method: 'POST',
+            body: JSON.stringify({ titulo, atajo, contenido })
+        });
+
+        cerrarModalCrearRespuestaRapida();
+        await cargarRespuestasRapidasModal();
+    } catch (err) {
+        alert("Error al guardar respuesta rápida: " + err.message);
+    }
+}
+
+async function eliminarRespuestaRapida(id) {
+    if (!confirm("¿Deseas eliminar esta plantilla de respuesta rápida?")) return;
+    try {
+        await apiFetch(`/api/respuestas-rapidas/${id}`, { method: 'DELETE' });
+        await cargarRespuestasRapidasModal();
+    } catch (err) {
+        alert("Error al eliminar: " + err.message);
+    }
+}
+
 
