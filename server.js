@@ -2762,7 +2762,7 @@ function limpiarNombreParaSaludo(nombre) {
         'hola buenas tardes', 'hola buenas noches', 'saludos', 'ola', 'holaa', 'holaaa'
     ];
     
-    // Si ya existe una conversación reciente (últimos 30 minutos), mantener fluidez sin reiniciar menú a menos que sea un saludo puro o pida menú
+    // Si ya existe una conversación reciente (últimas 12 horas), mantener fluidez sin reiniciar menú repetitivo
     const telUltimos8Sal = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
     const ultimoMsgPrevio = await getQuery(`
         SELECT timestamp FROM mensajes 
@@ -2771,7 +2771,7 @@ function limpiarNombreParaSaludo(nombre) {
     `, [remitente, telUltimos8Sal, `%${telUltimos8Sal}%`]);
 
     const tiempoInactivo = ultimoMsgPrevio ? (Date.now() - ultimoMsgPrevio.timestamp) : Infinity;
-    const esNuevaConversacion = tiempoInactivo > (30 * 60 * 1000); // 30 minutos de pausa
+    const esNuevaConversacion = tiempoInactivo > (12 * 60 * 60 * 1000); // 12 horas (máximo 1 menú de bienvenida por jornada/día)
     const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones', 'empezar'].includes(textoLowerNorm);
     const esSaludoPuro = saludos.includes(textoLowerNorm);
 
