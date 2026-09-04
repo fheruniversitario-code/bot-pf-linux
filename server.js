@@ -749,44 +749,104 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                 }
 
                 // Si encontramos el chat en WhatsApp Web, traer los últimos 60 mensajes
+                let rawMsgs = [];
                 if (waChat) {
-                    const rawMsgs = await waChat.fetchMessages({ limit: 60 });
-                    if (rawMsgs && rawMsgs.length > 0) {
+                    try {
+                        rawMsgs = await waChat.fetchMessages({ limit: 60 });
+                    } catch(eFetch) {
+                        console.warn("waChat.fetchMessages falló, intentando extracción directa:", eFetch.message);
+                    }
+                }
+
+                // Si rawMsgs está vacío o falló, extraer directamente desde Puppeteer en la memoria de WhatsApp Web
+                if ((!rawMsgs || rawMsgs.length === 0) && client.pupPage) {
+                    try {
                         const ultimos8 = (telLimpio && !telLimpio.startsWith('1660') && telLimpio.length >= 8) ? telLimpio.slice(-8) : '';
-                        const chatVinculado = waChat.id?._serialized || jid;
+                        const extraidos = await client.pupPage.evaluate((targetJid, u8) => {
+                            try {
+                                const collections = window.require ? window.require('WAWebCollections') : null;
+                                if (!collections) return [];
+                                const MsgCol = collections.Msg;
+                                const ChatCol = collections.Chat;
+                                const WidFactory = window.require('WAWebWidFactory');
 
-                        for (const m of rawMsgs) {
-                            const esMio = m.fromMe ? 1 : 0;
-                            const emisorNombre = esMio ? 'Asesor Humano' : (waChat.name || waChat.formattedTitle || contacto?.nombre || 'Cliente');
-                            const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
-                            const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
+                                let chat = null;
+                                if (WidFactory && ChatCol) {
+                                    try { chat = ChatCol.get(WidFactory.createWid(targetJid)); } catch(e) {}
+                                }
+                                if (!chat && ChatCol) {
+                                    const all = ChatCol.getModelsArray ? ChatCol.getModelsArray() : (ChatCol.models || []);
+                                    chat = all.find(c => {
+                                        const idStr = c.id?._serialized || '';
+                                        return idStr === targetJid || (u8 && idStr.includes(u8));
+                                    });
+                                }
 
-                            if (!cuerpoTxt) continue;
+                                let msgs = [];
+                                if (chat && chat.msgs) {
+                                    msgs = chat.msgs.getModelsArray ? chat.msgs.getModelsArray() : (chat.msgs.models || []);
+                                }
+                                if ((!msgs || msgs.length === 0) && MsgCol) {
+                                    const all = MsgCol.getModelsArray ? MsgCol.getModelsArray() : (MsgCol.models || []);
+                                    msgs = all.filter(m => {
+                                        const rem = m.id?.remote?._serialized || m.id?.remote || '';
+                                        return rem === targetJid || (u8 && rem.includes(u8));
+                                    });
+                                }
 
-                            // Comprobar si ya existe por timestamp o por cuerpo y emisor reciente
-                            const yaExiste = await getQuery(`
-                                SELECT id FROM mensajes 
-                                WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
-                                  AND (timestamp = ? OR (timestamp BETWEEN ? AND ? AND cuerpo = ? AND es_mio = ?))
-                            `, [
-                                jid,
-                                chatVinculado,
-                                ultimos8,
-                                `%${ultimos8}%`,
-                                timestampMs,
-                                timestampMs - 6000,
-                                timestampMs + 6000,
-                                cuerpoTxt,
-                                esMio
-                            ]);
-
-                            if (!yaExiste) {
-                                await runQuery(`
-                                    INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
-                                    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-                                `, [jid, esMio ? 'yo' : (m.from || jid), emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
+                                return (msgs || []).slice(-60).map(m => ({
+                                    fromMe: !!(m.id?.fromMe || m.fromMe),
+                                    from: m.from?._serialized || m.from || '',
+                                    body: m.body || m.caption || (m.hasMedia ? '📷 (Archivo multimedia)' : ''),
+                                    type: m.type || 'chat',
+                                    timestamp: m.t || Math.floor(Date.now() / 1000)
+                                }));
+                            } catch(err) {
+                                return [];
                             }
+                        }, jid, ultimos8);
+                        if (Array.isArray(extraidos) && extraidos.length > 0) {
+                            rawMsgs = extraidos;
                         }
+                    } catch(ePup) {}
+                }
+
+                if (rawMsgs && rawMsgs.length > 0) {
+                    const ultimos8 = (telLimpio && !telLimpio.startsWith('1660') && telLimpio.length >= 8) ? telLimpio.slice(-8) : '';
+                    const chatVinculado = waChat?.id?._serialized || jid;
+
+                    for (const m of rawMsgs) {
+                        const esMio = m.fromMe ? 1 : 0;
+                        const emisorNombre = esMio ? 'Asesor Humano' : (waChat?.name || waChat?.formattedTitle || contacto?.nombre || 'Cliente');
+                        const timestampMs = (m.timestamp || Math.floor(Date.now() / 1000)) * 1000;
+                        const cuerpoTxt = m.body || (m.hasMedia ? '📷 (Archivo multimedia)' : (m.type === 'chat' ? '' : `💬 (${m.type || 'Mensaje'})`));
+
+                        if (!cuerpoTxt) continue;
+
+                        // Deduplicar estrictamente por contenido del texto y emisor dentro de un rango de tiempo
+                        const yaExiste = await getQuery(`
+                            SELECT id FROM mensajes 
+                            WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
+                              AND cuerpo = ?
+                              AND es_mio = ?
+                              AND ABS(timestamp - ?) <= 15000
+                        `, [
+                            jid,
+                            chatVinculado,
+                            ultimos8,
+                            `%${ultimos8}%`,
+                            cuerpoTxt,
+                            esMio,
+                            timestampMs
+                        ]);
+
+                        if (!yaExiste) {
+                            await runQuery(`
+                                INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, tipo, es_mio, es_ia, timestamp)
+                                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                            `, [jid, esMio ? 'yo' : (m.from || jid), emisorNombre, cuerpoTxt, m.type || 'chat', esMio, timestampMs]);
+                        }
+                    }
 
                         // Actualizar nombre si aún no estaba personalizado
                         if (contacto && (contacto.nombre === 'Cliente' || !contacto.nombre || contacto.nombre.toLowerCase().includes('usuario desconocido'))) {
@@ -801,7 +861,6 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
                             }
                         }
                     }
-                }
             } catch (errFetch) {
                 console.error("Error sincronizando mensajes de WhatsApp:", errFetch.message);
             }
@@ -1577,15 +1636,6 @@ async function procesarMensajeEntrante(msg) {
         const remitente = msg.from;
         const texto = msg.body ? msg.body.trim() : '';
 
-        // Bloqueo de concurrencia para evitar que el bot mande 2 respuestas al mismo tiempo
-        if (!esGrupo) {
-            if (chatsEnProceso.has(remitente)) {
-                console.log(`⏳ Ya hay una respuesta procesándose para ${remitente}. Omitiendo ejecución concurrente.`);
-                return;
-            }
-            chatsEnProceso.add(remitente);
-        }
-
     // En grupos normales, el bot se mantiene 100% sordo y mudo
     if (esGrupo) {
         const tagGrupo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'grupo_control'"))?.valor || '[CONTROL-BOT]';
@@ -1881,6 +1931,15 @@ function limpiarNombreParaSaludo(nombre) {
     }
 
     if (!texto) return;
+
+    // Bloqueo de concurrencia: si el cliente envía varios mensajes seguidos, todos se guardan en el panel, pero evitamos generar respuestas duplicadas
+    if (!esGrupo) {
+        if (chatsEnProceso.has(remitente)) {
+            console.log(`⏳ Mensaje registrado en historial. Ya hay una respuesta procesándose para ${remitente}. Omitiendo respuesta concurrente.`);
+            return;
+        }
+        chatsEnProceso.add(remitente);
+    }
 
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
     const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral';
