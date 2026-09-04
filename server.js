@@ -1467,18 +1467,21 @@ async function obtenerModelosDisponibles(apiKey) {
         const data = await resp.json();
         
         if (data && data.models && Array.isArray(data.models)) {
-            // Filtrar modelos compatibles con generateContent, preferir Flash estables (bajo costo y máxima velocidad)
+            // Filtrar modelos compatibles con generateContent
             const modelosSoportados = data.models
                 .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
                 .map(m => m.name.replace('models/', ''))
-                .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('1.5') && !name.includes('2.0') && !name.includes('2.5'));
+                .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('tts') && !name.includes('transcribe'));
 
-            // Priorizar modelos Flash y Pro estables (no experimentales -exp que sufren más 503)
-            const flashEstables = modelosSoportados.filter(name => name.includes('flash') && !name.includes('-exp'));
-            const proEstables = modelosSoportados.filter(name => name.includes('pro') && !name.includes('-exp'));
-            const otrosModelos = modelosSoportados.filter(name => !flashEstables.includes(name) && !proEstables.includes(name));
+            // Priorizar explícitamente los modelos Flash modernos y de alta disponibilidad (3.6 y 3.5) que no sufren 503
+            const flashModernos = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview']
+                .filter(m => modelosSoportados.includes(m));
 
-            const listaFinal = Array.from(new Set([...flashEstables, ...proEstables, ...otrosModelos]));
+            const otrosFlash = modelosSoportados.filter(name => name.includes('flash') && !flashModernos.includes(name) && !name.includes('-exp'));
+            const proModernos = modelosSoportados.filter(name => name.includes('pro') && !name.includes('-exp'));
+            const otrosModelos = modelosSoportados.filter(name => !flashModernos.includes(name) && !otrosFlash.includes(name) && !proModernos.includes(name));
+
+            const listaFinal = Array.from(new Set([...flashModernos, ...otrosFlash, ...proModernos, ...otrosModelos]));
             if (listaFinal.length > 0) {
                 cacheModelosValidos = listaFinal;
                 ultimoFetchModelos = Date.now();
@@ -1489,7 +1492,7 @@ async function obtenerModelosDisponibles(apiKey) {
         console.warn("⚠️ No se pudo consultar la lista dinámica de modelos de Google:", e.message);
     }
 
-    return cacheModelosValidos.length > 0 ? cacheModelosValidos : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-pro'];
+    return cacheModelosValidos.length > 0 ? cacheModelosValidos : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 }
 
 app.get('/api/gemini/modelos', autenticarToken, async (req, res) => {
@@ -1850,6 +1853,7 @@ app.post('/api/bot/ausencia', autenticarToken, async (req, res) => {
         if (fecha_fin !== undefined) {
             await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [fecha_fin]);
         }
+        chatsPausados.clear();
         io.emit('estado_control_actualizado', {
             ausenciaActiva: !!activa,
             ausenciaTipo: tipoFinal,
@@ -1876,6 +1880,7 @@ app.post('/api/bot/festivo', autenticarToken, async (req, res) => {
         if (fecha_fin !== undefined) {
             await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [fecha_fin]);
         }
+        chatsPausados.clear();
         io.emit('estado_control_actualizado', {
             ausenciaActiva: !!activa,
             ausenciaTipo: 'festivo',
@@ -3281,11 +3286,14 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
         const modeloGuardado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_modelo_ia'"))?.valor || 'gemini-3.6-flash';
         
         const listaModelos = Array.from(new Set([
-            modeloGuardado,
-            ...modelosDisponibles,
             'gemini-3.6-flash',
             'gemini-3.5-flash',
+            'gemini-3-flash-preview',
+            modeloGuardado,
+            ...modelosDisponibles,
+            'gemini-3.5-flash-lite',
             'gemini-flash-latest',
+            'gemini-flash-lite-latest',
             'gemini-3.5-pro',
             'gemini-pro-latest'
         ])).filter(Boolean);
@@ -3486,19 +3494,33 @@ client.on('message_create', async (msg) => {
 
         const cuerpoMsg = (msg.body || '').trim();
 
-        // 2. Si este texto exacto fue registrado como emitido por el bot en los últimos 30 segundos, no pausar
-        if (ultimosTextosEnviadosBot.has(cuerpoMsg)) {
+        // 2. Si este texto exacto o su inicio fue registrado como emitido por el bot en los últimos 30 segundos, no pausar
+        let coincideTextoBot = ultimosTextosEnviadosBot.has(cuerpoMsg);
+        if (!coincideTextoBot && cuerpoMsg.length >= 10) {
+            const prefix = cuerpoMsg.slice(0, 40);
+            for (const [t] of ultimosTextosEnviadosBot.entries()) {
+                if (t.startsWith(prefix) || cuerpoMsg.startsWith(t.slice(0, 40))) {
+                    coincideTextoBot = true;
+                    break;
+                }
+            }
+        }
+        if (coincideTextoBot) {
             if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
             return;
         }
 
         // 3. Si el cuerpo del mensaje comienza con emojis o identificadores del bot, es un mensaje de IA/sistema
+        const iconoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
         const esMensajeIA = (
+            (iconoConf && cuerpoMsg.startsWith(iconoConf)) ||
             cuerpoMsg.startsWith('🤖') ||
             cuerpoMsg.startsWith('👨‍⚕️') ||
             cuerpoMsg.startsWith('🏥') ||
             cuerpoMsg.startsWith('🎓') ||
+            cuerpoMsg.startsWith('🇲🇽') ||
             cuerpoMsg.startsWith('🌴') ||
+            cuerpoMsg.startsWith('🏖️') ||
             cuerpoMsg.startsWith('✅') ||
             cuerpoMsg.startsWith('🧪') ||
             cuerpoMsg.startsWith('🛡️') ||
@@ -3506,7 +3528,10 @@ client.on('message_create', async (msg) => {
             cuerpoMsg.startsWith('🎙️') ||
             cuerpoMsg.startsWith('📋') ||
             cuerpoMsg.startsWith('🎉') ||
-            (cuerpoMsg.startsWith('!') && (cuerpoMsg.includes('reactivar') || cuerpoMsg.includes('curso') || cuerpoMsg.includes('vacaciones')))
+            cuerpoMsg.startsWith('📌') ||
+            cuerpoMsg.startsWith('⏰') ||
+            cuerpoMsg.startsWith('⚠️') ||
+            (cuerpoMsg.startsWith('!') && (cuerpoMsg.includes('reactivar') || cuerpoMsg.includes('curso') || cuerpoMsg.includes('festivo') || cuerpoMsg.includes('feriado') || cuerpoMsg.includes('asueto') || cuerpoMsg.includes('inhabil') || cuerpoMsg.includes('vacaciones') || cuerpoMsg.includes('probar') || cuerpoMsg.includes('pausar')))
         );
 
         if (esMensajeIA) {
