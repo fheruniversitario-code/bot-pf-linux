@@ -2755,19 +2755,27 @@ function limpiarNombreParaSaludo(nombre) {
     // --------------------------------------------------------------------------
     // B. SALUDO INICIAL Y MENÚ INTERACTIVO DE BIENVENIDA (OPCIONAL)
     // --------------------------------------------------------------------------
-    const saludos = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones', 'empezar', 'hola!'];
+    const saludos = [
+        'hola', 'buenas', 'buenos dias', 'buen dia', 'buenos días', 'buen día',
+        'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones',
+        'empezar', 'hola!', 'hola buenas', 'hola buen dia', 'hola buenos dias',
+        'hola buenas tardes', 'hola buenas noches', 'saludos', 'ola', 'holaa', 'holaaa'
+    ];
     
-    // Si ya existe una conversación reciente (últimas 12 horas), NO reiniciar con el menú para mantener la fluidez de la charla
+    // Si ya existe una conversación reciente (últimos 30 minutos), mantener fluidez sin reiniciar menú a menos que sea un saludo puro o pida menú
     const telUltimos8Sal = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
-    const charlaReciente = await getQuery(`
-        SELECT COUNT(*) as total FROM mensajes 
+    const ultimoMsgPrevio = await getQuery(`
+        SELECT timestamp FROM mensajes 
         WHERE (chat_id = ? OR (? != '' AND chat_id LIKE ?))
-          AND timestamp > ?
-    `, [remitente, telUltimos8Sal, `%${telUltimos8Sal}%`, Date.now() - (12 * 60 * 60 * 1000)]);
-    const esConversacionEnCurso = (charlaReciente?.total || 0) > 1;
-    const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones'].includes(textoLowerNorm);
+        ORDER BY id DESC LIMIT 1
+    `, [remitente, telUltimos8Sal, `%${telUltimos8Sal}%`]);
 
-    if ((pideMenuExplicito || (!esConversacionEnCurso && saludos.includes(textoLowerNorm))) && mostrarMenuNumerico) {
+    const tiempoInactivo = ultimoMsgPrevio ? (Date.now() - ultimoMsgPrevio.timestamp) : Infinity;
+    const esNuevaConversacion = tiempoInactivo > (30 * 60 * 1000); // 30 minutos de pausa
+    const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones', 'empezar'].includes(textoLowerNorm);
+    const esSaludoPuro = saludos.includes(textoLowerNorm);
+
+    if ((pideMenuExplicito || (esSaludoPuro && esNuevaConversacion)) && mostrarMenuNumerico) {
         await simularEscribiendoSeguro(msg, 1000);
 
         const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
@@ -2791,6 +2799,7 @@ function limpiarNombreParaSaludo(nombre) {
         }
         textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 
+        registrarTextoEnviadoBot(textoMenu);
         const sent = await client.sendMessage(remitente, textoMenu);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
@@ -2829,39 +2838,45 @@ function limpiarNombreParaSaludo(nombre) {
         const saludoPersonal = nomSaludo ? `Hola, *${nomSaludo}*.` : 'Hola, un gusto saludarte.';
         const saludoEntendido = nomSaludo ? `Entendido, *${nomSaludo}*.` : 'Entendido.';
 
-        let msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
-            `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.\n\n`;
+        let msjTransferido = '';
 
         if (estadoHorario.enReceso) {
             if (estadoHorario.esFestivo) {
-                msjTransferido += `🇲🇽 *Aviso de Día Festivo / Inhábil Oficial:*\n${saludoPersonal} Te informamos que hoy es día festivo oficial con suspensión de labores presenciales (*${estadoHorario.motivoReceso}*).\n\n` +
-                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria** (${estadoHorario.proximoTexto}).\n\n` +
-                    `💬 *¡El asistente virtual sigue 100% activo en este momento!* Puedes preguntarme aquí cualquier duda sobre métodos anticonceptivos (implante, DIU de cobre o plata, Mirena, vasectomía, inyecciones, pastillas, parches, etc.), requisitos o preparaciones. Con gusto te daré la información detallada de inmediato. ☺️\n\n`;
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🇲🇽 *Aviso de Día Festivo / Inhábil Oficial:*\n` +
+                    `${saludoPersonal} Te informamos que hoy es día festivo oficial con suspensión de labores presenciales (*${estadoHorario.motivoReceso}*).\n\n` +
+                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU de cobre o plata, Mirena, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos o preparaciones médicas. Con gusto te daré la información detallada de inmediato. ☺️`;
             } else if (estadoHorario.esCurso) {
-                msjTransferido += `🎓 *Aviso de Capacitación y Actualización Médica:*\n${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
-                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria** (${estadoHorario.proximoTexto}).\n\n` +
-                    `💬 *¡El asistente virtual sigue 100% activo en este momento!* Puedes preguntarme aquí cualquier duda sobre métodos anticonceptivos (implante, DIU de cobre o plata, Mirena, vasectomía, inyecciones, pastillas, parches, etc.), requisitos o preparaciones. Con gusto te daré la información detallada de inmediato. ☺️\n\n`;
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🎓 *Aviso de Capacitación y Actualización Médica:*\n` +
+                    `${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
+                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos, requisitos o preparaciones médicas. Con gusto te daré la información de inmediato. ☺️`;
             } else {
-                msjTransferido += `🌴 *Aviso de Receso / Vacaciones:*\n${saludoPersonal} Por el momento nuestro personal se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
-                    `🗓️ Tu solicitud ha quedado registrada en espera. El personal te atenderá **${estadoHorario.proximoTexto}**.\n\n`;
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *Aviso de Receso / Vacaciones:*\n` +
+                    `${saludoPersonal} Por el momento nuestro personal se encuentra en receso (*${estadoHorario.motivoReceso}*).\n\n` +
+                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en espera. El personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre métodos, costos o requisitos.`;
             }
         } else if (!estadoHorario.enHorario) {
-            msjTransferido += `⏰ *Fuera de Horario de Atención en Línea:*\nEl horario de atención en línea por este chat de WhatsApp es de Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n` +
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *Fuera de Horario de Atención en Línea:*\n` +
+                `${saludoPersonal} El horario de atención en línea por este chat de WhatsApp es de Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n` +
                 `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
-                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.\n\n`;
+                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.`;
         } else {
-            msjTransferido += `🕒 Nuestro personal en turno revisará tus mensajes y te responderá por aquí en cuanto se desocupe de la atención a pacientes.\n\n`;
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
+                `🕒 Nuestro personal en turno revisará tus mensajes y te responderá por aquí en cuanto se desocupe de la atención a pacientes.\n\n` +
+                `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.`;
         }
 
         // Si el paciente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
         if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Paciente (+')) {
-            msjTransferido += `📋 *Para agilizar tu turno:* Si aún no has llenado tu registro, por favor completa este enlace:\n👉 ${enlacePrivacidad}\n\n` +
-                `✍️ Y escríbenos aquí tu *Nombre Completo*.\n\n`;
+            msjTransferido += `\n\n📋 *Para agilizar tu turno al reanudar:* Si aún no has llenado tu registro previo, por favor completa este enlace:\n👉 ${enlacePrivacidad}\n\n✍️ Y escríbenos aquí tu *Nombre Completo* para apartar tu lugar en la lista.`;
             chatsPausados.set(claveEsperandoNombre, Date.now());
         }
 
-        msjTransferido += `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas realizar preguntas sobre métodos, cuidados o requisitos._`;
+        msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas realizar preguntas sobre métodos, cuidados o requisitos._`;
 
+        registrarTextoEnviadoBot(msjTransferido);
         const sent = await client.sendMessage(remitente, msjTransferido);
         if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
@@ -3287,10 +3302,10 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
         
         const listaModelos = Array.from(new Set([
             'gemini-3.6-flash',
-            'gemini-3.5-flash',
             'gemini-3-flash-preview',
             modeloGuardado,
             ...modelosDisponibles,
+            'gemini-3.5-flash',
             'gemini-3.5-flash-lite',
             'gemini-flash-latest',
             'gemini-flash-lite-latest',
@@ -3301,20 +3316,29 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
         let respuestaIA = null;
         let modeloExitoso = null;
         for (const modName of listaModelos) {
-            try {
-                const model = aiClient.getGenerativeModel({ model: modName, systemInstruction });
-                const result = await model.generateContent(promptContenido);
-                respuestaIA = result.response.text();
-                if (respuestaIA) {
-                    modeloExitoso = modName;
-                    break;
-                }
-            } catch (errModel) {
-                console.warn(`[Modelo ${modName} no disponible]:`, errModel.message);
-                if (errModel.message && (errModel.message.includes('503') || errModel.message.includes('429'))) {
-                    await delay(800);
+            let intentos = 2;
+            while (intentos > 0) {
+                try {
+                    const model = aiClient.getGenerativeModel({ model: modName, systemInstruction });
+                    const result = await model.generateContent(promptContenido);
+                    respuestaIA = result.response.text();
+                    if (respuestaIA) {
+                        modeloExitoso = modName;
+                        break;
+                    }
+                } catch (errModel) {
+                    intentos--;
+                    const es503o429 = errModel.message && (errModel.message.includes('503') || errModel.message.includes('429'));
+                    if (intentos > 0 && es503o429) {
+                        // Spikes temporales de demanda en Google AI: reintento rápido tras 700ms
+                        await delay(700);
+                    } else {
+                        console.warn(`[Modelo ${modName} no disponible]:`, errModel.message);
+                        break;
+                    }
                 }
             }
+            if (respuestaIA) break;
         }
 
         if (modeloExitoso && modeloExitoso !== modeloGuardado) {
@@ -3342,6 +3366,9 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
             if (iconoAsistente && !textoRespuestaFinal.startsWith(iconoAsistente)) {
                 textoRespuestaFinal = `${iconoAsistente} ${textoRespuestaFinal}`;
             }
+            // Registrar texto antes de enviar para garantizar que coincida en message_create
+            registrarTextoEnviadoBot(textoRespuestaFinal);
+
             // Simulación de escritura humana anti-ban
             await simularEscribiendoSeguro(msg, Math.min(Math.max(textoRespuestaFinal.length * 20, 1500), 3500));
 
@@ -3531,6 +3558,13 @@ client.on('message_create', async (msg) => {
             cuerpoMsg.startsWith('📌') ||
             cuerpoMsg.startsWith('⏰') ||
             cuerpoMsg.startsWith('⚠️') ||
+            cuerpoMsg.includes('Lista de Espera Prioritaria') ||
+            cuerpoMsg.includes('asistente virtual') ||
+            cuerpoMsg.includes('Planificación Familiar') ||
+            cuerpoMsg.includes('servicio de Planificación') ||
+            cuerpoMsg.includes('reanudarán') ||
+            cuerpoMsg.includes('reanudará') ||
+            cuerpoMsg.includes('consulta médica presencial') ||
             (cuerpoMsg.startsWith('!') && (cuerpoMsg.includes('reactivar') || cuerpoMsg.includes('curso') || cuerpoMsg.includes('festivo') || cuerpoMsg.includes('feriado') || cuerpoMsg.includes('asueto') || cuerpoMsg.includes('inhabil') || cuerpoMsg.includes('vacaciones') || cuerpoMsg.includes('probar') || cuerpoMsg.includes('pausar')))
         );
 
