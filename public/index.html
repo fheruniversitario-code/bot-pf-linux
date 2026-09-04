@@ -272,7 +272,12 @@
                         <span>Pausar Bot</span>
                     </button>
 
-                    <button onclick="abrirModalAusencia()" id="btn-ctrl-ausencia" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-2xl text-xs font-bold transition flex items-center space-x-2">
+                    <button onclick="abrirModalAusencia('curso')" id="btn-ctrl-curso" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-2xl text-xs font-bold transition flex items-center space-x-2">
+                        <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                        <span>Modo Curso</span>
+                    </button>
+
+                    <button onclick="abrirModalAusencia('vacaciones')" id="btn-ctrl-ausencia" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-2xl text-xs font-bold transition flex items-center space-x-2">
                         <i class="fa-solid fa-umbrella-beach text-sky-400"></i>
                         <span>Modo Vacaciones</span>
                     </button>
@@ -1510,18 +1515,18 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL MODO AUSENCIA / VACACIONES -->
+    <!-- MODAL MODO AUSENCIA / CURSO / VACACIONES -->
     <!-- ==================================================================== -->
     <div id="modal-ausencia" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-7 max-w-md w-full shadow-2xl space-y-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-umbrella-beach"></i>
+                    <div id="modal-ausencia-icono" class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+                        <i id="modal-ausencia-icono-i" class="fa-solid fa-graduation-cap"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-white leading-snug">Modo Vacaciones / Ausencia</h3>
-                        <p class="text-xs text-slate-400">Configura avisos automáticos para tus clientes</p>
+                        <h3 id="modal-ausencia-titulo" class="text-base font-bold text-white leading-snug">Modo Curso / Capacitación</h3>
+                        <p class="text-xs text-slate-400">Configura avisos inteligentes para tus clientes</p>
                     </div>
                 </div>
                 <button onclick="cerrarModalAusencia()" class="text-slate-400 hover:text-white transition">
@@ -1529,31 +1534,68 @@
                 </button>
             </div>
 
-            <form onsubmit="guardarModoAusencia(event)" class="space-y-4">
-                <div class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl">
+            <!-- Selector de Tipo: Curso / Congreso vs Vacaciones -->
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+                <button type="button" id="btn-tab-modal-curso" onclick="seleccionarTipoModalAusencia('curso')" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Curso / Congreso</span>
+                </button>
+                <button type="button" id="btn-tab-modal-vacaciones" onclick="seleccionarTipoModalAusencia('vacaciones')" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent">
+                    <i class="fa-solid fa-umbrella-beach"></i>
+                    <span>Vacaciones</span>
+                </button>
+            </div>
+
+            <form onsubmit="guardarModoAusencia(event)" class="space-y-3.5">
+                <input type="hidden" id="modal-ausencia-tipo" value="curso">
+
+                <div class="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
                     <div>
-                        <span class="text-xs font-bold text-white block">Activar Modo Ausencia</span>
-                        <span class="text-[11px] text-slate-400">El bot avisará a los clientes que el equipo está fuera</span>
+                        <span id="label-switch-ausencia" class="text-xs font-bold text-white block">Activar Modo Curso</span>
+                        <span id="sub-switch-ausencia" class="text-[11px] text-slate-400">La IA explicará la capacitación y atenderá dudas 24/7</span>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="modal-ausencia-activa" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                        <div id="toggle-bg-ausencia" class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                     </label>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mensaje o Motivo de Ausencia</label>
-                    <textarea id="modal-ausencia-mensaje" rows="3" placeholder="Ej: Nos encontramos en periodo vacacional o curso de capacitación. Reanudaremos actividades con normalidad muy pronto." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-sky-500 outline-none"></textarea>
+                    <label id="label-modal-ausencia-motivo" class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Curso o Congreso Médico</label>
+                    <textarea id="modal-ausencia-mensaje" rows="2" placeholder="Ej: Capacitación y Actualización Médica Continua" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-indigo-500 outline-none"></textarea>
+                    
+                    <!-- Chips sugerencias de motivos -->
+                    <div id="chips-sugerencias-curso" class="flex flex-wrap gap-1 pt-1">
+                        <button type="button" onclick="setMotivoCurso('Capacitación y Actualización Médica Continua')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Actualización Continua</button>
+                        <button type="button" onclick="setMotivoCurso('Congreso de Salud Sexual y Reproductiva')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Congreso Médico</button>
+                        <button type="button" onclick="setMotivoCurso('Taller de Actualización Clínica en Métodos')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Taller Clínico</button>
+                    </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Fecha Estimada de Regreso (Opcional)</label>
-                    <input type="date" id="modal-ausencia-fecha" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-sky-500 outline-none">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-slate-300">Fecha de Reanudación de Citas</label>
+                        <span class="text-[10px] text-slate-400">Atajos rápidos:</span>
+                    </div>
+                    <!-- Atajos rápidos de fecha -->
+                    <div class="flex flex-wrap gap-1 mb-1.5">
+                        <button type="button" onclick="setFechaRapida(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Mañana</button>
+                        <button type="button" onclick="setFechaRapida('viernes')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Este Viernes</button>
+                        <button type="button" onclick="setFechaRapida('lunes')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Próximo Lunes</button>
+                        <button type="button" onclick="setFechaRapida(2)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+2 Días</button>
+                        <button type="button" onclick="setFechaRapida(3)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+3 Días</button>
+                    </div>
+                    <input type="date" id="modal-ausencia-fecha" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
                 </div>
 
-                <div class="flex items-center space-x-3 pt-2">
+                <!-- Nota explicativa de IA -->
+                <div id="nota-modal-ausencia" class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl text-[11px] text-slate-300 leading-relaxed">
+                    <span class="text-indigo-400 font-bold">🎓 Rol de la IA:</span> Explicará con calidez y prestigio médico que el equipo está en actualización continua, responderá dudas de métodos 24/7 y registrará pacientes en la <b>Lista de Espera Prioritaria</b>.
+                </div>
+
+                <div class="flex items-center space-x-2.5 pt-1">
                     <button type="button" onclick="cerrarModalAusencia()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">Cancelar</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold shadow-md transition">Guardar Estado</button>
+                    <button type="submit" id="btn-submit-modal-ausencia" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition">Guardar Estado</button>
                 </div>
             </form>
         </div>

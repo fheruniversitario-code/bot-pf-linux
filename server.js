@@ -1536,6 +1536,7 @@ app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
     try {
         const pausadoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'bot_pausado_global'"))?.valor === '1';
         const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
+        const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
         const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
         const ausenciaFecha = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
         const ignoradosCount = (await getQuery("SELECT COUNT(*) as total FROM contactos WHERE es_ignorado = 1"))?.total || 0;
@@ -1544,6 +1545,7 @@ app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
             wsClienteConectado,
             botPausadoGlobal: botPausadoGlobal || pausadoConf,
             ausenciaActiva,
+            ausenciaTipo,
             ausenciaMsg,
             ausenciaFecha,
             chatsPausadosCount: chatsPausados.size,
@@ -1553,6 +1555,95 @@ app.get('/api/bot/estado-control', autenticarToken, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Parser Inteligente de Expresiones de Tiempo y Motivo para Modo Receso / Curso
+function parsearComandoReceso(textoCompleto, tipoPorDefecto = 'curso') {
+    const partes = textoCompleto.trim().split(/\s+/);
+    const resto = partes.slice(1).join(' ').trim();
+
+    if (!resto) {
+        return {
+            activo: true,
+            tipo: tipoPorDefecto,
+            motivo: tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional',
+            fechaFin: 'en breve'
+        };
+    }
+
+    const restoLower = resto.toLowerCase();
+    if (restoLower === 'off' || restoLower === 'desactivar' || restoLower === 'no') {
+        return { activo: false, tipo: tipoPorDefecto };
+    }
+
+    let motivo = tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional';
+    let fechaFin = '';
+
+    const diasSemana = {
+        'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3,
+        'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 0
+    };
+
+    const ahora = new Date();
+    const matchDias = restoLower.match(/(\d+)\s*(dias|días)/);
+    const matchSemana = restoLower.match(/(\d+)\s*semanas?/);
+
+    if (matchDias) {
+        const numDias = parseInt(matchDias[1], 10);
+        const fechaRegreso = new Date(ahora.getTime() + numDias * 24 * 60 * 60 * 1000);
+        const formatFecha = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long', day: 'numeric', month: 'long' });
+        fechaFin = formatFecha.format(fechaRegreso);
+        const motivoLimpio = resto.replace(new RegExp(`(\\bpor\\s+)?${matchDias[0]}`, 'gi'), '').trim();
+        if (motivoLimpio && motivoLimpio.length > 2) motivo = motivoLimpio;
+    } else if (matchSemana) {
+        const numSemanas = parseInt(matchSemana[1], 10);
+        const fechaRegreso = new Date(ahora.getTime() + numSemanas * 7 * 24 * 60 * 60 * 1000);
+        const formatFecha = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long', day: 'numeric', month: 'long' });
+        fechaFin = formatFecha.format(fechaRegreso);
+        const motivoLimpio = resto.replace(new RegExp(`(\\bpor\\s+)?${matchSemana[0]}`, 'gi'), '').trim();
+        if (motivoLimpio && motivoLimpio.length > 2) motivo = motivoLimpio;
+    } else if (restoLower.includes('mañana') || restoLower.includes('manana')) {
+        const fechaRegreso = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+        const formatFecha = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long', day: 'numeric', month: 'long' });
+        fechaFin = `mañana (${formatFecha.format(fechaRegreso)})`;
+        const motivoLimpio = resto.replace(/\b(hasta\s+)?(el\s+)?mañana\b/gi, '').trim();
+        if (motivoLimpio && motivoLimpio.length > 2) motivo = motivoLimpio;
+    } else {
+        let encontradoDia = false;
+        for (const [dia, diaNum] of Object.entries(diasSemana)) {
+            const regexDia = new RegExp(`\\b(hasta\\s+)?(el\\s+)?${dia}\\b`, 'i');
+            if (regexDia.test(restoLower)) {
+                encontradoDia = true;
+                fechaFin = `el próximo ${dia} a primera hora`;
+                const partesMotivo = resto.split(new RegExp(`\\b(hasta\\s+el|hasta|el)\\s+${dia}\\b`, 'i'));
+                if (partesMotivo[0] && partesMotivo[0].trim().length > 2) {
+                    motivo = partesMotivo[0].trim();
+                }
+                break;
+            }
+        }
+
+        if (!encontradoDia) {
+            const matchHasta = resto.match(/\bhasta\s+(el\s+)?(.+)/i);
+            if (matchHasta) {
+                fechaFin = matchHasta[2].trim();
+                const partesMotivo = resto.split(/\bhasta\b/i);
+                if (partesMotivo[0] && partesMotivo[0].trim().length > 2) {
+                    motivo = partesMotivo[0].trim();
+                }
+            } else {
+                motivo = resto;
+                fechaFin = 'próximamente';
+            }
+        }
+    }
+
+    return {
+        activo: true,
+        tipo: tipoPorDefecto,
+        motivo: motivo || (tipoPorDefecto === 'curso' ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional'),
+        fechaFin: fechaFin || 'próximamente'
+    };
+}
 
 // Motor de Cálculo Inteligente de Horario en México (America/Mexico_City)
 async function obtenerEstadoHorarioMexico() {
@@ -1576,20 +1667,24 @@ async function obtenerEstadoHorarioMexico() {
 
     const minutosActuales = hora * 60 + minuto;
 
-    // 1. Verificar si hay Receso / Vacaciones activo
+    // 1. Verificar si hay Receso / Vacaciones / Curso activo
     const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
+    const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
     const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor || '';
     const ausenciaFechaFin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_fecha_fin'"))?.valor || '';
 
     if (ausenciaActiva) {
-        let proximoTexto = 'al reanudar actividades tras el periodo vacacional';
+        const esCurso = (ausenciaTipo === 'curso');
+        let proximoTexto = esCurso ? 'al reanudar actividades tras la jornada de capacitación médica' : 'al reanudar actividades tras el periodo vacacional';
         if (ausenciaFechaFin) {
             proximoTexto = `el próximo ${ausenciaFechaFin} a primera hora`;
         }
         return {
             enHorario: false,
             enReceso: true,
-            motivoReceso: ausenciaMsg || 'Periodo Vacacional / Capacitación',
+            esCurso,
+            tipoReceso: ausenciaTipo,
+            motivoReceso: ausenciaMsg || (esCurso ? 'Capacitación y Actualización Médica Continua' : 'Periodo Vacacional'),
             proximoTexto
         };
     }
@@ -1655,7 +1750,7 @@ app.post('/api/bot/reactivar', autenticarToken, async (req, res) => {
         chatsPausados.clear();
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
-        io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false });
+        io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false, chatsPausadosCount: 0 });
         res.json({ success: true, botPausadoGlobal: false, ausenciaActiva: false, mensaje: "Bot reactivado exitosamente y pausas eliminadas" });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -1664,16 +1759,51 @@ app.post('/api/bot/reactivar', autenticarToken, async (req, res) => {
 
 app.post('/api/bot/ausencia', autenticarToken, async (req, res) => {
     try {
-        const { activa, mensaje, fecha_fin } = req.body;
+        const { activa, tipo, mensaje, fecha_fin } = req.body;
+        const tipoFinal = tipo === 'curso' ? 'curso' : 'vacaciones';
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [activa ? '1' : '0']);
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [tipoFinal]);
         if (mensaje !== undefined) {
             await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [mensaje]);
         }
         if (fecha_fin !== undefined) {
             await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [fecha_fin]);
         }
-        io.emit('estado_control_actualizado', { ausenciaActiva: !!activa, mensaje, fecha_fin });
-        res.json({ success: true, ausenciaActiva: !!activa });
+        io.emit('estado_control_actualizado', {
+            ausenciaActiva: !!activa,
+            ausenciaTipo: tipoFinal,
+            ausenciaMsg: mensaje,
+            ausenciaFecha: fecha_fin,
+            mensaje,
+            fecha_fin
+        });
+        res.json({ success: true, ausenciaActiva: !!activa, ausenciaTipo: tipoFinal });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/bot/curso', autenticarToken, async (req, res) => {
+    try {
+        const { activa, motivo, fecha_fin } = req.body;
+        const motivoFinal = motivo || 'Capacitación y Actualización Médica Continua';
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [activa ? '1' : '0']);
+        await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'curso') ON CONFLICT(clave) DO UPDATE SET valor = 'curso'");
+        if (motivo !== undefined) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [motivoFinal]);
+        }
+        if (fecha_fin !== undefined) {
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [fecha_fin]);
+        }
+        io.emit('estado_control_actualizado', {
+            ausenciaActiva: !!activa,
+            ausenciaTipo: 'curso',
+            ausenciaMsg: motivoFinal,
+            ausenciaFecha: fecha_fin,
+            mensaje: motivoFinal,
+            fecha_fin
+        });
+        res.json({ success: true, ausenciaActiva: !!activa, ausenciaTipo: 'curso' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1974,8 +2104,8 @@ function limpiarNombreParaSaludo(nombre) {
                 chatsPausados.clear();
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
-                io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false });
-                const sent = await client.sendMessage(remitente, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia. El bot vuelve a responder a todos los clientes.");
+                io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false, chatsPausadosCount: 0 });
+                const sent = await client.sendMessage(remitente, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia / curso. El bot vuelve a responder con normalidad a todos los pacientes.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -1983,7 +2113,7 @@ function limpiarNombreParaSaludo(nombre) {
             if (textoLower === '!probar' || textoLower === '!prueba' || textoLower === '!probar on' || textoLower === '!prueba on' || textoLower === '!modo prueba on' || textoLower === '!modo prueba') {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
                 io.emit('estado_control_actualizado', { modoPruebaAdmins: true });
-                const sent = await client.sendMessage(remitente, "🧪 *MODO PRUEBA ACTIVADO*\n\nEl bot te responderá a partir de ahora como si fueras un cliente normal para que pongas a prueba sus respuestas de IA, infografías y catálogo.\n\n_Para desactivar y que vuelva a guardar silencio contigo, envía `!probar off` o `!prueba off`._");
+                const sent = await client.sendMessage(remitente, "🧪 *MODO PRUEBA ACTIVADO.*\n\nAhora el bot te responderá en este chat exactamente como si fueras un paciente o cliente nuevo.\n\n_Para desactivarlo envía `!probar off` o `!reactivar`._");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -1991,22 +2121,24 @@ function limpiarNombreParaSaludo(nombre) {
             if (textoLower === '!probar off' || textoLower === '!prueba off' || textoLower === '!modo prueba off') {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 io.emit('estado_control_actualizado', { modoPruebaAdmins: false });
-                const sent = await client.sendMessage(remitente, "🛡️ *MODO PRUEBA DESACTIVADO*\n\nEl bot ya no te responderá con mensajes de IA a tus chats personales. Solo obedecerá tus comandos con signo de exclamación `!`.");
+                const sent = await client.sendMessage(remitente, "🛡️ *MODO PRUEBA DESACTIVADO.*\n\nEl bot vuelve a guardar silencio contigo para que puedas usar este chat con normalidad.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
 
-            if (textoLower.startsWith('!pausa') || textoLower.startsWith('!pausar')) {
+            if (textoLower === '!pausa' || textoLower === '!pausar' || textoLower === '!pause') {
+                botPausadoGlobal = true;
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
+                io.emit('estado_control_actualizado', { botPausadoGlobal: true });
+                const sent = await client.sendMessage(remitente, "⏸️ *BOT PAUSADO GLOBALMENTE.*\n\nEl bot no responderá a ningún cliente hasta que envíes `!reactivar`.");
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            if (textoLower.startsWith('!pausa ') || textoLower.startsWith('!pausar ')) {
                 const partes = texto.split(' ');
-                const numRaw = partes[1] ? partes[1].trim().replace(/[^0-9]/g, '') : '';
-                if (!numRaw || numRaw === 'global' || numRaw === 'todo') {
-                    botPausadoGlobal = true;
-                    await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
-                    io.emit('estado_control_actualizado', { botPausadoGlobal: true });
-                    const sent = await client.sendMessage(remitente, "⏸️ *BOT PAUSADO GLOBALMENTE.*\n\nNo responderá a ningún cliente hasta enviar `!reactivar` o reanudar desde el Panel.");
-                    if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
-                    return;
-                } else {
+                const numRaw = partes[1] ? partes[1].replace(/[^0-9]/g, '') : '';
+                if (numRaw) {
                     const jidTarget = numRaw.length === 10 ? `521${numRaw}@c.us` : `${numRaw}@c.us`;
                     chatsPausados.set(jidTarget, Date.now());
                     const sent = await client.sendMessage(remitente, `⏸️ Chat +${numRaw} pausado temporalmente.`);
@@ -2015,21 +2147,81 @@ function limpiarNombreParaSaludo(nombre) {
                 }
             }
 
-            if (textoLower.startsWith('!vacaciones') || textoLower.startsWith('!ausencia') || textoLower.startsWith('!curso')) {
-                const partes = texto.split(' ');
-                const accion = partes[1] ? partes[1].toLowerCase() : '';
-                if (accion === 'off' || accion === 'desactivar') {
+            // ------------------------------------------------------------------
+            // COMANDO: !curso / !congreso / !capacitacion / !taller (Modo Actualización Médica)
+            // ------------------------------------------------------------------
+            if (textoLower.startsWith('!curso') || textoLower.startsWith('!congreso') || textoLower.startsWith('!capacitacion') || textoLower.startsWith('!capacitación') || textoLower.startsWith('!taller')) {
+                const parsed = parsearComandoReceso(texto, 'curso');
+                if (!parsed.activo) {
                     await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
-                    io.emit('estado_control_actualizado', { ausenciaActiva: false });
-                    const sent = await client.sendMessage(remitente, "🏖️ *MODO AUSENCIA / VACACIONES DESACTIVADO.* El bot reanuda la atención normal.");
+                    io.emit('estado_control_actualizado', { ausenciaActiva: false, ausenciaTipo: 'curso' });
+                    const sent = await client.sendMessage(remitente, "🎓 *MODO CURSO / CONGRESO DESACTIVADO.*\n\nEl bot y el equipo de salud reanudan la atención y agenda de citas presenciales habitual.");
                     if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                     return;
                 }
-                const msj = partes.slice(1).join(' ') || 'Nos encontramos en periodo de ausencia.';
+
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
-                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [msj]);
-                io.emit('estado_control_actualizado', { ausenciaActiva: true, mensaje: msj });
-                const sent = await client.sendMessage(remitente, `🌴 *MODO AUSENCIA ACTIVADO:*\n\n📌 Mensaje al cliente: "${msj}"\n\n_Para desactivar envía \`!reactivar\` o \`!vacaciones off\`._`);
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'curso') ON CONFLICT(clave) DO UPDATE SET valor = 'curso'");
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.motivo]);
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.fechaFin]);
+
+                io.emit('estado_control_actualizado', {
+                    ausenciaActiva: true,
+                    ausenciaTipo: 'curso',
+                    ausenciaMsg: parsed.motivo,
+                    ausenciaFecha: parsed.fechaFin,
+                    mensaje: parsed.motivo,
+                    fecha_fin: parsed.fechaFin
+                });
+
+                const sent = await client.sendMessage(remitente,
+                    `🎓 *MODO CURSO / CONGRESO MÉDICO ACTIVADO*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📌 *Motivo:* ${parsed.motivo}\n` +
+                    `🗓️ *Reanudación estimada:* ${parsed.fechaFin}\n` +
+                    `🤖 *Rol de la IA:* Activa 24/7 explicando con calidez que el equipo está en actualización médica continua, resolviendo dudas sobre métodos y apartando citas con prioridad para el regreso.\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `💡 _Para desactivar envía \`!curso off\` o \`!reactivar\`._`
+                );
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            // ------------------------------------------------------------------
+            // COMANDO: !vacaciones / !ausencia (Modo Receso Vacacional)
+            // ------------------------------------------------------------------
+            if (textoLower.startsWith('!vacaciones') || textoLower.startsWith('!ausencia')) {
+                const parsed = parsearComandoReceso(texto, 'vacaciones');
+                if (!parsed.activo) {
+                    await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
+                    io.emit('estado_control_actualizado', { ausenciaActiva: false, ausenciaTipo: 'vacaciones' });
+                    const sent = await client.sendMessage(remitente, "🏖️ *MODO VACACIONES DESACTIVADO.* El bot reanuda la atención normal.");
+                    if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                    return;
+                }
+
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'vacaciones') ON CONFLICT(clave) DO UPDATE SET valor = 'vacaciones'");
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_mensaje', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.motivo]);
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_fecha_fin', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [parsed.fechaFin]);
+
+                io.emit('estado_control_actualizado', {
+                    ausenciaActiva: true,
+                    ausenciaTipo: 'vacaciones',
+                    ausenciaMsg: parsed.motivo,
+                    ausenciaFecha: parsed.fechaFin,
+                    mensaje: parsed.motivo,
+                    fecha_fin: parsed.fechaFin
+                });
+
+                const sent = await client.sendMessage(remitente,
+                    `🌴 *MODO VACACIONES ACTIVADO*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📌 *Motivo:* ${parsed.motivo}\n` +
+                    `🗓️ *Reanudación:* ${parsed.fechaFin}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `💡 _Para desactivar envía \`!reactivar\` o \`!vacaciones off\`._`
+                );
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -2079,13 +2271,16 @@ function limpiarNombreParaSaludo(nombre) {
             if (textoLower === '!ayuda' || textoLower === '!help') {
                 const sent = await client.sendMessage(remitente, 
                     "🤖 *COMANDOS DISPONIBLES DE CONTROL OMNIBOT:*\n\n" +
-                    "▶️ `!reactivar` -> Reactiva el bot, quita pausas y desactiva vacaciones.\n" +
+                    "▶️ `!reactivar` -> Reactiva el bot, quita pausas y desactiva vacaciones/cursos.\n" +
                     "⏸️ `!pausa` -> Pausa globalmente el bot de forma indefinida.\n" +
                     "⏸️ `!pausa 4111234567` -> Pausa a un cliente específico.\n" +
+                    "🎓 `!curso hasta el viernes` -> Activa Modo Curso / Congreso (la IA atiende 24/7 y anota citas en lista prioritaria).\n" +
+                    "🎓 `!curso 2 dias` (o `!curso Congreso de Ginecología hasta el lunes`)\n" +
+                    "🎓 `!curso off` -> Desactiva modo Curso / Congreso.\n" +
+                    "🌴 `!vacaciones [mensaje/fecha]` -> Activa modo receso vacacional.\n" +
+                    "🌴 `!vacaciones off` -> Desactiva vacaciones.\n" +
                     "🧪 `!probar` (o `!prueba`) -> Activa Modo Prueba (el bot te responde como cliente).\n" +
-                    "🛡️ `!probar off` (o `!prueba off`) -> Desactiva Modo Prueba (el bot guarda silencio contigo).\n" +
-                    "🌴 `!vacaciones [mensaje]` -> Activa modo ausencia.\n" +
-                    "🌴 `!vacaciones off` -> Desactiva modo ausencia.\n" +
+                    "🛡️ `!probar off` -> Desactiva Modo Prueba.\n" +
                     "🚫 `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
                     "✅ `!atender 4111234567` -> Remueve de ignorados.\n" +
                     "📋 `!resumen` -> Lista los últimos clientes atendidos con sus teléfonos reales.\n" +
@@ -2292,9 +2487,15 @@ function limpiarNombreParaSaludo(nombre) {
 
         let msjConfirmado = '';
         if (estadoHorario.enReceso) {
-            msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+            if (estadoHorario.esCurso) {
+                msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                    `🎓 Nuestro equipo de salud se encuentra en: *${estadoHorario.motivoReceso}*. Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos con gusto **${estadoHorario.proximoTexto}**.\n\n` +
+                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+            } else {
+                msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
+                    `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
+                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+            }
         } else if (!estadoHorario.enHorario) {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                 `⏰ *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
@@ -2411,8 +2612,13 @@ function limpiarNombreParaSaludo(nombre) {
             `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.\n\n`;
 
         if (estadoHorario.enReceso) {
-            msjTransferido += `🌴 *Aviso de Receso / Vacaciones:*\n${saludoPersonal} Por el momento nuestro personal se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
-                `🗓️ Tu solicitud ha quedado registrada en espera. El personal te atenderá **${estadoHorario.proximoTexto}**.\n\n`;
+            if (estadoHorario.esCurso) {
+                msjTransferido += `🎓 *Aviso de Capacitación Médica Continua:*\n${saludoPersonal} En este momento nuestro equipo de salud se encuentra en: *${estadoHorario.motivoReceso}* con la finalidad de mantenernos siempre actualizados para brindarte la mejor atención médica.\n\n` +
+                    `🗓️ Tu mensaje y solicitud han quedado registrados en nuestra **Lista de Espera Prioritaria**. Nuestro personal te contactará con gusto **${estadoHorario.proximoTexto}** para agendar tu cita.\n\n`;
+            } else {
+                msjTransferido += `🌴 *Aviso de Receso / Vacaciones:*\n${saludoPersonal} Por el momento nuestro personal se encuentra en: ${estadoHorario.motivoReceso}.\n\n` +
+                    `🗓️ Tu solicitud ha quedado registrada en espera. El personal te atenderá **${estadoHorario.proximoTexto}**.\n\n`;
+            }
         } else if (!estadoHorario.enHorario) {
             msjTransferido += `⏰ *Fuera de Horario de Atención en Línea:*\nEl horario de atención en línea por este chat de WhatsApp es de Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n` +
                 `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
@@ -2629,12 +2835,26 @@ function limpiarNombreParaSaludo(nombre) {
         const mapsLink = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '';
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
         
-        // Estado de Ausencia / Vacaciones
+        // Estado de Ausencia / Vacaciones / Curso
         const ausenciaActiva = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor;
+        const ausenciaTipo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
         const ausenciaMsg = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_mensaje'"))?.valor;
         let avisoAusencia = '';
         if (ausenciaActiva === '1') {
-            avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${ausenciaMsg || 'Vacaciones / Capacitación'}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está ausente y su solicitud será atendida prioritariamente al reanudar actividades.\n`;
+            if (ausenciaTipo === 'curso') {
+                avisoAusencia = `\n[AVISO DE CAPACITACIÓN / CONGRESO MÉDICO ACTIVO]:
+- Actualmente el equipo de salud se encuentra en jornadas de capacitación continua / congreso médico: "${ausenciaMsg || 'Capacitación y Actualización Médica'}".
+- REGLAS ESTRICTAS DE ATENCIÓN CON IA:
+  1. Actúa como vocera médica profesional, cálida y de alto nivel de la clínica.
+  2. Explica al paciente con orgullo y amabilidad que el personal de salud está en actualización médica continua para brindarle siempre el mejor servicio clínico y la mayor seguridad.
+  3. PROHIBICIÓN ESTRICTA: NUNCA digas que "estamos de vacaciones", ni que la clínica "está cerrada", ni des la impresión de inactividad o abandono.
+  4. ATENCIÓN VIRTUAL 24/7: Responde tú mismo(a) de forma completa todas las dudas del paciente sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Kyleena, DIU de cobre/plata, vasectomía sin bisturí, pastillas, inyecciones), costos, indicaciones, preparaciones e infografías.
+  5. CITAS PRESENCIALES Y PROCEDIMIENTOS: Explica con amabilidad que la atención médica presencial (colocación o retiro de implantes, DIU, vasectomías o valoraciones físicas) se reanudará ${estadoHorario.proximoTexto}.
+  6. LISTA DE ESPERA PRIORITARIA: Si el paciente desea agendar cita o requiere atención física, pídele con calidez su nombre completo y el procedimiento de su interés, confirmándole con total certeza que ha quedado anotado en la LISTA DE ESPERA PRIORITARIA para apartar su lugar y coordinar su cita en cuanto el médico regrese.
+  7. SOLICITUD DE ASESOR: Si pide hablar con una persona/asesor, infórmale con tacto que el médico está en sesiones académicas y se comunicará en cuanto concluyan o ${estadoHorario.proximoTexto}.\n`;
+            } else {
+                avisoAusencia = `\n[AVISO DE AUSENCIA / VACACIONES ACTIVO]: Actualmente el negocio se encuentra ausente temporalmente debido a: "${ausenciaMsg || 'Vacaciones'}". Responde las dudas del cliente amablemente basándote en el catálogo y servicios, pero recuérdale con calidez que actualmente el equipo está en receso y su solicitud será atendida al reanudar actividades ${estadoHorario.proximoTexto}.\n`;
+            }
         }
 
         // Historial reciente de la conversación (unificando por JID y teléfono)
@@ -2712,10 +2932,17 @@ async function obtenerContenidoGoogleSheets(url) {
 
         let reglaHorarioIA = '';
         if (estadoHorario.enReceso) {
-            reglaHorarioIA = `
+            if (estadoHorario.esCurso) {
+                reglaHorarioIA = `
+🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
+- El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
+- REGLAS DE ATENCIÓN: Resuelve 24/7 todas las dudas médicas (métodos, costos, requisitos, preparaciones) con calidez y precisión médica. Para citas presenciales o procedimientos físicos, aclara con orgullo médico que se reanudarán ${estadoHorario.proximoTexto} y anota al paciente en la Lista de Espera Prioritaria.`;
+            } else {
+                reglaHorarioIA = `
 🔴 ESTADO DE RECESO / VACACIONES:
 - Actualmente el personal humano se encuentra en receso/vacaciones debido a: "${estadoHorario.motivoReceso}".
 - REGLA ESTRICTA: NO ofrezcas atención presencial ni "pasar con un asesor ahora mismo". Si el cliente requiere atención médica o cita presencial, indícale amablemente que su solicitud será atendida en línea por este chat ${estadoHorario.proximoTexto}, o invítalo a resolver sus dudas contigo directamente (asistente virtual 24/7).`;
+            }
         } else if (!estadoHorario.enHorario) {
             reglaHorarioIA = `
 🔴 ESTADO DE HORARIO DE ATENCIÓN (FUERA DE HORARIO DE ATENCIÓN POR CHAT):

@@ -1628,13 +1628,23 @@ function actualizarUIEstadoControl(data) {
     }
 
     if (data.ausenciaActiva) {
-        if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-sky-500 animate-pulse";
-        if (statusText) statusText.textContent = "Modo Ausencia / Vacaciones Activo";
-        if (statusBadge) {
-            statusBadge.className = "px-2 py-0.5 text-[10px] font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full";
-            statusBadge.textContent = "Vacaciones";
+        if (data.ausenciaTipo === 'curso') {
+            if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-indigo-500 animate-pulse";
+            if (statusText) statusText.textContent = "Personal en Capacitación / Congreso Médico";
+            if (statusBadge) {
+                statusBadge.className = "px-2.5 py-0.5 text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full";
+                statusBadge.textContent = "🎓 Modo Curso";
+            }
+            if (statusSub) statusSub.textContent = `Aviso activo: "${data.ausenciaMsg || 'Capacitación Médica Continua'}" (Reanudación: ${data.ausenciaFecha || 'Próximamente'}). IA atendiendo dudas 24/7.`;
+        } else {
+            if (indicator) indicator.className = "w-3.5 h-3.5 rounded-full bg-sky-500 animate-pulse";
+            if (statusText) statusText.textContent = "Modo Ausencia / Vacaciones Activo";
+            if (statusBadge) {
+                statusBadge.className = "px-2 py-0.5 text-[10px] font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-full";
+                statusBadge.textContent = "🏖️ Vacaciones";
+            }
+            if (statusSub) statusSub.textContent = `Aviso activo: "${data.ausenciaMsg || 'En periodo de descanso'}" (Reanudación: ${data.ausenciaFecha || 'Próximamente'}).`;
         }
-        if (statusSub) statusSub.textContent = `Aviso activo: "${data.ausenciaMsg || 'En periodo de descanso'}"`;
         return;
     }
 
@@ -1669,15 +1679,102 @@ async function ejecutarPausarBot() {
     }
 }
 
-function abrirModalAusencia() {
+function abrirModalAusencia(tipoPreseleccionado = null) {
     apiFetch('/api/bot/estado-control').then(data => {
+        const tipoFinal = tipoPreseleccionado || data.ausenciaTipo || 'curso';
+        seleccionarTipoModalAusencia(tipoFinal);
         document.getElementById('modal-ausencia-activa').checked = !!data.ausenciaActiva;
         document.getElementById('modal-ausencia-mensaje').value = data.ausenciaMsg || '';
         document.getElementById('modal-ausencia-fecha').value = data.ausenciaFecha || '';
         document.getElementById('modal-ausencia').classList.remove('hidden');
     }).catch(() => {
+        seleccionarTipoModalAusencia(tipoPreseleccionado || 'curso');
         document.getElementById('modal-ausencia').classList.remove('hidden');
     });
+}
+
+function seleccionarTipoModalAusencia(tipo) {
+    const tipoInput = document.getElementById('modal-ausencia-tipo');
+    if (tipoInput) tipoInput.value = tipo;
+
+    const btnVac = document.getElementById('btn-tab-modal-vacaciones');
+    const btnCur = document.getElementById('btn-tab-modal-curso');
+    const iconoDiv = document.getElementById('modal-ausencia-icono');
+    const iconoI = document.getElementById('modal-ausencia-icono-i');
+    const tituloModal = document.getElementById('modal-ausencia-titulo');
+    const labelSwitch = document.getElementById('label-switch-ausencia');
+    const subSwitch = document.getElementById('sub-switch-ausencia');
+    const toggleBg = document.getElementById('toggle-bg-ausencia');
+    const labelMotivo = document.getElementById('label-modal-ausencia-motivo');
+    const textareaMotivo = document.getElementById('modal-ausencia-mensaje');
+    const chipsCur = document.getElementById('chips-sugerencias-curso');
+    const notaModal = document.getElementById('nota-modal-ausencia');
+    const btnSubmit = document.getElementById('btn-submit-modal-ausencia');
+
+    if (tipo === 'curso') {
+        if (btnCur) btnCur.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30";
+        if (btnVac) btnVac.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+        if (iconoDiv) iconoDiv.className = "w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg";
+        if (iconoI) iconoI.className = "fa-solid fa-graduation-cap";
+        if (tituloModal) tituloModal.textContent = "Modo Curso / Capacitación Médica";
+        if (labelSwitch) labelSwitch.textContent = "Activar Modo Curso";
+        if (subSwitch) subSwitch.textContent = "La IA explicará la capacitación y atenderá dudas 24/7";
+        if (toggleBg) toggleBg.className = "w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500";
+        if (labelMotivo) labelMotivo.textContent = "Nombre del Curso, Taller o Congreso Médico";
+        if (chipsCur) chipsCur.classList.remove('hidden');
+        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('periodo vacacional') || textareaMotivo.value.includes('descanso'))) {
+            textareaMotivo.value = "Capacitación y Actualización Médica Continua";
+        }
+        if (notaModal) notaModal.innerHTML = `<span class="text-indigo-400 font-bold">🎓 Rol de la IA:</span> Explicará con calidez y prestigio médico que el equipo está en actualización continua, responderá dudas de métodos 24/7 y registrará pacientes en la <b>Lista de Espera Prioritaria</b>.`;
+        if (btnSubmit) btnSubmit.className = "flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition";
+    } else {
+        if (btnVac) btnVac.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-sky-600/30 text-sky-300 border border-sky-500/30";
+        if (btnCur) btnCur.className = "py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent";
+        if (iconoDiv) iconoDiv.className = "w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg";
+        if (iconoI) iconoI.className = "fa-solid fa-umbrella-beach";
+        if (tituloModal) tituloModal.textContent = "Modo Vacaciones / Receso";
+        if (labelSwitch) labelSwitch.textContent = "Activar Modo Vacaciones";
+        if (subSwitch) subSwitch.textContent = "El bot avisará a los clientes que el equipo está en descanso";
+        if (toggleBg) toggleBg.className = "w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500";
+        if (labelMotivo) labelMotivo.textContent = "Mensaje o Motivo de Vacaciones";
+        if (chipsCur) chipsCur.classList.add('hidden');
+        if (textareaMotivo && (!textareaMotivo.value || textareaMotivo.value.includes('Capacitación'))) {
+            textareaMotivo.value = "Periodo Vacacional de Temporada";
+        }
+        if (notaModal) notaModal.innerHTML = `<span class="text-sky-400 font-bold">🏖️ Rol de la IA:</span> Informará con amabilidad que el equipo está en periodo de descanso y responderá dudas generales de métodos.`;
+        if (btnSubmit) btnSubmit.className = "flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold shadow-md transition";
+    }
+}
+
+function setMotivoCurso(motivo) {
+    const txt = document.getElementById('modal-ausencia-mensaje');
+    if (txt) txt.value = motivo;
+}
+
+function setFechaRapida(opcion) {
+    const inputFecha = document.getElementById('modal-ausencia-fecha');
+    if (!inputFecha) return;
+    const ahora = new Date();
+    let fechaObj = new Date();
+
+    if (typeof opcion === 'number') {
+        fechaObj.setDate(ahora.getDate() + opcion);
+    } else if (opcion === 'viernes') {
+        const diaActual = ahora.getDay(); // 0 dom, 1 lun, ..., 5 vie
+        let diasParaViernes = 5 - diaActual;
+        if (diasParaViernes <= 0) diasParaViernes += 7;
+        fechaObj.setDate(ahora.getDate() + diasParaViernes);
+    } else if (opcion === 'lunes') {
+        const diaActual = ahora.getDay();
+        let diasParaLunes = 1 - diaActual;
+        if (diasParaLunes <= 0) diasParaLunes += 7;
+        fechaObj.setDate(ahora.getDate() + diasParaLunes);
+    }
+
+    const yyyy = fechaObj.getFullYear();
+    const mm = String(fechaObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(fechaObj.getDate()).padStart(2, '0');
+    inputFecha.value = `${yyyy}-${mm}-${dd}`;
 }
 
 function cerrarModalAusencia() {
@@ -1688,15 +1785,16 @@ async function guardarModoAusencia(e) {
     e.preventDefault();
     try {
         const activa = document.getElementById('modal-ausencia-activa').checked;
+        const tipo = document.getElementById('modal-ausencia-tipo') ? document.getElementById('modal-ausencia-tipo').value : 'curso';
         const mensaje = document.getElementById('modal-ausencia-mensaje').value;
         const fecha_fin = document.getElementById('modal-ausencia-fecha').value;
 
         await apiFetch('/api/bot/ausencia', {
             method: 'POST',
-            body: JSON.stringify({ activa, mensaje, fecha_fin })
+            body: JSON.stringify({ activa, tipo, mensaje, fecha_fin })
         });
 
-        alert("💾 Estado de ausencia guardado con éxito.");
+        alert(tipo === 'curso' ? "🎓 Modo Curso / Congreso guardado con éxito." : "🏖️ Estado de vacaciones guardado con éxito.");
         cerrarModalAusencia();
         cargarEstadoControlBot();
     } catch (err) {
