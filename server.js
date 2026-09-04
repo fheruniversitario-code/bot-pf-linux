@@ -3531,15 +3531,24 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
-        // 1. Si el mensaje fue enviado automáticamente por el bot (registrado por ID), no pausar
+        // ── Esperar 400ms para que el interceptor de sendMessage registre el ID ──
+        // (message_create puede dispararse ANTES de que origSendMessage resuelva)
+        await new Promise(r => setTimeout(r, 400));
+
+        // 1. Check por ID (más confiable después del delay)
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
-        // 2. Si el bot acaba de procesar o enviar mensaje a este destino en los últimos 45 segundos, no auto-pausar
+        // 2. Check por JID del destinatario — maneja mismatch @lid vs @c.us
         const targetJid = msg.to || msg.from;
-        if (targetJid) {
+        if (targetJid && targetJid !== 'status@broadcast') {
             const telClean = targetJid.replace(/[^0-9]/g, '');
             const ultimos8 = (telClean && telClean.length >= 8) ? telClean.slice(-8) : '';
-            if (ultimosJidsEnviadosBot.has(targetJid) || (ultimos8 && ultimosJidsEnviadosBot.has(ultimos8))) {
+
+            // Búsqueda exacta O por subcadena de 8 dígitos dentro de cualquier JID registrado
+            const jidBotActivo = ultimosJidsEnviadosBot.has(targetJid) ||
+                (ultimos8 && [...ultimosJidsEnviadosBot.keys()].some(k => k.includes(ultimos8)));
+
+            if (jidBotActivo) {
                 if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
                 return;
             }
@@ -3547,7 +3556,7 @@ client.on('message_create', async (msg) => {
 
         const cuerpoMsg = (msg.body || '').trim();
 
-        // 2. Si este texto exacto o su inicio fue registrado como emitido por el bot en los últimos 30 segundos, no pausar
+        // 3. Check por texto registrado (el interceptor registra el texto antes de enviar)
         let coincideTextoBot = ultimosTextosEnviadosBot.has(cuerpoMsg);
         if (!coincideTextoBot && cuerpoMsg.length >= 10) {
             const prefix = cuerpoMsg.slice(0, 40);
@@ -3563,13 +3572,16 @@ client.on('message_create', async (msg) => {
             return;
         }
 
-        // 3. Si el cuerpo del mensaje comienza con emojis o identificadores del bot, es un mensaje de IA/sistema
+        // 4. Check por emoji/palabra clave de inicio (mensajes del sistema del bot)
         const iconoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
         const esMensajeIA = (
             (iconoConf && cuerpoMsg.startsWith(iconoConf)) ||
             cuerpoMsg.startsWith('🤖') ||
             cuerpoMsg.startsWith('👨‍⚕️') ||
+            cuerpoMsg.startsWith('👤') ||
             cuerpoMsg.startsWith('🏥') ||
+            cuerpoMsg.startsWith('🛍️') ||
+            cuerpoMsg.startsWith('👋') ||
             cuerpoMsg.startsWith('🎓') ||
             cuerpoMsg.startsWith('🇲🇽') ||
             cuerpoMsg.startsWith('🌴') ||
@@ -3584,13 +3596,13 @@ client.on('message_create', async (msg) => {
             cuerpoMsg.startsWith('📌') ||
             cuerpoMsg.startsWith('⏰') ||
             cuerpoMsg.startsWith('⚠️') ||
+            cuerpoMsg.startsWith('🗓️') ||
+            cuerpoMsg.startsWith('💬') ||
+            cuerpoMsg.startsWith('🚨') ||
             cuerpoMsg.includes('Lista de Espera Prioritaria') ||
             cuerpoMsg.includes('asistente virtual') ||
-            cuerpoMsg.includes('Planificación Familiar') ||
-            cuerpoMsg.includes('servicio de Planificación') ||
             cuerpoMsg.includes('reanudarán') ||
             cuerpoMsg.includes('reanudará') ||
-            cuerpoMsg.includes('consulta médica presencial') ||
             (cuerpoMsg.startsWith('!') && (cuerpoMsg.includes('reactivar') || cuerpoMsg.includes('curso') || cuerpoMsg.includes('festivo') || cuerpoMsg.includes('feriado') || cuerpoMsg.includes('asueto') || cuerpoMsg.includes('inhabil') || cuerpoMsg.includes('vacaciones') || cuerpoMsg.includes('probar') || cuerpoMsg.includes('pausar')))
         );
 
