@@ -109,7 +109,7 @@ function registrarTextoEnviadoBot(texto) {
 // ------------------------------------------------------------------------------
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || '';
 const genAI = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
-const MODELOS_GEMINI = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+// Modelos se detectan dinámicamente via obtenerModelosDisponibles() — no hardcodear aquí
 
 // ------------------------------------------------------------------------------
 // 2. HELPERS DE TIEMPO, ANTI-BAN Y UTILIDADES
@@ -2601,7 +2601,7 @@ function limpiarNombreParaSaludo(nombre) {
     }
 
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
-    const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral';
+    const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral'; // Cambia el default en el panel si es necesario
     const enlacePrivacidad = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'enlace_formulario_privacidad'"))?.valor || 'https://forms.gle/zJxZeXXj1TwWGF9N8';
     const mostrarMenuNumerico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'mostrar_menu_numerico'"))?.valor !== '0';
     const estadoHorario = await obtenerEstadoHorarioMexico();
@@ -2804,7 +2804,7 @@ function limpiarNombreParaSaludo(nombre) {
             `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola, ${nombreMostrar}! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*` :
             `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*`;
 
-        let textoMenu = `${saludoHeader}\n\nDe Lunes a Viernes de 2:00 PM a 8:30 PM estamos para servirte. ☺️\n\nElige una opción:\n\n`;
+        let textoMenu = `${saludoHeader}\n\n${horarioFisico ? horarioFisico + ' — ' : ''}¡Estamos para servirte! ☺️\n\nElige una opción:\n\n`;
         try {
             const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
             if (menuRaw) {
@@ -2880,7 +2880,7 @@ function limpiarNombreParaSaludo(nombre) {
             }
         } else if (!estadoHorario.enHorario) {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *Fuera de Horario de Atención en Línea:*\n` +
-                `${saludoPersonal} El horario de atención en línea por este chat de WhatsApp es de Lunes a Viernes de 2:00 PM a 8:30 PM.\n\n` +
+                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioFisico || 'Lunes a Viernes en horario habitual'}.\n\n` +
                 `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
                 `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.`;
         } else {
@@ -3097,31 +3097,7 @@ function limpiarNombreParaSaludo(nombre) {
         const mapsLink = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '';
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
         
-        // Estado de Ausencia / Vacaciones / Curso / Festivo (Manual o Programado en Calendario)
-        let avisoAusencia = '';
-        if (estadoHorario.enReceso) {
-            if (estadoHorario.esFestivo) {
-                avisoAusencia = `\n[ESTADO DE DÍA FESTIVO OFICIAL / INHÁBIL ACTIVO]:
-- Con motivo de: "${estadoHorario.motivoReceso}".
-- REGLAS DE ATENCIÓN CON IA:
-  1. ATENCIÓN INFORMATIVA Y DUDAS NORMALES (TRABAJO HABITUAL): Responde con normalidad, calidez y precisión a cualquier duda sobre métodos anticonceptivos, requisitos, costos o preparaciones. NO menciones de forma proactiva que es día festivo si el paciente sólo está haciendo preguntas informativas.
-  2. SOLICITUD DE ASESOR O CITA PRESENCIAL: SÓLO si el paciente solicita hablar con un asesor humano o agendar una cita médica presencial, infórmale con amabilidad que por tratarse de un día festivo oficial, las citas presenciales y la atención humana se reanudan: ${estadoHorario.proximoTexto}. Confírmale que queda en la Lista de Espera Prioritaria e invítalo a resolver sus dudas médicas contigo mientras tanto.
-  3. PROHIBICIÓN TOTAL: NUNCA ofrezcas un asesor para hoy ni digas que el personal atenderá a las 2:00 PM de hoy. La atención humana presencial será hasta: ${estadoHorario.proximoTexto}.\n`;
-            } else if (estadoHorario.esCurso) {
-                avisoAusencia = `\n[ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO ACTIVO]:
-- Personal en actualización médica continua: "${estadoHorario.motivoReceso}".
-- REGLAS DE ATENCIÓN CON IA:
-  1. ATENCIÓN INFORMATIVA Y DUDAS NORMALES (TRABAJO HABITUAL): Responde con normalidad, calidez y precisión a cualquier duda sobre métodos anticonceptivos, requisitos, costos o preparaciones. NO menciones de forma proactiva la capacitación si el paciente sólo está haciendo preguntas informativas.
-  2. SOLICITUD DE ASESOR O CITA PRESENCIAL: SÓLO si el paciente solicita hablar con un asesor humano o agendar una cita médica presencial, infórmale con orgullo y calidez que el equipo de salud se encuentra en actualización médica continua y que las citas presenciales y la atención humana se reanudan: ${estadoHorario.proximoTexto}. Confírmale que queda anotado en la Lista de Espera Prioritaria.
-  3. PROHIBICIÓN TOTAL: NUNCA ofrezcas un asesor para hoy ni digas que el personal atenderá hoy. La atención humana será hasta: ${estadoHorario.proximoTexto}.\n`;
-            } else {
-                avisoAusencia = `\n[ESTADO DE RECESO / VACACIONES ACTIVO]:
-- Personal en receso debido a: "${estadoHorario.motivoReceso}".
-- REGLAS DE ATENCIÓN CON IA:
-  1. Responde normalmente las dudas del cliente basándote en el catálogo y servicios.
-  2. SÓLO si el cliente pide atención presencial, agendar cita o hablar con un asesor humano, indícale que las citas y el personal se reanudan: ${estadoHorario.proximoTexto}.\n`;
-            }
-        }
+        // Estado de ausencia gestionado en reglaHorarioIA (bloque único, sin redundancias)
 
         // Historial reciente de la conversación (unificando por JID y teléfono)
         const telUltimos8H = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
@@ -3141,7 +3117,7 @@ function limpiarNombreParaSaludo(nombre) {
             if (txt.startsWith('/9j/') || txt.startsWith('data:image')) txt = '📷 (Infografía / Imagen enviada)';
             let emisorTag = 'Cliente';
             if (m.es_mio) {
-                emisorTag = (m.emisor_nombre === 'Asesor Humano' || m.emisor === 'yo') ? 'Asesor Humano (Personal de Salud)' : 'Asistente IA';
+                emisorTag = (m.emisor_nombre === 'Asesor Humano' || m.emisor === 'yo') ? 'Asesor Humano' : 'Asistente IA';
             }
             return `${emisorTag}: ${txt}`;
         }).join('\n');
@@ -3203,19 +3179,19 @@ async function obtenerContenidoGoogleSheets(url) {
 🇲🇽 ESTADO DE DÍA FESTIVO OFICIAL / INHÁBIL:
 - Con motivo de: "${estadoHorario.motivoReceso}".
 - REGLAS DE ATENCIÓN CON IA:
-  1. ¡HAZ TU TRABAJO NORMAL! Responde con calidez médica, claridad y detalle cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU Mirena/Jaydess/cobre/plata, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos de edad, documentos, costos o efectos secundarios.
-  2. NO menciones que hoy es festivo de forma anticipada a menos que el paciente pida agendar una cita presencial o hablar con una persona.
-  3. SÓLO si el paciente pide cita presencial o asesor humano, aclara que la atención humana y las citas en clínica se reanudan ${estadoHorario.proximoTexto} por día festivo oficial, y que queda anotado(a) en la Lista de Espera Prioritaria.
-  4. PROHIBIDO decir que un asesor lo atenderá hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
+  1. ¡HAZ TU TRABAJO NORMAL! Responde con calidez y detalle cualquier duda sobre los productos, servicios o catálogo del negocio, costos, disponibilidad y requisitos.
+  2. NO menciones que hoy es festivo de forma proactiva a menos que el cliente pida un turno presencial, una cita o hablar con una persona.
+  3. SÓLO si el cliente pide turno presencial o asesor humano, aclara que la atención humana se reanuda ${estadoHorario.proximoTexto} por día festivo oficial, y que queda anotado(a) en la Lista de Espera Prioritaria.
+  4. PROHIBIDO ofrecer un asesor para hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
             } else if (estadoHorario.esCurso) {
                 reglaHorarioIA = `
 🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
 - El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
 - REGLAS DE ATENCIÓN CON IA:
-  1. ¡HAZ TU TRABAJO NORMAL! Responde de inmediato cualquier duda sobre métodos, costos, indicaciones y preparaciones.
-  2. NO menciones que el personal está en capacitación a menos que el paciente pida agendar una cita médica presencial o hablar con el personal.
-  3. SÓLO si solicita cita presencial o hablar con el médico, explica que el equipo de salud se encuentra en actualización médica continua y que las citas presenciales se reanudan ${estadoHorario.proximoTexto}, dejándolo anotado en la Lista de Espera Prioritaria.
-  4. PROHIBIDO decir que un asesor lo atenderá hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
+  1. ¡HAZ TU TRABAJO NORMAL! Responde de inmediato cualquier duda sobre el catálogo, productos, servicios, costos y disponibilidad.
+  2. NO menciones que el equipo está en capacitación a menos que el cliente pida un turno presencial o hablar con el personal.
+  3. SÓLO si solicita turno presencial o hablar con un asesor, explica que el equipo se encuentra en actualización continua y que la atención humana se reanuda ${estadoHorario.proximoTexto}, dejándolo anotado en la Lista de Espera Prioritaria.
+  4. PROHIBIDO ofrecer un asesor para hoy; la atención humana será hasta ${estadoHorario.proximoTexto}.`;
             } else {
                 reglaHorarioIA = `
 🔴 ESTADO DE RECESO / VACACIONES:
@@ -3228,31 +3204,30 @@ async function obtenerContenidoGoogleSheets(url) {
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
 - Actualmente estamos FUERA del horario en que el personal humano responde mensajes por este chat. El personal responderá mensajes y coordinará citas por WhatsApp: ${estadoHorario.proximoTexto}.
 - REGLAS ESTRICTAS DE HORARIO Y CITAS (NO CONFUNDIR ATENCIÓN EN LÍNEA CON ATENCIÓN FÍSICA):
-  1. NUNCA le digas al paciente "te esperamos a las 2:00 PM", ni "nuestro personal te atenderá a las 2:00 PM", ni ninguna frase que le haga pensar que debe presentarse físicamente en la clínica a esa hora.
-  2. Aclara SIEMPRE que el horario (ej: lunes a viernes de 2:00 PM a 8:30 PM) es de ATENCIÓN EN LÍNEA POR WHATSAPP para responder dudas y agendar citas.
-  3. Para cualquier procedimiento médico presencial (retiro o colocación de implante subdérmico, DIU, vasectomía, revisiones, etc.), la atención en la clínica es EXCLUSIVAMENTE CON CITA PREVIA CONFIRMADA.
-  4. Adviértele con amabilidad pero firmeza que NO acuda a la unidad sin una cita confirmada, ya que no se brinda atención médica sin un espacio previamente agendado.
-  5. Si el paciente pide explícitamente una cita médica presencial, confírmale que su solicitud quedó registrada para coordinarla en cuanto inicie el turno en línea.`;
+  1. NUNCA le digas al cliente que puede acudir o presentarse físicamente sin haber coordinado previamente por este chat.
+  2. Aclara que el horario de atención en línea (${horarioFisico || 'el horario habitual de atención'}) es para responder dudas por WhatsApp y coordinar citas o pedidos.
+  3. Para cualquier atención, entrega de producto o servicio presencial, el cliente debe coordinarlo previamente por este chat.
+  4. Adviértele amablemente que no visite las instalaciones sin haber coordinado previamente, ya que no siempre es posible atenderlo de forma inmediata.
+  5. Si el cliente pide explícitamente un turno o cita, confírmale que su solicitud quedó registrada para coordinarla en cuanto inicie el turno de atención en línea.`;
         } else {
             reglaHorarioIA = `
 🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO DE CHAT):
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
-- Actualmente el personal humano de salud está EN TURNO atendiendo mensajes por este chat.
-- REGLA DE ATENCIÓN MÉDICA Y CONTINUIDAD: Toda atención presencial en la clínica es EXCLUSIVAMENTE CON CITA PREVIA CONFIRMADA. Responde tú mismo con calidez y precisión las dudas sobre métodos, requisitos, cuidados y preparaciones. NUNCA le digas al paciente que 'escriba asesor' o que 'hable con un asesor' si tú tienes la información para resolver su duda o si la conversación ya está en curso.`;
+- Actualmente el equipo humano del negocio está EN TURNO atendiendo mensajes por este chat.
+- REGLA DE CONTINUIDAD: Responde tú con calidez y precisión cualquier duda del cliente sobre el catálogo, productos, servicios, requisitos y disponibilidad. NUNCA le digas que 'escriba asesor' o que 'hable con un asesor' si tú tienes la información para resolver su duda o si la conversación ya está en curso.`;
         }
 
         const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
         const instruccionNombre = nomLimpioIA
-            ? `- Nombre del cliente/paciente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
-            : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
+            ? `- Nombre del cliente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
+            : `- Nombre del cliente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
 
         const reglaHorarioBase = estadoHorario.enReceso
             ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'CAPACITACIÓN MÉDICA' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el personal de salud se encuentra en jornadas de capacitación médica' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
-            : `3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.`;
+            : `3. El horario configurado (${horarioFisico || 'el horario habitual de atención'}) es de ATENCIÓN EN LÍNEA POR WHATSAPP para resolver dudas y coordinar citas o pedidos.`;
 
         const systemInstruction = `
 ${configPrompt}
-${avisoAusencia}
 ${reglaHorarioIA}
 
 CLIENTE / PACIENTE ACTUAL:
@@ -3273,18 +3248,18 @@ INFORMACIÓN DE UBICACIÓN Y HORARIOS:
 INFORMACIÓN DE PAGOS / BANCOS:
 ${datosBancos}
 
-INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
-- REGLA DE ORO DE CITAS Y ATENCIÓN PRESENCIAL:
-  1. Toda atención médica presencial (retiro o colocación de implante subdérmico, vasectomía, DIU, procedimientos) es ESTRICTAMENTE CON CITA PREVIA AGENDADA Y CONFIRMADA.
-  2. NUNCA le digas a un paciente que acuda a la clínica a las 2:00 PM ni le des a entender que puede llegar sin cita.
+INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
+- REGLA DE ORO DE CITAS / TURNOS Y ATENCIÓN PRESENCIAL:
+  1. Cualquier atención, entrega o servicio que requiera agenda debe realizarse CON CITA / TURNO PREVIO COORDINADO POR ESTE CHAT.
+  2. NUNCA le digas al cliente que puede llegar sin un turno o cita previamente coordinada por este chat.
   ${reglaHorarioBase}
-  4. ADVIERTE SIEMPRE: "Recuerda que toda atención presencial en la unidad es exclusivamente con cita previa. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este medio, ya que no es posible atenderte sin un espacio reservado en la agenda."
+  4. Si aplica para el tipo de negocio, recuerda al cliente que ciertos servicios o atenciones presenciales requieren turno o cita previa coordinada por este chat.
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
 - REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
-  * Si un asesor humano (personal de salud) estuvo platicando con el paciente o si el bot fue reanudado, TÚ DEBES TOMAR EL RELEVO Y CONTINUAR LA CONVERSACIÓN NATURALMENTE.
-  * Lee con máxima atención el 'Historial reciente' donde aparecen los mensajes de 'Asesor Humano (Personal de Salud)': infografías enviadas, recomendaciones, indicaciones o métodos tratados.
+  * Si un asesor humano estuvo platicando con el cliente o si el bot fue reanudado, TÚ DEBES TOMAR EL RELEVO Y CONTINUAR LA CONVERSACIÓN NATURALMENTE.
+  * Lee con máxima atención el 'Historial reciente' donde aparecen los mensajes de 'Asesor Humano': lo que se trató, recomendaciones, pedidos o información brindada.
   * PROHIBICIÓN TOTAL: NO reinicies la plática, NO envíes menús, NO des saludos largos de bienvenida, y BAJO NINGUNA CIRCUNSTANCIA le digas al cliente que 'escriba asesor' o que 'se comunique con un asesor'.
-  * RESPONDE TÚ DIRECTAMENTE a la duda del paciente (sobre la infografía, dolor, preparación, dudas médicas, citas o tiempos) como un personal de salud cálido, empático y experto.
+  * RESPONDE TÚ DIRECTAMENTE a la duda del cliente (sobre lo que se trató, productos, pedidos, citas o seguimiento) con calidez, empatía y precisión.
 - REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
 - Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.
