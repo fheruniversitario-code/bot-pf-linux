@@ -75,8 +75,18 @@ let botPausadoGlobal = false;
 const chatsPausados = new Map(); // JID -> Timestamp de inicio de pausa
 const idsMensajesEnviadosBot = new Set();
 const idsMensajesRecibidos = new Set(); // Para deduplicación estricta de mensajes entrantes
-const chatsEnProceso = new Set(); // Bloqueo de concurrencia para evitar respuestas dobles
+const chatsEnProceso = new Map(); // JID -> Timestamp inicio (bloqueo concurrente con expiración automática TTL)
+const ultimosTextosEnviadosBot = new Map(); // Texto limpio -> Timestamp (para evitar que el bot se auto-pause a sí mismo)
 const colasProcesamiento = new Map();
+
+function registrarTextoEnviadoBot(texto) {
+    if (!texto) return;
+    const ahora = Date.now();
+    for (const [t, ts] of ultimosTextosEnviadosBot.entries()) {
+        if (ahora - ts > 30000) ultimosTextosEnviadosBot.delete(t);
+    }
+    ultimosTextosEnviadosBot.set(texto.trim(), ahora);
+}
 
 // ------------------------------------------------------------------------------
 // 1. CONFIGURACIÓN DE GEMINI AI
@@ -1690,7 +1700,12 @@ async function obtenerEstadoHorarioMexico() {
         const esCurso = (ausenciaTipo === 'curso');
         let proximoTexto = esCurso ? 'al reanudar actividades tras la jornada de capacitación médica' : 'al reanudar actividades tras el periodo vacacional';
         if (ausenciaFechaFin) {
-            proximoTexto = `el próximo ${ausenciaFechaFin} a primera hora`;
+            const fFinLower = ausenciaFechaFin.toLowerCase().trim();
+            if (fFinLower.startsWith('mañana') || fFinLower.startsWith('hoy') || fFinLower.startsWith('el ') || fFinLower.startsWith('en ')) {
+                proximoTexto = `${ausenciaFechaFin} a primera hora`;
+            } else {
+                proximoTexto = `el próximo ${ausenciaFechaFin} a primera hora`;
+            }
         }
         return {
             enHorario: false,
@@ -1886,6 +1901,25 @@ const client = new Client({
         ]
     }
 });
+
+// Interceptor seguro de client.sendMessage para registrar de inmediato mensajes salientes del bot
+const origSendMessage = client.sendMessage.bind(client);
+client.sendMessage = async function(chatId, content, options) {
+    try {
+        if (typeof content === 'string') {
+            registrarTextoEnviadoBot(content);
+        } else if (options && options.caption) {
+            registrarTextoEnviadoBot(options.caption);
+        }
+    } catch(eReg) {}
+    const res = await origSendMessage(chatId, content, options);
+    try {
+        if (res && res.id && res.id._serialized) {
+            idsMensajesEnviadosBot.add(res.id._serialized);
+        }
+    } catch(eId) {}
+    return res;
+};
 
 let tiempoInicioLoadingSaaS = null;
 let ultimoPorcentajeSaaS = null;
@@ -2370,13 +2404,14 @@ function limpiarNombreParaSaludo(nombre) {
 
     if (!texto) return;
 
-    // Bloqueo de concurrencia: si el cliente envía varios mensajes seguidos, todos se guardan en el panel, pero evitamos generar respuestas duplicadas
+    // Bloqueo de concurrencia inteligente con expiración automática TTL (25s)
     if (!esGrupo) {
-        if (chatsEnProceso.has(remitente)) {
+        const tiempoInicioProc = chatsEnProceso.get(remitente);
+        if (tiempoInicioProc && (Date.now() - tiempoInicioProc < 25000)) {
             console.log(`⏳ Mensaje registrado en historial. Ya hay una respuesta procesándose para ${remitente}. Omitiendo respuesta concurrente.`);
             return;
         }
-        chatsEnProceso.add(remitente);
+        chatsEnProceso.set(remitente, Date.now());
     }
 
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
@@ -2987,6 +3022,10 @@ async function obtenerContenidoGoogleSheets(url) {
             ? `- Nombre del cliente/paciente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
             : `- Nombre del cliente/paciente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
 
+        const reglaHorarioBase = estadoHorario.enReceso
+            ? `3. REGLA ESTRICTA POR RECESO / CAPACITACIÓN: Actualmente el personal humano de salud se encuentra en ${estadoHorario.esCurso ? 'jornadas de capacitación médica y congreso' : 'receso vacacional'}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy o de mañana mientras estemos en receso/capacitación.`
+            : `3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.`;
+
         const systemInstruction = `
 ${configPrompt}
 ${avisoAusencia}
@@ -3014,7 +3053,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN MÉDICA Y SEGURIDAD:
 - REGLA DE ORO DE CITAS Y ATENCIÓN PRESENCIAL:
   1. Toda atención médica presencial (retiro o colocación de implante subdérmico, vasectomía, DIU, procedimientos) es ESTRICTAMENTE CON CITA PREVIA AGENDADA Y CONFIRMADA.
   2. NUNCA le digas a un paciente que acuda a la clínica a las 2:00 PM ni le des a entender que puede llegar sin cita.
-  3. El horario (lunes a viernes de 2:00 PM a 8:30 PM) corresponde a la ATENCIÓN EN LÍNEA POR WHATSAPP del personal humano para resolver dudas y agendar citas.
+  ${reglaHorarioBase}
   4. ADVIERTE SIEMPRE: "Recuerda que toda atención presencial en la unidad es exclusivamente con cita previa. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este medio, ya que no es posible atenderte sin un espacio reservado en la agenda."
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
 - REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
@@ -3253,17 +3292,32 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
-        // Si el mensaje fue enviado automáticamente por el bot, no pausar
+        // 1. Si el mensaje fue enviado automáticamente por el bot (registrado por ID), no pausar
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
-        // Si el cuerpo del mensaje comienza con emojis o identificadores del bot, es un mensaje de IA
         const cuerpoMsg = (msg.body || '').trim();
+
+        // 2. Si este texto exacto fue registrado como emitido por el bot en los últimos 30 segundos, no pausar
+        if (ultimosTextosEnviadosBot.has(cuerpoMsg)) {
+            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
+            return;
+        }
+
+        // 3. Si el cuerpo del mensaje comienza con emojis o identificadores del bot, es un mensaje de IA/sistema
         const esMensajeIA = (
             cuerpoMsg.startsWith('🤖') ||
             cuerpoMsg.startsWith('👨‍⚕️') ||
             cuerpoMsg.startsWith('🏥') ||
             cuerpoMsg.startsWith('🎓') ||
-            cuerpoMsg.startsWith('🌴')
+            cuerpoMsg.startsWith('🌴') ||
+            cuerpoMsg.startsWith('✅') ||
+            cuerpoMsg.startsWith('🧪') ||
+            cuerpoMsg.startsWith('🛡️') ||
+            cuerpoMsg.startsWith('🖼️') ||
+            cuerpoMsg.startsWith('🎙️') ||
+            cuerpoMsg.startsWith('📋') ||
+            cuerpoMsg.startsWith('🎉') ||
+            (cuerpoMsg.startsWith('!') && (cuerpoMsg.includes('reactivar') || cuerpoMsg.includes('curso') || cuerpoMsg.includes('vacaciones')))
         );
 
         if (esMensajeIA) {
