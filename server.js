@@ -2171,16 +2171,12 @@ async function procesarMensajeEntrante(msg) {
         if (!msg || msg.from === 'status@broadcast') return;
         remitente = msg.from;
 
-        console.log(`📨 [MSG_IN] de=${remitente} body="${(msg.body||'').slice(0,40)}" type=${msg.type}`);
-
-        // NOTA: No se checa idsMensajesEnviadosBot aquí — el evento 'message' solo dispara
-        // para mensajes ENTRANTES (fromMe=false). Los IDs de mensajes del bot nunca deben
-        // estar aquí. El check fue eliminado porque causaba falsos positivos.
+        // NOTA: El evento 'message' solo dispara para mensajes ENTRANTES (fromMe=false).
+        // No se checa idsMensajesEnviadosBot aquí — esos IDs son de mensajes del bot.
 
         // Deduplicación estricta por ID de mensaje de WhatsApp
         if (msg.id && msg.id._serialized) {
             if (idsMensajesRecibidos.has(msg.id._serialized)) {
-                console.log(`🔁 [MSG_IN] DESCARTADO: ID duplicado en idsMensajesRecibidos`);
                 return;
             }
             idsMensajesRecibidos.add(msg.id._serialized);
@@ -2550,13 +2546,9 @@ function limpiarNombreParaSaludo(nombre) {
     const remitenteNum = remitente.replace(/[^0-9]/g, '');
     const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
 
-    console.log(`🔑 [MSG_IN] esAdmin=${esAdminRemitente} remNum=${remitenteNum} telReal=${telefonoReal} admins=${adminsArray.join(',')}`);
-
     if (esAdminRemitente) {
         const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
-        console.log(`🧪 [MSG_IN] Admin detectado. modoPrueba=${modoPruebaActivo}`);
         if (!modoPruebaActivo) {
-            console.log(`🔇 [MSG_IN] DESCARTADO: Admin sin modo prueba activo`);
             // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
             return;
         }
@@ -2564,16 +2556,10 @@ function limpiarNombreParaSaludo(nombre) {
 
     // Pausa Global
     const pausadoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'bot_pausado_global'"))?.valor === '1';
-    if (botPausadoGlobal || pausadoConf) {
-        console.log(`⏸️ [MSG_IN] DESCARTADO: pausa global (mem=${botPausadoGlobal}, db=${pausadoConf})`);
-        return;
-    }
+    if (botPausadoGlobal || pausadoConf) return;
 
     const contactoBD = await getQuery("SELECT es_ignorado FROM contactos WHERE jid = ?", [remitente]);
-    if (contactoBD && contactoBD.es_ignorado === 1) {
-        console.log(`🚫 [MSG_IN] DESCARTADO: contacto ignorado`);
-        return;
-    }
+    if (contactoBD && contactoBD.es_ignorado === 1) return;
 
     // --------------------------------------------------------------------------
     // VERIFICACIÓN DE PAUSA INDIVIDUAL POR INTERVENCIÓN HUMANA
@@ -3556,20 +3542,15 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
-        const _mcTargetJid = msg.to || msg.from || 'desconocido';
         const _mcTimeSince = Date.now() - ultimoEnvioBotMs;
-        console.log(`🔍 [MSG_CREATE] fromMe=true | dest=${_mcTargetJid} | pendientes=${botEnviosPendientes} | msSinceEnvio=${_mcTimeSince} | body="${(msg.body||'').slice(0,30)}"`);
 
         // ── CHECK #0: ¿Hay un sendMessage del bot en vuelo ahora mismo? ──────────────
+        // message_create SIEMPRE dispara MIENTRAS origSendMessage aún está en await.
+        // botEnviosPendientes > 0 = envío en vuelo; msSince < 2000 = ventana post-envío.
+        // ⚠️ NO añadir msg.id a idsMensajesEnviadosBot aquí — el interceptor ya lo hace.
         if (botEnviosPendientes > 0 || _mcTimeSince < 2000) {
-            console.log(`✅ [MSG_CREATE] Detectado como mensaje del BOT (pendientes=${botEnviosPendientes}, msSince=${_mcTimeSince}). No auto-pausa.`);
-            // ⚠️  NO añadir msg.id a idsMensajesEnviadosBot aquí — solo el interceptor lo hace.
-            // Si añadiéramos aquí, mensajes del USUARIO enviados dentro de la ventana de 2s
-            // quedarían marcados como "del bot" y procesarMensajeEntrante los descartaría.
             return;
         }
-
-        console.log(`⚠️  [MSG_CREATE] No detectado como bot (pendientes=${botEnviosPendientes}, msSince=${_mcTimeSince}). Continuando checks...`);
 
         // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
         await new Promise(r => setTimeout(r, 300));
@@ -3656,7 +3637,6 @@ client.on('message_create', async (msg) => {
         const minsPausa = parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'tiempo_pausa_humano_mins'"))?.valor || '30', 10);
 
         // 1. Pausar inmediatamente el chat para este destinatario
-        console.log(`🛑 [AUTO-PAUSA] Activando pausa para ${targetJid}. body="${(msg.body||'').slice(0,50)}" pendientes=${botEnviosPendientes} msSince=${Date.now()-ultimoEnvioBotMs}`);
         chatsPausados.set(targetJid, Date.now());
 
         // 2. Si el número tiene otros identificadores asociados (ej: @c.us y @lid), pausar ambos y emitir a ambos
