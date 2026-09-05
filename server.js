@@ -3540,14 +3540,18 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
+        const _mcTargetJid = msg.to || msg.from || 'desconocido';
+        const _mcTimeSince = Date.now() - ultimoEnvioBotMs;
+        console.log(`🔍 [MSG_CREATE] fromMe=true | dest=${_mcTargetJid} | pendientes=${botEnviosPendientes} | msSinceEnvio=${_mcTimeSince} | body="${(msg.body||'').slice(0,30)}"`);
+
         // ── CHECK #0: ¿Hay un sendMessage del bot en vuelo ahora mismo? ──────────────
-        // message_create SIEMPRE dispara MIENTRAS origSendMessage aún está en await.
-        // Si botEnviosPendientes > 0, este evento ES del bot — sin importar JID o formato.
-        // También cubre la ventana de 2s post-envío por si el evento llega tarde.
-        if (botEnviosPendientes > 0 || Date.now() - ultimoEnvioBotMs < 2000) {
+        if (botEnviosPendientes > 0 || _mcTimeSince < 2000) {
+            console.log(`✅ [MSG_CREATE] Detectado como mensaje del BOT (pendientes=${botEnviosPendientes}, msSince=${_mcTimeSince}). No auto-pausa.`);
             if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
             return;
         }
+
+        console.log(`⚠️  [MSG_CREATE] No detectado como bot (pendientes=${botEnviosPendientes}, msSince=${_mcTimeSince}). Continuando checks...`);
 
         // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
         await new Promise(r => setTimeout(r, 300));
@@ -3634,6 +3638,7 @@ client.on('message_create', async (msg) => {
         const minsPausa = parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'tiempo_pausa_humano_mins'"))?.valor || '30', 10);
 
         // 1. Pausar inmediatamente el chat para este destinatario
+        console.log(`🛑 [AUTO-PAUSA] Activando pausa para ${targetJid}. body="${(msg.body||'').slice(0,50)}" pendientes=${botEnviosPendientes} msSince=${Date.now()-ultimoEnvioBotMs}`);
         chatsPausados.set(targetJid, Date.now());
 
         // 2. Si el número tiene otros identificadores asociados (ej: @c.us y @lid), pausar ambos y emitir a ambos
