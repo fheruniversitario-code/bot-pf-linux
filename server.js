@@ -2170,11 +2170,18 @@ async function procesarMensajeEntrante(msg) {
     try {
         if (!msg || msg.from === 'status@broadcast') return;
         remitente = msg.from;
-        if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
+
+        console.log(`📨 [MSG_IN] de=${remitente} body="${(msg.body||'').slice(0,40)}" type=${msg.type}`);
+
+        if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) {
+            console.log(`🔁 [MSG_IN] DESCARTADO: ID en idsMensajesEnviadosBot`);
+            return;
+        }
 
         // Deduplicación estricta por ID de mensaje de WhatsApp
         if (msg.id && msg.id._serialized) {
             if (idsMensajesRecibidos.has(msg.id._serialized)) {
+                console.log(`🔁 [MSG_IN] DESCARTADO: ID duplicado en idsMensajesRecibidos`);
                 return;
             }
             idsMensajesRecibidos.add(msg.id._serialized);
@@ -2544,9 +2551,13 @@ function limpiarNombreParaSaludo(nombre) {
     const remitenteNum = remitente.replace(/[^0-9]/g, '');
     const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
 
+    console.log(`🔑 [MSG_IN] esAdmin=${esAdminRemitente} remNum=${remitenteNum} telReal=${telefonoReal} admins=${adminsArray.join(',')}`);
+
     if (esAdminRemitente) {
         const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
+        console.log(`🧪 [MSG_IN] Admin detectado. modoPrueba=${modoPruebaActivo}`);
         if (!modoPruebaActivo) {
+            console.log(`🔇 [MSG_IN] DESCARTADO: Admin sin modo prueba activo`);
             // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
             return;
         }
@@ -2554,10 +2565,16 @@ function limpiarNombreParaSaludo(nombre) {
 
     // Pausa Global
     const pausadoConf = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'bot_pausado_global'"))?.valor === '1';
-    if (botPausadoGlobal || pausadoConf) return;
+    if (botPausadoGlobal || pausadoConf) {
+        console.log(`⏸️ [MSG_IN] DESCARTADO: pausa global (mem=${botPausadoGlobal}, db=${pausadoConf})`);
+        return;
+    }
 
     const contactoBD = await getQuery("SELECT es_ignorado FROM contactos WHERE jid = ?", [remitente]);
-    if (contactoBD && contactoBD.es_ignorado === 1) return;
+    if (contactoBD && contactoBD.es_ignorado === 1) {
+        console.log(`🚫 [MSG_IN] DESCARTADO: contacto ignorado`);
+        return;
+    }
 
     // --------------------------------------------------------------------------
     // VERIFICACIÓN DE PAUSA INDIVIDUAL POR INTERVENCIÓN HUMANA
