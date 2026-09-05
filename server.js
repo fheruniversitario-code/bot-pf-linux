@@ -2046,23 +2046,32 @@ const client = new Client({
     }
 });
 
-// Interceptor seguro de client.sendMessage para registrar de inmediato mensajes salientes del bot
-// CRÍTICO: se registra el chatId real (JID del destinatario) para que message_create
-// nunca confunda mensajes del bot con mensajes humanos y no active auto-pausa.
+// Contador global de envíos en vuelo (pendientes de resolución)
+// Cuando message_create detecta que hay envíos pendientes, sabe que ES un mensaje del bot.
+let botEnviosPendientes = 0;
+let ultimoEnvioBotMs = 0;
+
+// Interceptor seguro de client.sendMessage
 const origSendMessage = client.sendMessage.bind(client);
 client.sendMessage = async function(chatId, content, options) {
     try {
-        // Registrar el JID real del destinatario + el texto para evitar auto-pausa
         const textContent = typeof content === 'string' ? content : (options?.caption || '');
         if (typeof registrarEnvioBot === 'function') registrarEnvioBot(chatId, textContent);
     } catch(eReg) {}
-    const res = await origSendMessage(chatId, content, options);
+
+    botEnviosPendientes++;   // ← marca: hay un envío en vuelo
     try {
-        if (res && res.id && res.id._serialized) {
-            idsMensajesEnviadosBot.add(res.id._serialized);
-        }
-    } catch(eId) {}
-    return res;
+        const res = await origSendMessage(chatId, content, options);
+        try {
+            if (res && res.id && res.id._serialized) {
+                idsMensajesEnviadosBot.add(res.id._serialized);
+            }
+        } catch(eId) {}
+        return res;
+    } finally {
+        ultimoEnvioBotMs = Date.now();                         // ← timestamp del último envío completado
+        botEnviosPendientes = Math.max(0, botEnviosPendientes - 1);
+    }
 };
 
 let tiempoInicioLoadingSaaS = null;
@@ -3531,11 +3540,19 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
-        // ── Esperar 400ms para que el interceptor de sendMessage registre el ID ──
-        // (message_create puede dispararse ANTES de que origSendMessage resuelva)
-        await new Promise(r => setTimeout(r, 400));
+        // ── CHECK #0: ¿Hay un sendMessage del bot en vuelo ahora mismo? ──────────────
+        // message_create SIEMPRE dispara MIENTRAS origSendMessage aún está en await.
+        // Si botEnviosPendientes > 0, este evento ES del bot — sin importar JID o formato.
+        // También cubre la ventana de 2s post-envío por si el evento llega tarde.
+        if (botEnviosPendientes > 0 || Date.now() - ultimoEnvioBotMs < 2000) {
+            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
+            return;
+        }
 
-        // 1. Check por ID (más confiable después del delay)
+        // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
+        await new Promise(r => setTimeout(r, 300));
+
+        // 1. Check por ID
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         // 2. Check por JID del destinatario — maneja mismatch @lid vs @c.us
