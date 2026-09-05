@@ -2173,10 +2173,9 @@ async function procesarMensajeEntrante(msg) {
 
         console.log(`📨 [MSG_IN] de=${remitente} body="${(msg.body||'').slice(0,40)}" type=${msg.type}`);
 
-        if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) {
-            console.log(`🔁 [MSG_IN] DESCARTADO: ID en idsMensajesEnviadosBot`);
-            return;
-        }
+        // NOTA: No se checa idsMensajesEnviadosBot aquí — el evento 'message' solo dispara
+        // para mensajes ENTRANTES (fromMe=false). Los IDs de mensajes del bot nunca deben
+        // estar aquí. El check fue eliminado porque causaba falsos positivos.
 
         // Deduplicación estricta por ID de mensaje de WhatsApp
         if (msg.id && msg.id._serialized) {
@@ -3564,7 +3563,9 @@ client.on('message_create', async (msg) => {
         // ── CHECK #0: ¿Hay un sendMessage del bot en vuelo ahora mismo? ──────────────
         if (botEnviosPendientes > 0 || _mcTimeSince < 2000) {
             console.log(`✅ [MSG_CREATE] Detectado como mensaje del BOT (pendientes=${botEnviosPendientes}, msSince=${_mcTimeSince}). No auto-pausa.`);
-            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
+            // ⚠️  NO añadir msg.id a idsMensajesEnviadosBot aquí — solo el interceptor lo hace.
+            // Si añadiéramos aquí, mensajes del USUARIO enviados dentro de la ventana de 2s
+            // quedarían marcados como "del bot" y procesarMensajeEntrante los descartaría.
             return;
         }
 
@@ -3573,7 +3574,7 @@ client.on('message_create', async (msg) => {
         // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
         await new Promise(r => setTimeout(r, 300));
 
-        // 1. Check por ID
+        // 1. Check por ID confirmado por el interceptor (origSendMessage)
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         // 2. Check por JID del destinatario — maneja mismatch @lid vs @c.us
