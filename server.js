@@ -3421,19 +3421,11 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
             console.log(`🤖 [Auto-Reparación IA]: Modelo actualizado dinámicamente a: ${modeloExitoso}`);
         }
 
-        // Si todos los servidores de Gemini están saturados o caídos (503/429/Offline), activar Respaldo Inteligente Local
+        // Google AI está saturado o falló. Eliminamos el mensaje genérico de emergencia por petición del cliente.
+        // El bot se quedará en silencio esperando que el cliente vuelva a intentar, o simplemente fallará silenciosamente.
         if (!respuestaIA) {
-            console.warn("⚠️ Google AI experimentó saturación (503). Entregando respuesta local de contingencia...");
-            const configObj = {
-                icono_asistente: iconoAsistente,
-                nombre_negocio: nombreNegocio,
-                ubicacion_direccion: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_direccion'"))?.valor || '',
-                ubicacion_maps_link: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '',
-                horario_sucursal_fisica: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '',
-                catalogo_servicios: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'catalogo_servicios'"))?.valor || '',
-                datos_bancarios: (await getQuery("SELECT valor FROM configuracion WHERE clave = 'datos_bancarios'"))?.valor || ''
-            };
-            respuestaIA = generarRespuestaEmergencia(texto, configObj, estadoHorario);
+            console.error("❌ Fallo total de IA. No se enviará mensaje de emergencia.");
+            return;
         }
 
         if (respuestaIA) {
