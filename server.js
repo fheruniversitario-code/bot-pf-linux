@@ -3292,6 +3292,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida. Ve directo a responder la duda de forma fluida.
 - REGLA DE RESPUESTAS MÉDICAS O TÉCNICAS: Si te preguntan sobre un procedimiento (ej. "cómo se coloca", "¿duele?", "¿usan anestesia?"), DEBES responder la duda con información educativa directa y precisa basada en la clínica, ANTES de recordarles que requieren valoración presencial. NUNCA te niegues a dar la información.
 - REGLA DE FORMATO ÚNICO: Proporciona tu respuesta completa en un texto continuo. NO dividas tu respuesta en párrafos desconectados ni saludes varias veces en el mismo mensaje.
+- REGLA DE DETECCIÓN DE CITAS (CRÍTICO): Si el usuario te confirma que desea agendar una cita, apartar un turno, o solicita hablar con el personal humano, DEBES incluir obligatoriamente la etiqueta oculta [REQUERIR_HUMANO] al final de tu mensaje. Esto le avisará al sistema que debe anotar al paciente de inmediato en el panel.
 - REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
   * Si un asesor humano estuvo platicando con el cliente, toma el relevo naturalmente.
   * PROHIBICIÓN TOTAL: NO reinicies la plática ni envíes menús largos.
@@ -3432,6 +3433,28 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
 
         if (respuestaIA) {
             let textoRespuestaFinal = respuestaIA.trim();
+
+            // Interceptar etiqueta oculta de la IA para registrar cita/asesor humano automáticamente
+            if (textoRespuestaFinal.includes('[REQUERIR_HUMANO]')) {
+                textoRespuestaFinal = textoRespuestaFinal.replace(/\[REQUERIR_HUMANO\]/g, '').trim();
+                try {
+                    const telLimpioIA = remitente.replace(/[^0-9]/g, '');
+                    // Buscar si ya existe la solicitud pendiente
+                    const yaExisteIA = await getQuery("SELECT id FROM solicitudes_asesor WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [remitente, `%${telLimpioIA}%`]);
+                    if (!yaExisteIA) {
+                        const nomContactoIA = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : (pushname || 'Paciente / Cliente');
+                        await runQuery(
+                            "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
+                            [remitente, telLimpioIA, nomContactoIA, 'Cita/Asesor (Detectado por IA)', obtenerFechaHoraLocal(), Date.now()]
+                        );
+                        // Emitir al SuperAdmin en tiempo real
+                        io.emit('solicitud_asesor_actualizada');
+                    }
+                } catch(eIA) {
+                    console.error("Error al registrar solicitud de asesor desde IA:", eIA.message);
+                }
+            }
+
             if (iconoAsistente && !textoRespuestaFinal.startsWith(iconoAsistente)) {
                 textoRespuestaFinal = `${iconoAsistente} ${textoRespuestaFinal}`;
             }
