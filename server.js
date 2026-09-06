@@ -13,6 +13,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const multer = require('multer');
 
 const { db, runQuery, getQuery, allQuery, inicializarBD, DB_PATH } = require('./db');
+const Auditor = require('./auditor');
 
 const DIR_UPLOADS = path.join(__dirname, 'public', 'uploads');
 const DIR_DOCS = path.join(__dirname, 'documentos');
@@ -2129,6 +2130,11 @@ client.on('disconnected', (reason) => {
     io.emit('estado_whatsapp', { conectado: false, reason });
     io.emit('estado_control_actualizado', { wsClienteConectado: false });
     console.log('❌ WhatsApp se ha desconectado:', reason);
+    
+    // Auto-reparación vía Auditor al detectar desconexión fuerte
+    Auditor.registrarEvento('CRITICO', `Desconexión de WhatsApp detectada. Razón: ${reason}. Forzando reinicio para sanar...`).then(() => {
+        setTimeout(() => process.exit(1), 2000);
+    });
 });
 
 // Guardián Activo y Keep-Alive periódico cada 60 segundos
@@ -2547,6 +2553,12 @@ function limpiarNombreParaSaludo(nombre) {
     const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
 
     if (esAdminRemitente) {
+        if (msg.body && msg.body.trim().toLowerCase() === '!auditoria') {
+            const reporte = await Auditor.generarReporte();
+            await client.sendMessage(remitente, reporte);
+            return;
+        }
+
         const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
         if (!modoPruebaActivo) {
             // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
@@ -3767,6 +3779,9 @@ inicializarBD().then(async () => {
     }
 
     client.initialize().catch(err => console.error("Error inicializando WhatsApp Web:", err.message));
+
+// Iniciar Auditor Centinela (Watchdog)
+Auditor.iniciar(client, getQuery, runQuery);
     server.listen(PORT, () => {
         console.log(`🌐 Servidor OmniBot SaaS activo en: http://localhost:${PORT}`);
         console.log(`📱 Mini-Sitio Linktree público en: http://localhost:${PORT}/pagina.html`);
