@@ -3421,11 +3421,14 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
             console.log(`🤖 [Auto-Reparación IA]: Modelo actualizado dinámicamente a: ${modeloExitoso}`);
         }
 
-        // Google AI está saturado o falló. Eliminamos el mensaje genérico de emergencia por petición del cliente.
-        // El bot se quedará en silencio esperando que el cliente vuelva a intentar, o simplemente fallará silenciosamente.
+        // Si todos los servidores fallaron, enviamos el mensaje de emergencia cortés
         if (!respuestaIA) {
-            console.error("❌ Fallo total de IA. No se enviará mensaje de emergencia.");
-            return;
+            console.warn("⚠️ Google AI experimentó saturación. Entregando respuesta local de contingencia...");
+            const configObj = {
+                icono_asistente: iconoAsistente,
+                nombre_negocio: nombreNegocio
+            };
+            respuestaIA = generarRespuestaEmergencia(texto, configObj, estadoHorario);
         }
 
         if (respuestaIA) {
