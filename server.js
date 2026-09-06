@@ -1512,6 +1512,19 @@ async function obtenerModelosDisponibles(apiKey) {
     return cacheModelosValidos.length > 0 ? cacheModelosValidos : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 }
 
+// ============================================================================
+// ENDPOINTS DEL SUPERADMIN (Auditoría)
+// ============================================================================
+app.get('/api/superadmin/auditoria', async (req, res) => {
+    try {
+        const registros = await allQuery("SELECT * FROM auditoria_sistema ORDER BY timestamp DESC LIMIT 50");
+        res.json({ success: true, data: registros });
+    } catch (error) {
+        console.error("Error obteniendo auditoría:", error);
+        res.status(500).json({ success: false, message: "Error interno" });
+    }
+});
+
 app.get('/api/gemini/modelos', autenticarToken, async (req, res) => {
     try {
         const customApiKey = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_api_key'"))?.valor;
