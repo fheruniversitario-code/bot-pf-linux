@@ -3290,14 +3290,14 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
   2. NUNCA le digas al cliente que puede llegar sin un turno o cita previamente coordinada por este chat.
   ${reglaHorarioBase}
   4. Si aplica para el tipo de negocio, recuerda al cliente que ciertos servicios o atenciones presenciales requieren turno o cita previa coordinada por este chat.
-- REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida ("¡Hola! Bienvenido al servicio..."). Ve directo a responder la duda o pregunta del cliente de forma fluida, clara y cordial.
+- REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida. Ve directo a responder la duda de forma fluida.
+- REGLA DE RESPUESTAS MÉDICAS O TÉCNICAS: Si te preguntan sobre un procedimiento (ej. "cómo se coloca", "¿duele?", "¿usan anestesia?"), DEBES responder la duda con información educativa directa y precisa basada en la clínica, ANTES de recordarles que requieren valoración presencial. NUNCA te niegues a dar la información.
+- REGLA DE FORMATO ÚNICO: Proporciona tu respuesta completa en un texto continuo. NO dividas tu respuesta en párrafos desconectados ni saludes varias veces en el mismo mensaje.
 - REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
-  * Si un asesor humano estuvo platicando con el cliente o si el bot fue reanudado, TÚ DEBES TOMAR EL RELEVO Y CONTINUAR LA CONVERSACIÓN NATURALMENTE.
-  * Lee con máxima atención el 'Historial reciente' donde aparecen los mensajes de 'Asesor Humano': lo que se trató, recomendaciones, pedidos o información brindada.
-  * PROHIBICIÓN TOTAL: NO reinicies la plática, NO envíes menús, NO des saludos largos de bienvenida, y BAJO NINGUNA CIRCUNSTANCIA le digas al cliente que 'escriba asesor' o que 'se comunique con un asesor'.
-  * RESPONDE TÚ DIRECTAMENTE a la duda del cliente (sobre lo que se trató, productos, pedidos, citas o seguimiento) con calidez, empatía y precisión.
+  * Si un asesor humano estuvo platicando con el cliente, toma el relevo naturalmente.
+  * PROHIBICIÓN TOTAL: NO reinicies la plática ni envíes menús largos.
 - REGLA ESTRICTA DE ASESORES Y HORARIO: Respeta SIEMPRE la regla de horario indicada arriba. Si estamos fuera de horario, NO ofrezcas hablar con un asesor en vivo como primera opción; responde tú la duda con el catálogo e información disponible.
-- Brinda respuestas breves y fraccionadas (1 a 2 párrafos concisos).
+- Brinda respuestas directas y concisas. Evita rodeos innecesarios.
 - Si el cliente solicita cotizar o comprar, toma en cuenta los precios del catálogo y proporciona información clara.
 - Si el cliente envía una imagen (foto de producto o comprobante), analízala visualmente y responde en consecuencia.
 - La fecha y hora actual en México es: ${obtenerFechaHoraLocal()}.
@@ -3362,11 +3362,35 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
 
                     let result;
                     try {
-                        result = await model.generateContent(promptContenido);
+                        const tiempoInicioIA = Date.now();
+                        
+                        // Envoltorio con Timeout estricto de 15 segundos para evitar retrasos de minutos
+                        const fetchIA = async (modeloEval) => {
+                            const promesaAPI = modeloEval.generateContent(promptContenido);
+                            const promesaTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_API_GEMINI')), 15000));
+                            return await Promise.race([promesaAPI, promesaTimeout]);
+                        };
+
+                        result = await fetchIA(model);
+                        
+                        // Auditoría de lentitud
+                        const latencia = Date.now() - tiempoInicioIA;
+                        if (latencia > 10000 && typeof Auditor !== 'undefined') {
+                            Auditor.registrarEvento('SISTEMA', `Google API (${modName}) respondió lento: ${(latencia/1000).toFixed(1)}s`);
+                        }
+
                     } catch (errGen) {
+                        if (errGen.message === 'TIMEOUT_API_GEMINI') {
+                            console.warn(`⚠️ Timeout de 15s excedido para ${modName}. La API de Google está colgada.`);
+                            if (typeof Auditor !== 'undefined') Auditor.registrarEvento('ALERTA', `Google API (${modName}) excedió el tiempo límite (15s). Ignorando modelo para evitar retraso al cliente.`);
+                            throw errGen; // Pasa al siguiente intento o modelo
+                        }
+
                         if (errGen.message && (errGen.message.includes('thinkingConfig') || errGen.message.includes('invalid argument'))) {
                             const modelFallback = aiClient.getGenerativeModel({ model: modName, systemInstruction });
-                            result = await modelFallback.generateContent(promptContenido);
+                            const promesaFallback = modelFallback.generateContent(promptContenido);
+                            const promesaTimeoutFall = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_API_GEMINI')), 15000));
+                            result = await Promise.race([promesaFallback, promesaTimeoutFall]);
                         } else {
                             throw errGen;
                         }
