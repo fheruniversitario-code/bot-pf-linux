@@ -77,6 +77,16 @@ class Auditor {
             // Si falla 3 veces seguidas (3 minutos muerto), forzamos reinicio limpio
             if (this.fallaConsecutiva >= 3) {
                 await this.registrarEvento('CRITICO', 'Bot colgado irremediablemente. Ejecutando auto-reparación (PM2 Restart)...');
+                
+                // Cierre elegante de Chromium para evitar procesos zombies en la RAM del VPS
+                try {
+                    if (this.client) {
+                        await this.client.destroy();
+                    }
+                } catch (e) {
+                    console.log("No se pudo destruir el cliente limpiamente:", e.message);
+                }
+
                 setTimeout(() => {
                     process.exit(1); // PM2 lo revivirá inmediatamente
                 }, 2000);
