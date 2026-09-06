@@ -3044,12 +3044,11 @@ function limpiarNombreParaSaludo(nombre) {
             for (const archivo of archivosGaleria) {
                 const parsed = path.parse(archivo);
                 const baseName = parsed.name.toLowerCase(); // ej: 'promocion', 'vasectomia', 'calzado'
-                const palabrasClave = baseName.split(/[-_ ]+/).filter(w => w.length >= 3);
-
-                // Si el mensaje del cliente incluye alguna palabra clave del archivo o el nombre completo
-                const coincide = palabrasClave.some(p => textoLowerNorm.includes(p)) || textoLowerNorm.includes(baseName);
+                // Si el mensaje incluye el nombre completo del archivo (sin guiones/guiones bajos)
+                const nombreNormalizado = baseName.replace(/[-_]+/g, ' ');
+                const coincide = textoLowerNorm.includes(nombreNormalizado) || textoLowerNorm.includes(baseName);
                 if (coincide) {
-                    const tituloLimpio = baseName.replace(/[-_]/g, ' ').toUpperCase();
+                    const tituloLimpio = nombreNormalizado.toUpperCase();
                     await enviarImagenSiExiste(parsed.name, `🖼️ *${tituloLimpio}*`);
                 }
             }
