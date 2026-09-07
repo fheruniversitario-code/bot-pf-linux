@@ -1322,6 +1322,54 @@ function aplicarPlantillaHorario(texto) {
     }
 }
 
+// ------------------------------------------------------------------------------
+// GUARDAR PARÁMETROS DE AGENDA Y GOOGLE CALENDAR
+// ------------------------------------------------------------------------------
+async function guardarConfigAgenda() {
+    try {
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                duracion_cita_mins: document.getElementById('config-duracion-cita').value,
+                google_calendar_client_id: document.getElementById('config-google-calendar-client-id').value,
+                google_calendar_client_secret: document.getElementById('config-google-calendar-client-secret').value
+            })
+        });
+        alert("✅ Parámetros de Agenda guardados con éxito.");
+    } catch (e) {
+        alert("❌ Error al guardar Agenda: " + e.message);
+    }
+}
+
+async function conectarGoogleCalendar() {
+    try {
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                google_calendar_client_id: document.getElementById('config-google-calendar-client-id').value,
+                google_calendar_client_secret: document.getElementById('config-google-calendar-client-secret').value
+            })
+        });
+
+        const data = await apiFetch('/api/calendar/auth-url');
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert("No se pudo generar la URL de autenticación.");
+        }
+    } catch (e) {
+        alert("Error al intentar conectar: " + e.message + "\n\nAsegúrate de haber puesto tu Client ID y Client Secret primero.");
+    }
+}
+
+function copiarRedirectUri() {
+    const input = document.getElementById('config-google-calendar-redirect-uri');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value);
+    alert("URI de Redirección copiada al portapapeles.");
+}
+
 function toggleHorarioOnlineVisible(visible) {
     const sec = document.getElementById('seccion-horario-online');
     if (sec) {

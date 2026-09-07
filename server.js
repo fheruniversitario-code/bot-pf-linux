@@ -14,6 +14,7 @@ const multer = require('multer');
 
 const { db, runQuery, getQuery, allQuery, inicializarBD, DB_PATH } = require('./db');
 const Auditor = require('./auditor');
+const Calendar = require('./calendar');
 
 const DIR_UPLOADS = path.join(__dirname, 'public', 'uploads');
 const DIR_DOCS = path.join(__dirname, 'documentos');
@@ -1286,6 +1287,30 @@ app.post('/api/configuracion', autenticarToken, async (req, res) => {
         res.json({ success: true, message: 'Configuración actualizada en vivo' });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+// --------------------------------------------------------------------------
+// API GOOGLE CALENDAR
+// --------------------------------------------------------------------------
+app.get('/api/calendar/auth-url', autenticarToken, async (req, res) => {
+    try {
+        const url = await Calendar.generateAuthUrl();
+        res.json({ url });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/calendar/callback', async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.send("Error: Código no proporcionado por Google.");
+    
+    try {
+        await Calendar.authenticateWithCode(code);
+        res.send("<h2>✅ ¡Autenticación de Google Calendar completada!</h2><p>El Refresh Token se ha guardado de forma segura en tu base de datos SQLite.</p><script>setTimeout(() => window.location.href='/', 3000);</script>");
+    } catch (e) {
+        res.send("<h2>❌ Error al autenticar:</h2><p>" + e.message + "</p>");
     }
 });
 
