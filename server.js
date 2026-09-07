@@ -2537,18 +2537,22 @@ function limpiarNombreParaSaludo(nombre) {
                     "⏸️ `!pausa` -> Pausa globalmente el bot de forma indefinida.\n" +
                     "⏸️ `!pausa 4111234567` -> Pausa a un cliente específico.\n" +
                     "🎓 `!curso hasta el viernes` -> Activa Modo Curso / Congreso (la IA atiende 24/7 y anota citas en lista prioritaria).\n" +
-                    "🎓 `!curso 2 dias` (o `!curso Congreso de Ginecología hasta el lunes`)\n" +
-                    "🎓 `!curso off` -> Desactiva modo Curso / Congreso.\n" +
                     "🌴 `!vacaciones [mensaje/fecha]` -> Activa modo receso vacacional.\n" +
-                    "🌴 `!vacaciones off` -> Desactiva vacaciones.\n" +
                     "🧪 `!probar` (o `!prueba`) -> Activa Modo Prueba (el bot te responde como cliente).\n" +
                     "🛡️ `!probar off` -> Desactiva Modo Prueba.\n" +
                     "🚫 `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
                     "✅ `!atender 4111234567` -> Remueve de ignorados.\n" +
                     "📋 `!resumen` -> Lista los últimos clientes atendidos con sus teléfonos reales.\n" +
+                    "🛡️ `!auditoria` -> Muestra el reporte de salud del servidor (Memoria RAM y estado).\n" +
                     "📇 _(O envía una tarjeta de contacto al grupo de control para ignorarlo al instante)_"
                 );
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            if (textoLower === '!auditoria') {
+                const reporte = await Auditor.generarReporte();
+                await client.sendMessage(remitente, reporte);
                 return;
             }
         }
@@ -2566,12 +2570,6 @@ function limpiarNombreParaSaludo(nombre) {
     const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
 
     if (esAdminRemitente) {
-        if (msg.body && msg.body.trim().toLowerCase() === '!auditoria') {
-            const reporte = await Auditor.generarReporte();
-            await client.sendMessage(remitente, reporte);
-            return;
-        }
-
         const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
         if (!modoPruebaActivo) {
             // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
