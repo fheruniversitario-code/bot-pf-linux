@@ -16,7 +16,7 @@ async function getOAuthClient() {
     const oAuth2Client = new google.auth.OAuth2(
         clientId.valor,
         clientSecret.valor,
-        redirectUri?.valor || "http://159.54.131.176:3001/api/calendar/callback"
+        redirectUri?.valor || "http://localhost:3001/api/calendar/callback"
     );
 
     const refreshToken = await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_refresh_token'");
