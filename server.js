@@ -2302,7 +2302,13 @@ function limpiarNombreParaSaludo(nombre) {
     const esVCard = msg.type === 'vcard' || msg.type === 'multi_vcard' || (msg.vCards && msg.vCards.length > 0);
     const textoLower = texto.toLowerCase();
 
-    if (esGrupo || textoLower.startsWith('!') || esVCard) {
+    // Comprobar si el remitente es un teléfono Administrador registrado
+    const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
+    const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
+    const remitenteNum = remitente.replace(/[^0-9]/g, '');
+    const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
+
+    if (esGrupo || (textoLower.startsWith('!') && esAdminRemitente) || (esVCard && esAdminRemitente)) {
         // 1. Tarjetas de contacto compartidas para ignorar al instante
         if (esVCard) {
             let numExtraido = null;
@@ -2563,12 +2569,7 @@ function limpiarNombreParaSaludo(nombre) {
     // --------------------------------------------------------------------------
     // FILTROS: Contactos Ignorados / Pausas Humanas / Filtro de Audios
     // --------------------------------------------------------------------------
-    // Comprobar si el remitente es un teléfono Administrador registrado
-    const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
-    const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
-    const remitenteNum = remitente.replace(/[^0-9]/g, '');
-    const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
-
+    
     if (esAdminRemitente) {
         const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
         if (!modoPruebaActivo) {
