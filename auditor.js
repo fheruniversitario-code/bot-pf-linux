@@ -83,6 +83,11 @@ class Auditor {
             if (this.fallaConsecutiva >= 3) {
                 await this.registrarEvento('CRITICO', 'Bot colgado irremediablemente. Ejecutando cazador de zombis y auto-reparación (PM2 Restart)...');
                 
+                // 1. Programar incondicionalmente el reinicio para evitar que `destroy()` o cuelgues bloqueen el exit.
+                setTimeout(() => {
+                    process.exit(1); 
+                }, 3000);
+
                 try {
                     // CAZADOR DE ZOMBIS: Buscar y aniquilar el proceso de Chrome específico de este bot
                     if (this.client && this.client.pupBrowser) {
@@ -92,18 +97,23 @@ class Auditor {
                             process.kill(browserProcess.pid, 'SIGKILL'); // Fuego a discreción
                         }
                     }
+
+                    // Destruir archivo SingletonLock (candado huérfano) que bloquea el reinicio si SIGKILL fue violento
+                    const fs = require('fs');
+                    const path = require('path');
+                    const lockPath = path.join(process.cwd(), '.wwebjs_auth', 'session', 'SingletonLock');
+                    if (fs.existsSync(lockPath)) {
+                        fs.unlinkSync(lockPath);
+                        console.log("Candado SingletonLock huérfano destruido.");
+                    }
                     
                     // Cierre elegante si el proceso aún escucha
                     if (this.client) {
-                        await this.client.destroy();
+                        await this.client.destroy().catch(() => {});
                     }
                 } catch (e) {
                     console.log("Error al limpiar al zombi:", e.message);
                 }
-
-                setTimeout(() => {
-                    process.exit(1); // PM2 lo revivirá inmediatamente, ahora sí con vía libre
-                }, 2000);
             }
         }
     }

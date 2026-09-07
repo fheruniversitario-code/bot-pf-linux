@@ -3831,7 +3831,11 @@ inicializarBD().then(async () => {
         console.error("Error en auto-limpieza BD:", eClean.message);
     }
 
-    client.initialize().catch(err => console.error("Error inicializando WhatsApp Web:", err.message));
+    client.initialize().catch(err => {
+        console.error("Error inicializando WhatsApp Web:", err.message);
+        console.warn("⚠️ FALLO CRÍTICO DE INICIO: Forzando reinicio para PM2...");
+        setTimeout(() => process.exit(1), 1000);
+    });
 
 // Iniciar Auditor Centinela (Watchdog)
 Auditor.iniciar(client, getQuery, runQuery);
