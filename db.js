@@ -328,8 +328,17 @@ async function inicializarBD() {
         icono_asistente: "🤖",
         enlace_formulario_privacidad: "https://forms.gle/zJxZeXXj1TwWGF9N8",
         gemini_api_key: "",
-        google_calendar_id: "",
         gemini_modelo_ia: "gemini-3.6-flash",
+
+        // --- NUEVAS VARIABLES DE AGENDA Y GOOGLE CALENDAR ---
+        google_calendar_client_id: "",
+        google_calendar_client_secret: "",
+        google_calendar_redirect_uri: "http://localhost:3001/api/calendar/callback",
+        google_calendar_refresh_token: "",
+        agenda_duracion_cita: "30",
+        agenda_dias_laborales: "1,2,3,4,5",
+        // ----------------------------------------------------
+
         prompt_ia: "Eres el asistente virtual oficial de la empresa. Atiende de manera cordial, profesional, clara y concisa en español.",
         catalogo_servicios: "Servicio General: $450 MXN\nConsulta Especializada: $700 MXN",
         menu_numerico: JSON.stringify([

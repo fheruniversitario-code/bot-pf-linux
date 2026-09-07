@@ -67,28 +67,42 @@ class Auditor {
             // Evaluamos el error
             this.fallaConsecutiva++;
             
+            // FOTOGRAFIA FORENSE DE MEMORIA (Detectar si es asfixia del servidor)
+            const memLibreMB = Math.round(os.freemem() / 1024 / 1024);
+            const memTotalMB = Math.round(os.totalmem() / 1024 / 1024);
+            const ramWarning = memLibreMB < 200 ? ` [⚠️ PELIGRO: RAM baja (${memLibreMB}MB libres de ${memTotalMB}MB)]` : ` [RAM ok: ${memLibreMB}MB libres]`;
+
             if (error.message === 'TIMEOUT_ZOMBIE') {
-                await this.registrarEvento('ALERTA', `La pestaña de WhatsApp no responde (Zombie). Falla #${this.fallaConsecutiva}`);
+                await this.registrarEvento('ALERTA', `La pestaña de WhatsApp no responde (Zombie). Falla #${this.fallaConsecutiva}${ramWarning}`);
             } else {
-                await this.registrarEvento('ALERTA', `Falla al leer estado de WhatsApp: ${error.message}. Falla #${this.fallaConsecutiva}`);
+                await this.registrarEvento('ALERTA', `Falla al leer estado de WhatsApp: ${error.message}. Falla #${this.fallaConsecutiva}${ramWarning}`);
             }
 
-            // AUTO-REPARACIÓN (Self-Healing)
+            // AUTO-REPARACIÓN (Self-Healing) + CAZADOR DE ZOMBIS
             // Si falla 3 veces seguidas (3 minutos muerto), forzamos reinicio limpio
             if (this.fallaConsecutiva >= 3) {
-                await this.registrarEvento('CRITICO', 'Bot colgado irremediablemente. Ejecutando auto-reparación (PM2 Restart)...');
+                await this.registrarEvento('CRITICO', 'Bot colgado irremediablemente. Ejecutando cazador de zombis y auto-reparación (PM2 Restart)...');
                 
-                // Cierre elegante de Chromium para evitar procesos zombies en la RAM del VPS
                 try {
+                    // CAZADOR DE ZOMBIS: Buscar y aniquilar el proceso de Chrome específico de este bot
+                    if (this.client && this.client.pupBrowser) {
+                        const browserProcess = this.client.pupBrowser.process();
+                        if (browserProcess && browserProcess.pid) {
+                            await this.registrarEvento('SISTEMA', `Asesinando proceso Chromium zombie (PID: ${browserProcess.pid})`);
+                            process.kill(browserProcess.pid, 'SIGKILL'); // Fuego a discreción
+                        }
+                    }
+                    
+                    // Cierre elegante si el proceso aún escucha
                     if (this.client) {
                         await this.client.destroy();
                     }
                 } catch (e) {
-                    console.log("No se pudo destruir el cliente limpiamente:", e.message);
+                    console.log("Error al limpiar al zombi:", e.message);
                 }
 
                 setTimeout(() => {
-                    process.exit(1); // PM2 lo revivirá inmediatamente
+                    process.exit(1); // PM2 lo revivirá inmediatamente, ahora sí con vía libre
                 }, 2000);
             }
         }
@@ -100,6 +114,7 @@ class Auditor {
     static async generarReporte() {
         const uptimeSys = Math.floor(os.uptime() / 3600); // Horas de encendido del VPS
         const memUsada = Math.round(process.memoryUsage().rss / 1024 / 1024); // RAM en MB
+        const memLibre = Math.round(os.freemem() / 1024 / 1024); // RAM Libre
         
         let estadoWA = "DESCONOCIDO";
         try {
@@ -111,15 +126,16 @@ class Auditor {
             estadoWA = "ERROR_LECTURA";
         }
 
-        return `🛡️ *REPORTE DEL AUDITOR (Watchdog)* 🛡️
+        return `🛡️ *REPORTE DEL AUDITOR FORENSE* 🛡️
 
-📡 *Estado WhatsApp:* ${estadoWA || 'SIN VINCULAR'}
-💻 *RAM Consumida:* ${memUsada} MB
+📱 *Estado WhatsApp:* ${estadoWA || 'SIN VINCULAR'}
+🧠 *RAM Bot:* ${memUsada} MB
+🔋 *RAM Libre Servidor:* ${memLibre} MB
 ⏱️ *Uptime VPS:* ${uptimeSys} hrs
-🚨 *Fallas en curso:* ${this.fallaConsecutiva}/3
+⚠️ *Fallas en curso:* ${this.fallaConsecutiva}/3
 
 *Diagnóstico de Salud:*
-${this.fallaConsecutiva === 0 ? '✅ Sistema estable y comunicando perfectamente.' : '⚠️ Anomalías detectadas, evaluando reinicio.'}
+${this.fallaConsecutiva === 0 ? '✅ Sistema estable y comunicando perfectamente.' : '🚨 Anomalías detectadas, evaluando reinicio.'}
         `.trim();
     }
 }
