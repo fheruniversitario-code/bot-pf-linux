@@ -2325,13 +2325,16 @@ function limpiarNombreParaSaludo(nombre) {
     // COMANDOS DE CONTROL MÓVIL Y GRUPO [CONTROL-BOT] (vCards y Comandos !)
     // --------------------------------------------------------------------------
     const esVCard = msg.type === 'vcard' || msg.type === 'multi_vcard' || (msg.vCards && msg.vCards.length > 0);
-    const textoLower = texto.toLowerCase();
+    const textoLower = texto.toLowerCase().trim();
 
     // Comprobar si el remitente es un teléfono Administrador registrado
     const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
     const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
     const remitenteNum = remitente.replace(/[^0-9]/g, '');
-    const esAdminRemitente = adminsArray.some(adminNum => (remitenteNum && remitenteNum.includes(adminNum)) || (telefonoReal && telefonoReal.includes(adminNum)));
+    const esAdminRemitente = adminsArray.some(adminNum => {
+        const suffix = adminNum.length >= 10 ? adminNum.slice(-10) : adminNum;
+        return (remitenteNum && remitenteNum.endsWith(suffix)) || (telefonoReal && telefonoReal.endsWith(suffix));
+    });
 
     if (esGrupo || (textoLower.startsWith('!') && esAdminRemitente) || (esVCard && esAdminRemitente)) {
         // 1. Tarjetas de contacto compartidas para ignorar al instante
@@ -2848,7 +2851,7 @@ function limpiarNombreParaSaludo(nombre) {
     const ultimoMsgPrevio = await getQuery(`
         SELECT timestamp FROM mensajes 
         WHERE (chat_id = ? OR (? != '' AND chat_id LIKE ?))
-        ORDER BY id DESC LIMIT 1
+        ORDER BY id DESC LIMIT 1 OFFSET 1
     `, [remitente, telUltimos8Sal, `%${telUltimos8Sal}%`]);
 
     const tiempoInactivo = ultimoMsgPrevio ? (Date.now() - ultimoMsgPrevio.timestamp) : Infinity;
@@ -3655,8 +3658,19 @@ client.on('message_create', async (msg) => {
             const ultimos8 = (telClean && telClean.length >= 8) ? telClean.slice(-8) : '';
 
             // Búsqueda exacta O por subcadena de 8 dígitos dentro de cualquier JID registrado
-            const jidBotActivo = ultimosJidsEnviadosBot.has(targetJid) ||
-                (ultimos8 && [...ultimosJidsEnviadosBot.keys()].some(k => k.includes(ultimos8)));
+            const ahoraMs = Date.now();
+            let jidBotActivo = false;
+            
+            if (ultimosJidsEnviadosBot.has(targetJid) && (ahoraMs - ultimosJidsEnviadosBot.get(targetJid) < 5000)) {
+                jidBotActivo = true;
+            } else if (ultimos8) {
+                for (const [k, ts] of ultimosJidsEnviadosBot.entries()) {
+                    if (k.includes(ultimos8) && (ahoraMs - ts < 5000)) {
+                        jidBotActivo = true;
+                        break;
+                    }
+                }
+            }
 
             if (jidBotActivo) {
                 if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
