@@ -959,13 +959,15 @@ app.get('/api/conversaciones/:jid/mensajes', autenticarToken, async (req, res) =
         const ultimos8 = (telLimpio && !telLimpio.startsWith('1660') && telLimpio.length >= 8) ? telLimpio.slice(-8) : '';
         const chatVinculado = waChat?.id?._serialized || jid;
 
-        const todosMensajes = await allQuery(`
+        const todosMensajesRaw = await allQuery(`
             SELECT * FROM mensajes 
             WHERE (chat_id = ? OR chat_id = ? OR (? != '' AND chat_id LIKE ?))
               AND cuerpo NOT LIKE '%e2e_notification%'
-            ORDER BY timestamp ASC, id ASC 
+            ORDER BY timestamp DESC, id DESC 
             LIMIT 250
         `, [jid, chatVinculado, ultimos8, `%${ultimos8}%`]);
+        
+        const todosMensajes = todosMensajesRaw.reverse();
 
         // Deduplicar mensajes en memoria y normalizar multimedia/infografías
         const mensajes = [];
