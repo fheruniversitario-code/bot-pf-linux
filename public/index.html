@@ -53,8 +53,8 @@
             color: #374151 !important; 
         }
 
-        /* Toggles (Switches) invisibles: Hacer el riel más oscuro para que el círculo blanco destaque */
-        body.light-theme .bg-slate-800.peer {
+        /* Toggles (Switches) invisibles: Hacer el riel más oscuro SOLO cuando están apagados para no pisar el color de encendido */
+        body.light-theme input[type="checkbox"].peer:not(:checked) + div {
             background-color: #cbd5e1 !important; /* Slate 300 - Gris intermedio */
         }
 
