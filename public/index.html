@@ -53,6 +53,11 @@
             color: #374151 !important; 
         }
 
+        /* Toggles (Switches) invisibles: Hacer el riel más oscuro para que el círculo blanco destaque */
+        body.light-theme .bg-slate-800.peer {
+            background-color: #cbd5e1 !important; /* Slate 300 - Gris intermedio */
+        }
+
         /* Botones Primarios (Sustituir purpuras chillantes por azul marino/slate premium) */
         body.light-theme .bg-indigo-600 {
             background-color: #0f172a !important; /* Premium Slate Navy */
@@ -74,10 +79,10 @@
             color: #3b82f6 !important; /* Azul más relajante para acentos de texto */
         }
         
-        /* Eliminar gradients neones en botones activos o logo */
+        /* Logo: Reemplazar oscuro/neon por un gradiente profesional azul rey/indigo */
         body.light-theme .from-indigo-500.via-purple-500.to-pink-500 {
-            background: linear-gradient(135deg, #0f172a 0%, #334155 100%) !important;
-            box-shadow: none !important;
+            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+            box-shadow: 0 4px 10px rgba(37,99,235,0.2) !important;
         }
 
         /* Inputs, Textareas y Selectores */
