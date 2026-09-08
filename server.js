@@ -2332,7 +2332,7 @@ function limpiarNombreParaSaludo(nombre) {
     const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
     const remitenteNum = remitente.replace(/[^0-9]/g, '');
     const esAdminRemitente = adminsArray.some(adminNum => {
-        const suffix = adminNum.length >= 10 ? adminNum.slice(-10) : adminNum;
+        const suffix = (adminNum.length >= 10 && !adminNum.startsWith('1660')) ? adminNum.slice(-10) : adminNum;
         return (remitenteNum && remitenteNum.endsWith(suffix)) || (telefonoReal && telefonoReal.endsWith(suffix));
     });
 
