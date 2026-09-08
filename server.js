@@ -1761,6 +1761,16 @@ async function obtenerEstadoHorarioMexico() {
 
     const minutosActuales = hora * 60 + minuto;
 
+    // Obtener horarios para reemplazar "a primera hora"
+    const horaInicioStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '14:00';
+    const horaFinStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '20:30';
+    
+    const [hIni, mIni] = horaInicioStr.split(':').map(n => parseInt(n, 10) || 0);
+    const [hFin, mFin] = horaFinStr.split(':').map(n => parseInt(n, 10) || 0);
+    const minInicio = hIni * 60 + mIni;
+    const minFin = hFin * 60 + mFin;
+    const formatoHoraInicio = hIni >= 12 ? `${hIni > 12 ? hIni - 12 : 12}:${mIni.toString().padStart(2, '0')} PM` : `${hIni === 0 ? 12 : hIni}:${mIni.toString().padStart(2, '0')} AM`;
+
     // 1. Verificar si hay Receso / Vacaciones / Curso / Festivo activo (Manual o Programado en Calendario)
     const ausenciaActivaManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_activa'"))?.valor === '1';
     const ausenciaTipoManual = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ausencia_tipo'"))?.valor || 'vacaciones';
@@ -1809,11 +1819,11 @@ async function obtenerEstadoHorarioMexico() {
             const fFinLower = eventoActivo.fechaFin.toLowerCase().trim();
             if (/^\d{4}-\d{2}-\d{2}$/.test(fFinLower)) {
                 const partes = fFinLower.split('-');
-                proximoTexto = `el día ${partes[2]}/${partes[1]}/${partes[0]} a primera hora`;
+                proximoTexto = `el día ${partes[2]}/${partes[1]}/${partes[0]} a las ${formatoHoraInicio}`;
             } else if (fFinLower.startsWith('mañana') || fFinLower.startsWith('hoy') || fFinLower.startsWith('el ') || fFinLower.startsWith('en ') || fFinLower.startsWith('al ')) {
-                proximoTexto = `${eventoActivo.fechaFin} a primera hora`;
+                proximoTexto = `${eventoActivo.fechaFin.replace('a primera hora', '')} a las ${formatoHoraInicio}`.replace('  ', ' ');
             } else {
-                proximoTexto = `el próximo ${eventoActivo.fechaFin} a primera hora`;
+                proximoTexto = `el próximo ${eventoActivo.fechaFin.replace('a primera hora', '')} a las ${formatoHoraInicio}`.replace('  ', ' ');
             }
         }
         return {
@@ -1828,22 +1838,11 @@ async function obtenerEstadoHorarioMexico() {
         };
     }
 
-    // 2. Horarios de Trabajo (Predeterminados o configurados)
-    const horaInicioStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '14:00';
-    const horaFinStr = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '20:30';
-    
-    const [hIni, mIni] = horaInicioStr.split(':').map(n => parseInt(n, 10) || 0);
-    const [hFin, mFin] = horaFinStr.split(':').map(n => parseInt(n, 10) || 0);
-    const minInicio = hIni * 60 + mIni;
-    const minFin = hFin * 60 + mFin;
-
     // Días laborables (Lunes a Viernes)
     const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
     const esDiaLaboral = diasLaborables.some(d => diaSemana.startsWith(d));
     const esFinDeSemana = diaSemana.startsWith('s') || diaSemana.startsWith('d');
     const esViernes = diaSemana.startsWith('v');
-
-    const formatoHoraInicio = hIni > 12 ? `${hIni - 12}:${mIni.toString().padStart(2, '0')} PM` : `${hIni}:${mIni.toString().padStart(2, '0')} AM`;
 
     if (esDiaLaboral && minutosActuales >= minInicio && minutosActuales <= minFin) {
         return {
