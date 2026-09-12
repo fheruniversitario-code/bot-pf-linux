@@ -1843,11 +1843,21 @@ async function obtenerEstadoHorarioMexico() {
         };
     }
 
-    // Días laborables (Lunes a Viernes)
+    // Obtener configuración de textos para detectar fines de semana
+    const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+    const horarioOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_asesor_en_linea'"))?.valor || '';
+    const textoHorarios = (horarioFisico + " " + horarioOnline).toLowerCase();
+    
+    // Heurística simple para saber si abren fines de semana basándose en el texto descriptivo
+    const abreSabado = textoHorarios.includes('sabado') || textoHorarios.includes('sábado') || textoHorarios.includes('lunes a sabado') || textoHorarios.includes('lunes a sábado') || textoHorarios.includes('lunes a domingo') || textoHorarios.includes('todos los dias') || textoHorarios.includes('todos los días');
+    const abreDomingo = textoHorarios.includes('domingo') || textoHorarios.includes('lunes a domingo') || textoHorarios.includes('todos los dias') || textoHorarios.includes('todos los días');
+
+    // Días laborables dinámicos
     const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
+    if (abreSabado) diasLaborables.push('sáb', 'sab');
+    if (abreDomingo) diasLaborables.push('dom');
+
     const esDiaLaboral = diasLaborables.some(d => diaSemana.startsWith(d));
-    const esFinDeSemana = diaSemana.startsWith('s') || diaSemana.startsWith('d');
-    const esViernes = diaSemana.startsWith('v');
 
     if (esDiaLaboral && minutosActuales >= minInicio && minutosActuales <= minFin) {
         return {
@@ -1858,13 +1868,28 @@ async function obtenerEstadoHorarioMexico() {
     }
 
     // Fuera de horario: calcular retorno amigable
-    let proximoTexto = `en nuestro próximo horario laboral (${formatoHoraInicio})`;
-    if (esFinDeSemana) {
-        proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
-    } else if (esViernes && minutosActuales > minFin) {
-        proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+    let proximoTexto = `en nuestro próximo horario de atención (${formatoHoraInicio})`;
+    
+    if (!esDiaLaboral) {
+        if (diaSemana.startsWith('s') && abreDomingo) {
+            proximoTexto = `mañana domingo a partir de las ${formatoHoraInicio}`;
+        } else if ((diaSemana.startsWith('s') || diaSemana.startsWith('d')) && (!abreSabado && !abreDomingo)) {
+            proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+        } else if (diaSemana.startsWith('d') && !abreDomingo) {
+            proximoTexto = `mañana lunes a partir de las ${formatoHoraInicio}`;
+        } else {
+            proximoTexto = `mañana a partir de las ${formatoHoraInicio}`;
+        }
     } else if (minutosActuales > minFin) {
-        proximoTexto = `mañana a partir de las ${formatoHoraInicio}`;
+        if (diaSemana.startsWith('v') && !abreSabado && !abreDomingo) {
+            proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+        } else if (diaSemana.startsWith('v') && !abreSabado && abreDomingo) {
+            proximoTexto = `el domingo a partir de las ${formatoHoraInicio}`;
+        } else if (diaSemana.startsWith('s') && !abreDomingo) {
+            proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
+        } else {
+            proximoTexto = `mañana a partir de las ${formatoHoraInicio}`;
+        }
     } else if (minutosActuales < minInicio) {
         proximoTexto = `hoy a partir de las ${formatoHoraInicio}`;
     }
