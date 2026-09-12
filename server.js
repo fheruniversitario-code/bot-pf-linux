@@ -2939,7 +2939,7 @@ function limpiarNombreParaSaludo(nombre) {
             `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*`;
 
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
-        let textoMenu = `${saludoHeader}\n\n${horarioFisico ? horarioFisico + ' - ' : ''}¡Estamos para servirte!  👇\n\nElige una opción:\n\n`;
+        let textoMenu = `${saludoHeader}\n\n¡Estamos para servirte! 👇\n\nElige una opción:\n\n`;
         try {
             const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
             if (menuRaw) {
@@ -3060,7 +3060,7 @@ function limpiarNombreParaSaludo(nombre) {
             if (!yaExiste) {
                 await runQuery(
                     "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
-                    [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Paciente', texto, obtenerFechaHoraLocal(), Date.now()]
+                    [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Paciente', (esOpcionMenuAsesor ? tituloOpcionAsesor : texto), obtenerFechaHoraLocal(), Date.now()]
                 );
                 io.emit('solicitud_asesor_actualizada');
             }
