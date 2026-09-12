@@ -2965,30 +2965,31 @@ function limpiarNombreParaSaludo(nombre) {
         const nomSaludo = limpiarNombreParaSaludo(nombreContacto);
         const saludoPersonal = nomSaludo ? `Hola, *${nomSaludo}*.` : 'Hola, un gusto saludarte.';
         const saludoEntendido = nomSaludo ? `Entendido, *${nomSaludo}*.` : 'Entendido.';
+        const horarioFisicoGlobal = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
 
         let msjTransferido = '';
 
         if (estadoHorario.enReceso) {
             if (estadoHorario.esFestivo) {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🇲🇽 *Aviso de Día Festivo / Inhábil Oficial:*\n` +
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}📆 *Aviso de Día Festivo / Inhábil Oficial:*\n` +
                     `${saludoPersonal} Te informamos que hoy es día festivo oficial con suspensión de labores presenciales (*${estadoHorario.motivoReceso}*).\n\n` +
-                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU de cobre o plata, Mirena, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos o preparaciones médicas. Con gusto te daré la información detallada de inmediato. ☺️`;
+                    `📝 Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💡 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU de cobre o plata, Mirena, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos o preparaciones médicas. Con gusto te daré la información detallada de inmediato. 🤖`;
             } else if (estadoHorario.esCurso) {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🎓 *Aviso de Capacitación y Actualización Médica:*\n` +
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}📚 *Aviso de Capacitación y Actualización Médica:*\n` +
                     `${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
-                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos, requisitos o preparaciones médicas. Con gusto te daré la información de inmediato. ☺️`;
+                    `📝 Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💡 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos, requisitos o preparaciones médicas. Con gusto te daré la información de inmediato. 🤖`;
             } else {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *Aviso de Receso / Vacaciones:*\n` +
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🏖️ *Aviso de Receso / Vacaciones:*\n` +
                     `${saludoPersonal} Por el momento nuestro personal se encuentra en receso (*${estadoHorario.motivoReceso}*).\n\n` +
-                    `🗓️ Tu solicitud para cita presencial ha quedado registrada en espera. El personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💬 *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre métodos, costos o requisitos.`;
+                    `📝 Tu solicitud para cita presencial ha quedado registrada en espera. El personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💡 *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre métodos, costos o requisitos.`;
             }
         } else if (!estadoHorario.enHorario) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *Fuera de Horario de Atención en Línea:*\n` +
-                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioFisico || 'Lunes a Viernes en horario habitual'}.\n\n` +
-                `🕒 Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌙 *Fuera de Horario de Atención en Línea:*\n` +
+                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioFisicoGlobal || 'Lunes a Viernes en horario habitual'}.\n\n` +
+                `⏳ Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
                 `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.`;
         } else {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
