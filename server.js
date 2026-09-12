@@ -58,6 +58,9 @@ const io = new Server(server, { cors: { origin: '*' } });
 io.on('connection', (socket) => {
     socket.emit('estado_whatsapp', { conectado: wsClienteConectado });
     socket.emit('estado_control_actualizado', { wsClienteConectado });
+    if (!wsClienteConectado && ultimoQrCode) {
+        socket.emit('qr_actualizado', { qr: ultimoQrCode });
+    }
 });
 
 const PORT = process.env.PORT || 3001;
