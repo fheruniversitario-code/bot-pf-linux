@@ -2,9 +2,9 @@
   "name": "omnibot-saas-universal",
   "version": "2.0.0",
   "description": "Plataforma Universal de WhatsApp con IA, CRM de Ventas, Agenda de Citas, Live Chat y Linktree",
-  "main": "server_baileys.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node server_baileys.js"
+    "start": "node server.js"
   },
   "keywords": [
     "whatsapp",
