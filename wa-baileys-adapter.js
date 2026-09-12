@@ -223,6 +223,17 @@ class Client extends EventEmitter {
     async addOrRemoveLabels(labelIds, jids) {
         // Ignorado en baileys
     }
+
+    async getState() {
+        return this.sock ? "CONNECTED" : "DISCONNECTED";
+    }
+
+    async destroy() {
+        if (this.sock) {
+            this.sock.ws.close();
+            this.sock = null;
+        }
+    }
 }
 
 module.exports = { Client, LocalAuth, MessageMedia };
