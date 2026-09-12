@@ -3690,10 +3690,10 @@ client.on('message_create', async (msg) => {
             return;
         }
 
-        // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
-        await new Promise(r => setTimeout(r, 300));
+        // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────        // Esperar 2000ms para dar tiempo a que los sendMessage registren sus IDs y evitar falsos positivos por latencia de red
+        await new Promise(r => setTimeout(r, 2000));
 
-        // 1. Check por ID confirmado por el interceptor (origSendMessage)
+        // 1. Check por ID
         if (msg.id && idsMensajesEnviadosBot.has(msg.id._serialized)) return;
 
         // 2. Check por JID del destinatario — maneja mismatch @lid vs @c.us
