@@ -2874,7 +2874,8 @@ function limpiarNombreParaSaludo(nombre) {
             `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola, ${nombreMostrar}! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*` :
             `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*`;
 
-        let textoMenu = `${saludoHeader}\n\n${horarioFisico ? horarioFisico + ' — ' : ''}¡Estamos para servirte! ☺️\n\nElige una opción:\n\n`;
+        const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+        let textoMenu = `${saludoHeader}\n\n${horarioFisico ? horarioFisico + ' - ' : ''}¡Estamos para servirte!  👇\n\nElige una opción:\n\n`;
         try {
             const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
             if (menuRaw) {
