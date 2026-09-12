@@ -1846,11 +1846,14 @@ async function obtenerEstadoHorarioMexico() {
     // Obtener configuración de textos para detectar fines de semana
     const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
     const horarioOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_asesor_en_linea'"))?.valor || '';
-    const textoHorarios = (horarioFisico + " " + horarioOnline).toLowerCase();
+    const difiereOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_online_diferente'"))?.valor === '1';
+    
+    // Para saber si "los asesores" trabajan fin de semana, evaluamos estrictamente el horario en línea (si está activo el switch)
+    const textoBaseRevisar = difiereOnline ? horarioOnline.toLowerCase() : horarioFisico.toLowerCase();
     
     // Heurística simple para saber si abren fines de semana basándose en el texto descriptivo
-    const abreSabado = textoHorarios.includes('sabado') || textoHorarios.includes('sábado') || textoHorarios.includes('lunes a sabado') || textoHorarios.includes('lunes a sábado') || textoHorarios.includes('lunes a domingo') || textoHorarios.includes('todos los dias') || textoHorarios.includes('todos los días');
-    const abreDomingo = textoHorarios.includes('domingo') || textoHorarios.includes('lunes a domingo') || textoHorarios.includes('todos los dias') || textoHorarios.includes('todos los días');
+    const abreSabado = textoBaseRevisar.includes('sabado') || textoBaseRevisar.includes('sábado') || textoBaseRevisar.includes('lunes a sabado') || textoBaseRevisar.includes('lunes a sábado') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
+    const abreDomingo = textoBaseRevisar.includes('domingo') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
 
     // Días laborables dinámicos
     const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
