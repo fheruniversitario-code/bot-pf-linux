@@ -2357,6 +2357,10 @@ function limpiarNombreParaSaludo(nombre) {
     }
 
     if (textoLower === '!debugyo') {
+        const adminTestSuffixes = adminsArray.map(a => a.length >= 10 ? a.slice(-10) : a);
+        await client.sendMessage(remitente, `🛠️ *DEBUG INFO*\nJID: ${remitente}\nNum: ${remitenteNum}\nAdmins DB: ${adminsRaw}\nSuffixes: ${adminTestSuffixes.join(', ')}\nesAdmin: ${esAdminRemitente}\nTexto Exacto: [${textoLower}]`);
+        return;
+    }
 
     if (esGrupo || (textoLower.startsWith('!') && esAdminRemitente) || (esVCard && esAdminRemitente)) {
         // 1. Tarjetas de contacto compartidas para ignorar al instante
