@@ -2328,20 +2328,35 @@ function limpiarNombreParaSaludo(nombre) {
     const esVCard = msg.type === 'vcard' || msg.type === 'multi_vcard' || (msg.vCards && msg.vCards.length > 0);
     const textoLower = texto.toLowerCase().trim();
 
-    // Comprobar si el remitente es un teléfono Administrador registrado
+    // Comprobar si el remitente es un teléfono Administrador registrado (o tiene su LID vinculado)
     const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
     const adminsArray = adminsRaw.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
+    const lidsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'lids_admins_vinculados'"))?.valor || '';
+    const lidsArray = lidsRaw.split(',').filter(Boolean);
+
     const remitenteNum = remitente.replace(/[^0-9]/g, '');
-    const esAdminRemitente = adminsArray.some(adminNum => {
+    let esAdminRemitente = lidsArray.includes(remitente) || adminsArray.some(adminNum => {
         const suffix = (adminNum.length >= 10 && !adminNum.startsWith('1660')) ? adminNum.slice(-10) : adminNum;
         return (remitenteNum && remitenteNum.endsWith(suffix)) || (telefonoReal && telefonoReal.endsWith(suffix));
     });
 
-    if (textoLower === '!debugyo') {
-        const adminTestSuffixes = adminsArray.map(a => a.length >= 10 ? a.slice(-10) : a);
-        await client.sendMessage(remitente, `🛠️ *DEBUG INFO*\nJID: ${remitente}\nNum: ${remitenteNum}\nAdmins DB: ${adminsRaw}\nSuffixes: ${adminTestSuffixes.join(', ')}\nesAdmin: ${esAdminRemitente}\nTexto Exacto: [${textoLower}]`);
+    if (textoLower.startsWith('!soyadmin ')) {
+        const numAlegado = textoLower.replace('!soyadmin ', '').replace(/[^0-9]/g, '');
+        const esValido = adminsArray.some(a => a.endsWith(numAlegado) || numAlegado.endsWith(a));
+        if (esValido) {
+            if (!lidsArray.includes(remitente)) {
+                lidsArray.push(remitente);
+                await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('lids_admins_vinculados', ?) ON CONFLICT(clave) DO UPDATE SET valor = ?", [lidsArray.join(','), lidsArray.join(',')]);
+            }
+            await client.sendMessage(remitente, "✅ Tu dispositivo (LID) ha sido vinculado exitosamente a tu número de Administrador. Ya recibirás alertas.");
+            esAdminRemitente = true;
+        } else {
+            await client.sendMessage(remitente, "❌ El número que ingresaste no coincide con los configurados en el panel.");
+        }
         return;
     }
+
+    if (textoLower === '!debugyo') {
 
     if (esGrupo || (textoLower.startsWith('!') && esAdminRemitente) || (esVCard && esAdminRemitente)) {
         // 1. Tarjetas de contacto compartidas para ignorar al instante
@@ -2709,8 +2724,9 @@ function limpiarNombreParaSaludo(nombre) {
                         `⏰ *Fecha:* ${obtenerFechaHoraLocal()}\n` +
                         `👉 _Puedes responderle directamente abriendo su conversación en WhatsApp o en el Panel._`;
 
-                    // 1. Enviar a Números Administradores
-                    if ((destinoAlerta === 'ambos' || destinoAlerta === 'numeros') && adminsArray.length > 0) {
+                    // 1. Enviar a Números Administradores y LIDs vinculados
+                    if (destinoAlerta === 'ambos' || destinoAlerta === 'numeros') {
+                        // Enviar a los configurados de forma manual asumiendo @c.us
                         for (const numAdm of adminsArray) {
                             const jidAdm = numAdm.length === 10 ? `521${numAdm}@c.us` : `${numAdm}@c.us`;
                             try {
@@ -2718,6 +2734,18 @@ function limpiarNombreParaSaludo(nombre) {
                                 if (sentAdm?.id) idsMensajesEnviadosBot.add(sentAdm.id._serialized);
                             } catch (eAdm) {
                                 console.error(`Error notificando al administrador +${numAdm}:`, eAdm.message);
+                            }
+                        }
+                        
+                        // Enviar a los LIDs vinculados para que no falle Multi-Device
+                        const lidsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'lids_admins_vinculados'"))?.valor || '';
+                        const lidsArray = lidsRaw.split(',').filter(Boolean);
+                        for (const lidAdm of lidsArray) {
+                            try {
+                                const sentAdm = await client.sendMessage(lidAdm, alertaMsg);
+                                if (sentAdm?.id) idsMensajesEnviadosBot.add(sentAdm.id._serialized);
+                            } catch (eAdm) {
+                                console.error(`Error notificando al administrador LID ${lidAdm}:`, eAdm.message);
                             }
                         }
                     }
@@ -2866,7 +2894,8 @@ function limpiarNombreParaSaludo(nombre) {
     const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones', 'empezar'].includes(textoLowerNorm);
     const esSaludoPuro = saludos.includes(textoLowerNorm);
 
-    if ((pideMenuExplicito || (esSaludoPuro && esNuevaConversacion)) && mostrarMenuNumerico) {
+    // Modificado: Forzar menú en CUALQUIER primer mensaje (o después de 12 hrs) si el menú está activo
+    if ((pideMenuExplicito || esNuevaConversacion) && mostrarMenuNumerico) {
         await simularEscribiendoSeguro(msg, 1000);
 
         const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
