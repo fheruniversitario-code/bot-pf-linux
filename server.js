@@ -3018,6 +3018,9 @@ function limpiarNombreParaSaludo(nombre) {
         const saludoPersonal = nomSaludo ? `Hola, *${nomSaludo}*.` : 'Hola, un gusto saludarte.';
         const saludoEntendido = nomSaludo ? `Entendido, *${nomSaludo}*.` : 'Entendido.';
         const horarioFisicoGlobal = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+        const horarioOnlineGlobal = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_asesor_en_linea'"))?.valor || '';
+        const difiereOnlineGlobal = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_online_diferente'"))?.valor === '1';
+        const horarioAtencionFinal = difiereOnlineGlobal && horarioOnlineGlobal ? horarioOnlineGlobal : horarioFisicoGlobal;
 
         let msjTransferido = '';
 
@@ -3040,7 +3043,7 @@ function limpiarNombreParaSaludo(nombre) {
             }
         } else if (!estadoHorario.enHorario) {
             msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌙 *Fuera de Horario de Atención en Línea:*\n` +
-                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioFisicoGlobal || 'Lunes a Viernes en horario habitual'}.\n\n` +
+                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioAtencionFinal || 'Lunes a Viernes en horario habitual'}.\n\n` +
                 `⏳ Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
                 `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.`;
         } else {
