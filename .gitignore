@@ -8,3 +8,15 @@ pacientes.json
 infografias_enviadas.json
 vacaciones.json
 pausas.json
+
+# Archivos generados y subidos por el cliente desde el panel
+documentos/
+imagenes/
+config/config.json
+database.sqlite
+
+# Archivos generados y subidos por el cliente desde el panel
+documentos/
+imagenes/
+config/config.json
+database.sqlite
