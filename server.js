@@ -3258,6 +3258,9 @@ function limpiarNombreParaSaludo(nombre) {
         const ubicacion = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_direccion'"))?.valor || '';
         const mapsLink = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '';
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+        const horarioOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_asesor_en_linea'"))?.valor || '';
+        const difiereOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_online_diferente'"))?.valor === '1';
+        const horarioAtencionFinal = difiereOnline && horarioOnline ? horarioOnline : horarioFisico;
 
         const menuConfigRawIA = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
         let textoOpcionesMenuIA = '';
@@ -3378,7 +3381,7 @@ async function obtenerContenidoGoogleSheets(url) {
 - Actualmente estamos FUERA del horario en que el personal humano responde mensajes por este chat. El personal responderá mensajes y coordinará citas por WhatsApp: ${estadoHorario.proximoTexto}.
 - REGLAS ESTRICTAS DE HORARIO Y CITAS (NO CONFUNDIR ATENCIÓN EN LÍNEA CON ATENCIÓN FÍSICA):
   1. NUNCA le digas al cliente que puede acudir o presentarse físicamente sin haber coordinado previamente por este chat.
-  2. Aclara que el horario de atención en línea (${horarioFisico || 'el horario habitual de atención'}) es para responder dudas por WhatsApp y coordinar citas o pedidos.
+  2. Aclara que el horario de atención en línea (${horarioAtencionFinal || 'el horario habitual de atención'}) es para responder dudas por WhatsApp y coordinar citas o pedidos.
   3. Para cualquier atención, entrega de producto o servicio presencial, el cliente debe coordinarlo previamente por este chat.
   4. Adviértele amablemente que no visite las instalaciones sin haber coordinado previamente, ya que no siempre es posible atenderlo de forma inmediata.
   5. Si el cliente pide explícitamente un turno o cita, confírmale que su solicitud quedó registrada para coordinarla en cuanto inicie el turno de atención en línea.`;
@@ -3397,7 +3400,7 @@ async function obtenerContenidoGoogleSheets(url) {
 
         const reglaHorarioBase = estadoHorario.enReceso
             ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'CAPACITACIÓN MÉDICA' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el personal de salud se encuentra en jornadas de capacitación médica' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
-            : `3. El horario configurado (${horarioFisico || 'el horario habitual de atención'}) es de ATENCIÓN EN LÍNEA POR WHATSAPP para resolver dudas y coordinar citas o pedidos.`;
+            : `3. El horario configurado (${horarioAtencionFinal || 'el horario habitual de atención'}) es de ATENCIÓN EN LÍNEA POR WHATSAPP para resolver dudas y coordinar citas o pedidos.`;
 
         const systemInstruction = `
 ${configPrompt}
@@ -3420,7 +3423,7 @@ ${textoDocumentosAdicionales}
 INFORMACIÓN DE UBICACIÓN Y HORARIOS:
 - Ubicación física: ${ubicacion}
 - Google Maps: ${mapsLink}
-- Horario de Atención en Línea (WhatsApp): ${horarioFisico}
+- Horario de Atención en Línea (WhatsApp): ${horarioAtencionFinal}
 
 INFORMACIÓN DE PAGOS / BANCOS:
 ${datosBancos}
