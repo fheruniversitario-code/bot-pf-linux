@@ -1852,11 +1852,26 @@ async function obtenerEstadoHorarioMexico() {
     const textoBaseRevisar = difiereOnline ? horarioOnline.toLowerCase() : horarioFisico.toLowerCase();
     
     // Heurística simple para saber si abren fines de semana basándose en el texto descriptivo
-    const abreSabado = textoBaseRevisar.includes('sabado') || textoBaseRevisar.includes('sábado') || textoBaseRevisar.includes('lunes a sabado') || textoBaseRevisar.includes('lunes a sábado') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
-    const abreDomingo = textoBaseRevisar.includes('domingo') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
+    let abreSabado = textoBaseRevisar.includes('sabado') || textoBaseRevisar.includes('sábado') || textoBaseRevisar.includes('lunes a sabado') || textoBaseRevisar.includes('lunes a sábado') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
+    let abreDomingo = textoBaseRevisar.includes('domingo') || textoBaseRevisar.includes('lunes a domingo') || textoBaseRevisar.includes('todos los dias') || textoBaseRevisar.includes('todos los días');
+
+    const esCerrado = (dia) => {
+        const regex = new RegExp(`(?:(?:${dia})[^\\w]*(?:cerrado|descanso|no abrimos|inactivo))|(?:(?:cerrado|descanso|no abrimos|inactivo)[^\\w]*(?:los\\s*)?(?:${dia}))`, 'i');
+        return regex.test(textoBaseRevisar);
+    };
+
+    if (esCerrado('s[aá]bado|s[aá]b')) abreSabado = false;
+    if (esCerrado('domingo|dom')) abreDomingo = false;
 
     // Días laborables dinámicos
-    const diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
+    let diasLaborables = ['lun', 'mar', 'mié', 'jue', 'vie'];
+    
+    if (esCerrado('lunes|lun')) diasLaborables = diasLaborables.filter(d => d !== 'lun');
+    if (esCerrado('martes|mar')) diasLaborables = diasLaborables.filter(d => d !== 'mar');
+    if (esCerrado('mi[eé]rcoles|mi[eé]')) diasLaborables = diasLaborables.filter(d => d !== 'mié');
+    if (esCerrado('jueves|jue')) diasLaborables = diasLaborables.filter(d => d !== 'jue');
+    if (esCerrado('viernes|vie')) diasLaborables = diasLaborables.filter(d => d !== 'vie');
+
     if (abreSabado) diasLaborables.push('sáb', 'sab');
     if (abreDomingo) diasLaborables.push('dom');
 
@@ -2273,6 +2288,15 @@ async function procesarMensajeEntrante(msg) {
 
         const esGrupo = msg.from.endsWith('@g.us');
         const texto = msg.body ? msg.body.trim() : '';
+
+        // COMANDO MAESTRO DE RESETEO - BYPASS TOTAL
+        if (texto && (texto.toLowerCase().includes('!reset') || texto.toLowerCase().includes('/reset') || texto.toLowerCase().includes('!borrar'))) {
+            try {
+                await runQuery("DELETE FROM mensajes WHERE chat_id = ? OR chat_id LIKE ?", [remitente, `%${remitente.slice(-10)}%`]);
+                await client.sendMessage(remitente, '✅ *Memoria de Inteligencia Artificial borrada exitosamente.* El historial de este chat ha sido eliminado. Ya puedes enviar tu mensaje para iniciar de cero.');
+            } catch(e) {}
+            return;
+        }
 
     // En grupos normales, el bot se mantiene 100% sordo y mudo
     if (esGrupo) {
@@ -3231,6 +3255,17 @@ function limpiarNombreParaSaludo(nombre) {
         const ubicacion = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_direccion'"))?.valor || '';
         const mapsLink = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'ubicacion_maps_link'"))?.valor || '';
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+
+        const menuConfigRawIA = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
+        let textoOpcionesMenuIA = '';
+        if (menuConfigRawIA) {
+            try {
+                const menuOpts = JSON.parse(menuConfigRawIA);
+                menuOpts.forEach(o => {
+                    if (o.titulo) textoOpcionesMenuIA += `- Opción ${o.opcion}: ${o.titulo} | Respuesta: ${o.respuesta || ''} | Enlace exacto: ${o.enlace || 'Ninguno'}\n`;
+                });
+            } catch(e) {}
+        }
         
         // Estado de ausencia gestionado en reglaHorarioIA (bloque único, sin redundancias)
 
@@ -3371,6 +3406,10 @@ ${instruccionNombre}
 
 CATÁLOGO DE PRODUCTOS / SERVICIOS / PRECIOS:
 ${catalogo}
+
+OPCIONES DE MENÚ Y ENLACES (IMPORTANTE):
+El negocio tiene configuradas las siguientes opciones y enlaces rápidos en su panel. Si las instrucciones te piden proveer el enlace de un menú numérico específico, utiliza EXACTAMENTE la URL o texto de la respuesta indicada aquí. NUNCA inventes enlaces de Google Drive u otros externos si no están explícitamente aquí:
+${textoOpcionesMenuIA || 'No hay opciones de menú configuradas.'}
 
 DOCUMENTOS Y ARCHIVOS DE CONOCIMIENTO (LISTAS DE PRECIOS, INVENTARIO, MANUALES, GOOGLE SHEETS):
 ${textoDocumentosAdicionales}
