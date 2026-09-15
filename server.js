@@ -1374,8 +1374,8 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
                 fecha: fecha || citaVieja.fecha,
                 hora: hora || citaVieja.hora,
                 duracionMinutos: duracionCita,
-                clienteNombre: citaVieja.cliente_nombre,
-                clienteTelefono: citaVieja.cliente_telefono,
+                nombre: citaVieja.cliente_nombre,
+                telefono: citaVieja.cliente_telefono,
                 servicio: servicio || citaVieja.servicio,
                 notas: notas !== undefined ? notas : citaVieja.notas,
                 timezone
