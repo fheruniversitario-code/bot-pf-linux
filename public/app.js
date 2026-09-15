@@ -141,7 +141,10 @@ function cambiarTab(tabId) {
         cargarListaConversaciones(); 
         cargarSolicitudesAsesor(); 
     }
-    if (tabId === 'citas') cargarAgendaCitas();
+    if (tabId === 'citas') {
+        cargarAgendaCitas();
+        cargarConfiguracion();
+    }
     if (tabId === 'linktree') cargarLinktreeConfig();
     if (tabId === 'conocimiento') cargarConfiguracion();
     if (tabId === 'configuracion') { 
