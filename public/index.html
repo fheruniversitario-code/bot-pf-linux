@@ -584,6 +584,21 @@
                         </div>
                     </div>
 
+                    <!-- NUEVO: Barra de Disponibilidad -->
+                    <div class="px-4 py-2.5 bg-slate-900 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-slate-400 font-semibold flex items-center space-x-1.5">
+                                <i class="fa-solid fa-calendar-day text-indigo-400"></i>
+                                <span>Ver Huecos:</span>
+                            </span>
+                            <input type="date" id="input-chat-fecha-disponibilidad" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 outline-none focus:border-indigo-500 cursor-pointer text-xs">
+                            <button type="button" onclick="inyectarDisponibilidadChat(event)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 rounded-lg font-bold transition flex items-center space-x-1.5 shadow-sm">
+                                <i class="fa-solid fa-angles-down text-[10px]"></i>
+                                <span>Copiar al chat</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Input Box para Asesor Humano -->
                     <form id="form-enviar-mensaje" class="p-4 bg-slate-900 border-t border-slate-800/40 flex items-center space-x-3">
                         <input type="text" id="input-mensaje-texto" placeholder="Escribe una respuesta como asesor humano (el bot se pausará automáticamente)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">

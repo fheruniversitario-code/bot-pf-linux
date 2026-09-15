@@ -3935,7 +3935,7 @@ async function obtenerContenidoGoogleSheets(url) {
 Cuentas con sincronización en vivo con Google Calendar.
 ${disponibilidadContexto ? `DISPONIBILIDAD REAL EN GOOGLE CALENDAR:\n${disponibilidadContexto}\n` : ''}
 REGLAS ESTRICTAS DE AGENDAMIENTO:
-1. Si el cliente pregunta por horarios, disponibilidad o citas, responde con los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes.
+1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Invítalo a elegir el que mejor le acomode.
 2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, confírmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta técnica oculta:
    [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]
    (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])
