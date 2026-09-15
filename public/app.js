@@ -907,6 +907,16 @@ async function guardarConfigAgenda() {
         const agenda_buffer_minutos = document.getElementById('config-buffer-minutos')?.value || '10';
         const agenda_dias_anticipacion_max = document.getElementById('config-dias-anticipacion')?.value || '15';
 
+        const agenda_turno1_inicio = document.getElementById('config-agenda-turno1-inicio')?.value || '14:00';
+        const agenda_turno1_fin = document.getElementById('config-agenda-turno1-fin')?.value || '17:00';
+        const agenda_turno2_activo = document.getElementById('config-agenda-turno2-activo')?.checked ? '1' : '0';
+        const agenda_turno2_inicio = document.getElementById('config-agenda-turno2-inicio')?.value || '18:00';
+        const agenda_turno2_fin = document.getElementById('config-agenda-turno2-fin')?.value || '20:00';
+        const agenda_sabado_activo = document.getElementById('config-agenda-sabado-activo')?.checked ? '1' : '0';
+        const agenda_sabado_inicio = document.getElementById('config-agenda-sabado-inicio')?.value || '09:00';
+        const agenda_sabado_fin = document.getElementById('config-agenda-sabado-fin')?.value || '14:00';
+        const agenda_domingo_activo = document.getElementById('config-agenda-domingo-activo')?.checked ? '1' : '0';
+
         await apiFetch('/api/configuracion', {
             method: 'POST',
             body: JSON.stringify({
@@ -915,7 +925,16 @@ async function guardarConfigAgenda() {
                 google_service_account_json,
                 agenda_duracion_cita,
                 agenda_buffer_minutos,
-                agenda_dias_anticipacion_max
+                agenda_dias_anticipacion_max,
+                agenda_turno1_inicio,
+                agenda_turno1_fin,
+                agenda_turno2_activo,
+                agenda_turno2_inicio,
+                agenda_turno2_fin,
+                agenda_sabado_activo,
+                agenda_sabado_inicio,
+                agenda_sabado_fin,
+                agenda_domingo_activo
             })
         });
 
@@ -1166,6 +1185,16 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-google-service-account')) document.getElementById('config-google-service-account').value = config.google_service_account_json || '';
         if (document.getElementById('config-buffer-minutos')) document.getElementById('config-buffer-minutos').value = config.agenda_buffer_minutos || '10';
         if (document.getElementById('config-dias-anticipacion')) document.getElementById('config-dias-anticipacion').value = config.agenda_dias_anticipacion_max || '15';
+
+        if (document.getElementById('config-agenda-turno1-inicio')) document.getElementById('config-agenda-turno1-inicio').value = config.agenda_turno1_inicio || '14:00';
+        if (document.getElementById('config-agenda-turno1-fin')) document.getElementById('config-agenda-turno1-fin').value = config.agenda_turno1_fin || '17:00';
+        if (document.getElementById('config-agenda-turno2-activo')) document.getElementById('config-agenda-turno2-activo').checked = (config.agenda_turno2_activo !== '0');
+        if (document.getElementById('config-agenda-turno2-inicio')) document.getElementById('config-agenda-turno2-inicio').value = config.agenda_turno2_inicio || '18:00';
+        if (document.getElementById('config-agenda-turno2-fin')) document.getElementById('config-agenda-turno2-fin').value = config.agenda_turno2_fin || '20:00';
+        if (document.getElementById('config-agenda-sabado-activo')) document.getElementById('config-agenda-sabado-activo').checked = (config.agenda_sabado_activo !== '0');
+        if (document.getElementById('config-agenda-sabado-inicio')) document.getElementById('config-agenda-sabado-inicio').value = config.agenda_sabado_inicio || '09:00';
+        if (document.getElementById('config-agenda-sabado-fin')) document.getElementById('config-agenda-sabado-fin').value = config.agenda_sabado_fin || '14:00';
+        if (document.getElementById('config-agenda-domingo-activo')) document.getElementById('config-agenda-domingo-activo').checked = (config.agenda_domingo_activo === '1');
 
         const toggleAgenda = document.getElementById('toggle-modulo-agenda');
         if (toggleAgenda) {

@@ -1384,10 +1384,15 @@ app.get('/api/agenda/disponibilidad', autenticarToken, async (req, res) => {
         const bufferMinutos = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_buffer_minutos'"))?.valor || 10;
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
-        const inicioSemana = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '09:00';
-        const finSemana = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '18:00';
-        const inicioSabado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
-        const finSabado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+        const turno1_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno1_inicio'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '14:00';
+        const turno1_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno1_fin'"))?.valor || '17:00';
+        const turno2_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_activo'"))?.valor === '1';
+        const turno2_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_inicio'"))?.valor || '18:00';
+        const turno2_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_fin'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '20:00';
+        const sabado_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_activo'"))?.valor !== '0';
+        const sabado_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_inicio'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
+        const sabado_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_fin'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+        const domingo_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_domingo_activo'"))?.valor === '1';
 
         // Citas locales ocupadas
         const citasLocales = await allQuery("SELECT fecha, hora FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada'", [fecha]);
@@ -1400,11 +1405,16 @@ app.get('/api/agenda/disponibilidad', autenticarToken, async (req, res) => {
             bufferMinutos: parseInt(bufferMinutos) || 10,
             timezone,
             horarioLaboral: {
-                inicioSemana,
-                finSemana,
-                inicioSabado,
-                finSabado,
-                atiendeDomingo: false
+                turno1_inicio,
+                turno1_fin,
+                turno2_activo,
+                turno2_inicio,
+                turno2_fin,
+                sabado_activo,
+                sabado_inicio,
+                sabado_fin,
+                atiendeSabado: sabado_activo,
+                atiendeDomingo: domingo_activo
             },
             citasLocalesOcupadas: citasLocales
         });
@@ -1931,6 +1941,32 @@ async function obtenerEstadoHorarioMexico() {
                     fechaFin: ev.reanudacion_texto || ev.fecha_fin,
                     esProgramado: true
                 };
+            } else {
+                // Si no hay evento local, verificar si hay evento de ausencia activo en Google Calendar
+                try {
+                    const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+                    if (configAgendaActivo) {
+                        const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+                        const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+                        const tz = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+                        if (calId && creds) {
+                            const calEv = await calendarService.obtenerEventoAusenciaActivoHoy({
+                                calendarId: calId,
+                                credentials: creds,
+                                timezone: tz
+                            });
+                            if (calEv && calEv.activo) {
+                                eventoActivo = {
+                                    tipo: calEv.tipo || 'festivo',
+                                    motivo: calEv.titulo,
+                                    fechaFin: calEv.fechaFin || 'próximamente',
+                                    esProgramado: true,
+                                    origen: 'google_calendar'
+                                };
+                            }
+                        }
+                    }
+                } catch (eCal) {}
             }
         } catch(eEv) {}
     }
@@ -2184,13 +2220,39 @@ app.post('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
         const fechaFinFinal = fecha_fin || fecha_inicio;
         const reanudacionFinal = reanudacion_texto || `al concluir ${titulo}`;
 
+        let googleEventId = null;
+        try {
+            const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+            if (configAgendaActivo) {
+                const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+                const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+                const tz = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+                if (calId && creds) {
+                    const bloqRes = await calendarService.crearBloqueoAusencia({
+                        calendarId: calId,
+                        credentials: creds,
+                        titulo: titulo.trim(),
+                        tipo: tipoFinal,
+                        fechaInicio: fecha_inicio,
+                        fechaFin: fechaFinFinal,
+                        timezone: tz
+                    });
+                    if (bloqRes && bloqRes.success) {
+                        googleEventId = bloqRes.eventId;
+                    }
+                }
+            }
+        } catch (eG) {
+            console.error("⚠️ Error creando bloqueo en Google Calendar:", eG.message);
+        }
+
         const resultado = await runQuery(`
-            INSERT INTO eventos_ausencia (tipo, titulo, fecha_inicio, fecha_fin, reanudacion_texto, activo, creado_en)
-            VALUES (?, ?, ?, ?, ?, 1, ?)
-        `, [tipoFinal, titulo.trim(), fecha_inicio, fechaFinFinal, reanudacionFinal.trim(), Date.now()]);
+            INSERT INTO eventos_ausencia (tipo, titulo, fecha_inicio, fecha_fin, reanudacion_texto, activo, google_event_id, creado_en)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+        `, [tipoFinal, titulo.trim(), fecha_inicio, fechaFinFinal, reanudacionFinal.trim(), googleEventId || '', Date.now()]);
 
         io.emit('eventos_ausencia_actualizados');
-        res.json({ success: true, id: resultado.id, mensaje: "Evento programado con éxito" });
+        res.json({ success: true, id: resultado.id, google_event_id: googleEventId, mensaje: "Evento programado con éxito" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -2198,6 +2260,26 @@ app.post('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
 
 app.delete('/api/bot/eventos-ausencia/:id', autenticarToken, async (req, res) => {
     try {
+        const ev = await getQuery("SELECT * FROM eventos_ausencia WHERE id = ?", [req.params.id]);
+        if (ev && ev.google_event_id) {
+            try {
+                const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+                if (configAgendaActivo) {
+                    const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+                    const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+                    if (calId && creds) {
+                        await calendarService.cancelarCita({
+                            calendarId: calId,
+                            credentials: creds,
+                            eventId: ev.google_event_id
+                        });
+                    }
+                }
+            } catch (eG) {
+                console.error("⚠️ Error al eliminar bloqueo de Google Calendar:", eG.message);
+            }
+        }
+
         await runQuery("DELETE FROM eventos_ausencia WHERE id = ?", [req.params.id]);
         io.emit('eventos_ausencia_actualizados');
         res.json({ success: true, mensaje: "Evento eliminado con éxito" });
@@ -3713,10 +3795,15 @@ async function obtenerContenidoGoogleSheets(url) {
             if (consultaCitas) {
                 try {
                     const fechasConsultar = calendarService.resolverFechasRelevantes(texto, timezoneNegocio, 3);
-                    const iniSem = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '09:00';
-                    const finSem = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '18:00';
-                    const iniSab = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
-                    const finSab = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+                    const turno1_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno1_inicio'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '14:00';
+                    const turno1_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno1_fin'"))?.valor || '17:00';
+                    const turno2_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_activo'"))?.valor === '1';
+                    const turno2_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_inicio'"))?.valor || '18:00';
+                    const turno2_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_turno2_fin'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '20:00';
+                    const sabado_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_activo'"))?.valor !== '0';
+                    const sabado_inicio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_inicio'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
+                    const sabado_fin = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_sabado_fin'"))?.valor || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+                    const domingo_activo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_domingo_activo'"))?.valor === '1';
 
                     const citasLocales = await allQuery("SELECT fecha, hora FROM citas_agenda WHERE fecha IN (" + fechasConsultar.map(() => '?').join(',') + ") AND estado != 'Cancelada'", fechasConsultar);
 
@@ -3728,11 +3815,16 @@ async function obtenerContenidoGoogleSheets(url) {
                         bufferMinutos: parseInt(bufferMinConfig) || 10,
                         timezone: timezoneNegocio,
                         horarioLaboral: {
-                            inicioSemana: iniSem,
-                            finSemana: finSem,
-                            inicioSabado: iniSab,
-                            finSabado: finSab,
-                            atiendeDomingo: false
+                            turno1_inicio,
+                            turno1_fin,
+                            turno2_activo,
+                            turno2_inicio,
+                            turno2_fin,
+                            sabado_activo,
+                            sabado_inicio,
+                            sabado_fin,
+                            atiendeSabado: sabado_activo,
+                            atiendeDomingo: domingo_activo
                         },
                         citasLocalesOcupadas: citasLocales
                     });

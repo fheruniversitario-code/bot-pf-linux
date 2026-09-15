@@ -249,6 +249,7 @@ async function inicializarBD() {
             creado_en INTEGER
         )
     `);
+    try { await runQuery("ALTER TABLE eventos_ausencia ADD COLUMN google_event_id TEXT DEFAULT ''"); } catch(e) {}
 
     // Seed Inicial de Etiquetas Universales si no existen
     const totalEtiquetas = (await getQuery("SELECT COUNT(*) as total FROM etiquetas"))?.total || 0;
@@ -342,6 +343,15 @@ async function inicializarBD() {
         agenda_buffer_minutos: "10",
         agenda_dias_anticipacion_max: "15",
         agenda_horas_anticipacion_min: "2",
+        agenda_turno1_inicio: "14:00",
+        agenda_turno1_fin: "17:00",
+        agenda_turno2_activo: "1",
+        agenda_turno2_inicio: "18:00",
+        agenda_turno2_fin: "20:00",
+        agenda_sabado_activo: "1",
+        agenda_sabado_inicio: "09:00",
+        agenda_sabado_fin: "14:00",
+        agenda_domingo_activo: "0",
         agenda_confirmacion_plantilla: "📅 *¡Cita confirmada con éxito!*\n\n👤 *Paciente / Cliente:* {nombre}\n🩺 *Servicio:* {servicio}\n🗓️ *Fecha:* {fecha}\n⏰ *Hora:* {hora}\n📍 *Lugar:* {ubicacion}\n\nTe esperamos con gusto. Si requieres cancelar o reprogramar, por favor avísanos con anticipación por este mismo chat.",
         gemini_modelo_ia: "gemini-3.6-flash",
         prompt_ia: "Eres el asistente virtual oficial de la empresa. Atiende de manera cordial, profesional, clara y concisa en español.",

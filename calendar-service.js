@@ -10,6 +10,7 @@ const fs = require('fs');
 class CalendarService {
     constructor() {
         this.cacheAuth = new Map();
+        this.cacheAusenciaGoogle = { data: null, timestamp: 0, calendarId: '' };
     }
 
     /**
@@ -127,32 +128,40 @@ class CalendarService {
             const fechaObj = new Date(ano, mes - 1, dia, 12, 0, 0); // Mediodía para evitar saltos
             const diaSemana = fechaObj.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
 
-            let horaInicioStr = '';
-            let horaFinStr = '';
+            const franjas = [];
 
             if (diaSemana === 0) { // Domingo
                 if (!horarioLaboral.atiendeDomingo) {
                     return { success: true, fecha, disponibles: [], motivo: "Los domingos no se ofrece atención presencial." };
                 }
-                horaInicioStr = horarioLaboral.inicioSemana || '09:00';
-                horaFinStr = horarioLaboral.finSemana || '14:00';
+                const dIni = horarioLaboral.domingoInicio || horarioLaboral.inicioSemana || '09:00';
+                const dFin = horarioLaboral.domingoFin || horarioLaboral.finSemana || '14:00';
+                franjas.push({ inicio: dIni, fin: dFin });
             } else if (diaSemana === 6) { // Sábado
-                horaInicioStr = horarioLaboral.inicioSabado || '09:00';
-                horaFinStr = horarioLaboral.finSabado || '14:00';
+                if (horarioLaboral.atiendeSabado === false || horarioLaboral.sabado_activo === '0') {
+                    return { success: true, fecha, disponibles: [], motivo: "Los sábados no se ofrece atención presencial." };
+                }
+                const sIni = horarioLaboral.sabado_inicio || horarioLaboral.inicioSabado || '09:00';
+                const sFin = horarioLaboral.sabado_fin || horarioLaboral.finSabado || '14:00';
+                franjas.push({ inicio: sIni, fin: sFin });
             } else { // Lunes a Viernes
-                horaInicioStr = horarioLaboral.inicioSemana || '09:00';
-                horaFinStr = horarioLaboral.finSemana || '18:00';
+                // Turno 1 (Principal)
+                const t1Ini = horarioLaboral.turno1_inicio || horarioLaboral.inicioSemana || '09:00';
+                const t1Fin = horarioLaboral.turno1_fin || horarioLaboral.finSemana || '18:00';
+                if (t1Ini && t1Fin) {
+                    franjas.push({ inicio: t1Ini, fin: t1Fin });
+                }
+
+                // Turno 2 (Vespertino / Segundo bloque después de comida o labores administrativas)
+                const t2Activo = (horarioLaboral.turno2_activo === true || horarioLaboral.turno2_activo === '1');
+                if (t2Activo && horarioLaboral.turno2_inicio && horarioLaboral.turno2_fin) {
+                    franjas.push({ inicio: horarioLaboral.turno2_inicio, fin: horarioLaboral.turno2_fin });
+                }
             }
 
-            if (!horaInicioStr || !horaFinStr) {
-                return { success: true, fecha, disponibles: [], motivo: "El día seleccionado está fuera del horario hábil." };
+            if (franjas.length === 0) {
+                return { success: true, fecha, disponibles: [], motivo: "El día seleccionado está fuera del horario de consulta hábil." };
             }
-
-            const [hIniH, hIniM] = horaInicioStr.split(':').map(Number);
-            const [hFinH, hFinM] = horaFinStr.split(':').map(Number);
-
-            const minutosInicioDia = hIniH * 60 + hIniM;
-            const minutosFinDia = hFinH * 60 + hFinM;
 
             // Calcular ventanas ocupadas de Google Calendar
             const timeMinISO = `${fecha}T00:00:00Z`;
@@ -199,7 +208,7 @@ class CalendarService {
                 });
             }
 
-            // Generar los bloques o slots potenciales
+            // Generar los bloques o slots potenciales dentro de cada franja configurada
             const pasoTotal = parseInt(duracionMinutos) + parseInt(bufferMinutos || 0);
             const slotsDisponibles = [];
 
@@ -209,36 +218,43 @@ class CalendarService {
             const esHoy = (hoyStr === fecha);
             const minAnticipacionMs = 2 * 60 * 60 * 1000; // 2 horas de anticipación mínima para hoy
 
-            for (let minActual = minutosInicioDia; minActual + parseInt(duracionMinutos) <= minutosFinDia; minActual += pasoTotal) {
-                const slotH = Math.floor(minActual / 60);
-                const slotM = minActual % 60;
+            for (const franja of franjas) {
+                const [hIniH, hIniM] = franja.inicio.split(':').map(Number);
+                const [hFinH, hFinM] = franja.fin.split(':').map(Number);
+                const minInicioFranja = hIniH * 60 + hIniM;
+                const minFinFranja = hFinH * 60 + hFinM;
 
-                const slotInicioDate = new Date(ano, mes - 1, dia, slotH, slotM, 0);
-                const slotFinDate = new Date(ano, mes - 1, dia, slotH, slotM + parseInt(duracionMinutos), 0);
+                for (let minActual = minInicioFranja; minActual + parseInt(duracionMinutos) <= minFinFranja; minActual += pasoTotal) {
+                    const slotH = Math.floor(minActual / 60);
+                    const slotM = minActual % 60;
 
-                // Si es hoy y está en el pasado o a menos de 2 horas de anticipación, omitir
-                if (esHoy && (slotInicioDate.getTime() - ahora.getTime() < minAnticipacionMs)) {
-                    continue;
-                }
+                    const slotInicioDate = new Date(ano, mes - 1, dia, slotH, slotM, 0);
+                    const slotFinDate = new Date(ano, mes - 1, dia, slotH, slotM + parseInt(duracionMinutos), 0);
 
-                // Verificar si choca con algún intervalo ocupado
-                const seSolapa = busyIntervals.some(inter => {
-                    return (slotInicioDate < inter.fin && slotFinDate > inter.inicio);
-                });
+                    // Si es hoy y está en el pasado o a menos de 2 horas de anticipación, omitir
+                    if (esHoy && (slotInicioDate.getTime() - ahora.getTime() < minAnticipacionMs)) {
+                        continue;
+                    }
 
-                if (!seSolapa) {
-                    const hora24 = `${String(slotH).padStart(2, '0')}:${String(slotM).padStart(2, '0')}`;
-                    const ampm = slotH >= 12 ? 'PM' : 'AM';
-                    const h12 = slotH % 12 === 0 ? 12 : slotH % 12;
-                    const hora12 = `${h12}:${String(slotM).padStart(2, '0')} ${ampm}`;
-
-                    slotsDisponibles.push({
-                        hora: hora24,
-                        horaTexto: hora12,
-                        duracion: duracionMinutos,
-                        inicioISO: slotInicioDate.toISOString(),
-                        finISO: slotFinDate.toISOString()
+                    // Verificar si choca con algún intervalo ocupado
+                    const seSolapa = busyIntervals.some(inter => {
+                        return (slotInicioDate < inter.fin && slotFinDate > inter.inicio);
                     });
+
+                    if (!seSolapa) {
+                        const hora24 = `${String(slotH).padStart(2, '0')}:${String(slotM).padStart(2, '0')}`;
+                        const ampm = slotH >= 12 ? 'PM' : 'AM';
+                        const h12 = slotH % 12 === 0 ? 12 : slotH % 12;
+                        const hora12 = `${h12}:${String(slotM).padStart(2, '0')} ${ampm}`;
+
+                        slotsDisponibles.push({
+                            hora: hora24,
+                            horaTexto: hora12,
+                            duracion: duracionMinutos,
+                            inicioISO: slotInicioDate.toISOString(),
+                            finISO: slotFinDate.toISOString()
+                        });
+                    }
                 }
             }
 
@@ -357,6 +373,165 @@ class CalendarService {
             }
             console.error("Error al cancelar cita en Google Calendar:", error);
             return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Crea un evento de bloqueo de ausencia (Curso, Vacaciones, Festivo) en Google Calendar.
+     */
+    async crearBloqueoAusencia({ calendarId, credentials, titulo, tipo = 'festivo', fechaInicio, fechaFin, timezone = 'America/Mexico_City' }) {
+        try {
+            if (!calendarId || !credentials || !titulo || !fechaInicio) {
+                return { success: false, error: "Faltan parámetros requeridos para crear bloqueo en Google Calendar." };
+            }
+            const { calendar } = this.obtenerAuth(credentials);
+
+            // Para eventos de día completo en Google Calendar, la fecha fin debe ser el día siguiente en formato YYYY-MM-DD
+            const finStr = fechaFin || fechaInicio;
+            const [anoF, mesF, diaF] = finStr.split('-').map(Number);
+            const fechaFinNext = new Date(anoF, mesF - 1, diaF + 1, 12, 0, 0);
+            const pad = (n) => String(n).padStart(2, '0');
+            const fechaFinExclusiva = `${fechaFinNext.getFullYear()}-${pad(fechaFinNext.getMonth() + 1)}-${pad(fechaFinNext.getDate())}`;
+
+            const emojis = { curso: '🎓', vacaciones: '🏖️', festivo: '🇲🇽' };
+            const emoji = emojis[tipo] || '📅';
+
+            const eventBody = {
+                summary: `${emoji} [BLOQUEO BOT] ${titulo}`,
+                description: `Evento programado automáticamente desde OmniBot (${tipo.toUpperCase()}).\nDurante este periodo la IA no ofrecerá citas presenciales y avisará a los clientes de la ausencia.`,
+                start: { date: fechaInicio },
+                end: { date: fechaFinExclusiva },
+                transparency: 'opaque' // Marca el calendario como ocupado (Busy)
+            };
+
+            const response = await calendar.events.insert({
+                calendarId: calendarId.trim(),
+                requestBody: eventBody
+            });
+
+            return {
+                success: true,
+                eventId: response.data.id,
+                htmlLink: response.data.htmlLink
+            };
+        } catch (error) {
+            console.error("Error al crear bloqueo de ausencia en Google Calendar:", error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Revisa si en Google Calendar existe algún evento de ausencia (Curso, Vacaciones, Día Festivo, Bloqueo)
+     * que esté activo el día de hoy (en timezone especificado).
+     * Cuenta con caché de 60 segundos para optimizar cuotas de la API.
+     */
+    async obtenerEventoAusenciaActivoHoy({ calendarId, credentials, timezone = 'America/Mexico_City' }) {
+        try {
+            if (!calendarId || !credentials) {
+                return { activo: false };
+            }
+
+            const ahora = Date.now();
+            if (
+                this.cacheAusenciaGoogle &&
+                this.cacheAusenciaGoogle.calendarId === calendarId &&
+                ahora - this.cacheAusenciaGoogle.timestamp < 60000
+            ) {
+                return this.cacheAusenciaGoogle.data;
+            }
+
+            const { calendar } = this.obtenerAuth(credentials);
+
+            // Obtener fecha de hoy en formato YYYY-MM-DD según la zona horaria
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: timezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const hoyStr = formatter.format(new Date());
+
+            // Ventana de búsqueda: 24 horas antes y después para capturar eventos de día completo
+            const timeMin = new Date(new Date().setHours(0, 0, 0, 0) - 24 * 3600000).toISOString();
+            const timeMax = new Date(new Date().setHours(23, 59, 59, 999) + 24 * 3600000).toISOString();
+
+            const res = await calendar.events.list({
+                calendarId: calendarId.trim(),
+                timeMin,
+                timeMax,
+                singleEvents: true,
+                orderBy: 'startTime'
+            });
+
+            const items = res.data.items || [];
+            let eventoDetectado = null;
+
+            for (const item of items) {
+                if (item.status === 'cancelled') continue;
+                const summary = (item.summary || '').trim();
+                const summaryLower = summary.toLowerCase();
+                if (summaryLower.startsWith('cita:') || summaryLower.startsWith('cita ')) continue;
+
+                let activoHoy = false;
+                let fechaFinTexto = '';
+
+                // Caso 1: Evento de día completo (start.date)
+                if (item.start && item.start.date) {
+                    const inicioDateStr = item.start.date;
+                    const finDateStr = item.end ? item.end.date : inicioDateStr;
+                    if (inicioDateStr <= hoyStr && hoyStr < finDateStr) {
+                        activoHoy = true;
+                        fechaFinTexto = finDateStr;
+                    }
+                }
+                // Caso 2: Evento con fecha y hora (start.dateTime)
+                else if (item.start && item.start.dateTime) {
+                    const inicioStr = formatter.format(new Date(item.start.dateTime));
+                    const finStr = formatter.format(new Date(item.end?.dateTime || item.start.dateTime));
+                    if (inicioStr <= hoyStr && hoyStr <= finStr) {
+                        const palabrasAusencia = ['curso', 'vacacion', 'vacaciones', 'festivo', 'feriado', 'congreso', 'capacitacion', 'capacitación', 'ausente', 'no disponible', 'suspension', 'suspensión', 'bloqueo'];
+                        const tieneKeyword = palabrasAusencia.some(kw => summaryLower.includes(kw));
+                        const duracionHoras = (new Date(item.end?.dateTime || 0) - new Date(item.start.dateTime)) / (1000 * 3600);
+
+                        if (tieneKeyword || duracionHoras >= 5) {
+                            activoHoy = true;
+                            fechaFinTexto = finStr;
+                        }
+                    }
+                }
+
+                if (activoHoy) {
+                    let tipo = 'festivo';
+                    if (/curso|congreso|capacitac/i.test(summary)) {
+                        tipo = 'curso';
+                    } else if (/vacacion/i.test(summary)) {
+                        tipo = 'vacaciones';
+                    }
+
+                    const tituloLimpio = summary.replace(/\[BLOQUEO BOT\]/gi, '').replace(/^[\p{Emoji}\s]+/gu, '').trim();
+
+                    eventoDetectado = {
+                        activo: true,
+                        id: item.id,
+                        titulo: tituloLimpio || summary,
+                        tipo,
+                        fechaFin: fechaFinTexto,
+                        origen: 'google_calendar'
+                    };
+                    break;
+                }
+            }
+
+            const resultado = eventoDetectado || { activo: false };
+            this.cacheAusenciaGoogle = {
+                calendarId,
+                timestamp: Date.now(),
+                data: resultado
+            };
+            return resultado;
+        } catch (error) {
+            console.error("Error al consultar eventos de ausencia en Google Calendar:", error);
+            return { activo: false, error: error.message };
         }
     }
 
