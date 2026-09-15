@@ -3866,6 +3866,11 @@ async function obtenerContenidoGoogleSheets(url) {
 - REGLA DE CONTINUIDAD: Responde tú con calidez y precisión cualquier duda del cliente sobre el catálogo, productos, servicios, requisitos y disponibilidad. NUNCA le digas que 'escriba asesor' o que 'hable con un asesor' si tú tienes la información para resolver su duda o si la conversación ya está en curso.`;
         }
 
+        const etiquetasBD = await allQuery("SELECT e.nombre FROM etiquetas e INNER JOIN contactos_etiquetas ce ON e.id = ce.etiqueta_id WHERE ce.jid = ?", [msg.from]);
+        const listaEtiquetas = etiquetasBD.map(e => e.nombre);
+        const tagsString = listaEtiquetas.length > 0 ? listaEtiquetas.join(', ') : 'Ninguna';
+        const tieneExpediente = listaEtiquetas.some(t => t.toLowerCase().includes('expediente') || t.toLowerCase().includes('privacidad'));
+
         const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
         const instruccionNombre = nomLimpioIA
             ? `- Nombre del cliente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
@@ -3931,17 +3936,15 @@ async function obtenerContenidoGoogleSheets(url) {
             }
 
             seccionAgendaIA = `
-📅 SISTEMA DE AGENDAMIENTO AUTOMATIZADO CON GOOGLE CALENDAR (ACTIVO):
-Cuentas con sincronización en vivo con Google Calendar.
-${disponibilidadContexto ? `DISPONIBILIDAD REAL EN GOOGLE CALENDAR:\n${disponibilidadContexto}\n` : ''}
-REGLAS ESTRICTAS DE AGENDAMIENTO:
-1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Invítalo a elegir el que mejor le acomode.
-2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, confírmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta técnica oculta:
-   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]
-   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])
-3. Si el cliente pide cancelar una cita existente, confírmale la cancelación e incluye:
-   [CANCELAR_CITA: YYYY-MM-DD]
-4. Si el cliente insiste en hablar con un humano o tiene dudas médicas complejas fuera de tu alcance, incluye [REQUERIR_HUMANO].`;
+  ?? SISTEMA DE AGENDAMIENTO AUTOMATIZADO CON GOOGLE CALENDAR (ACTIVO):
+  Cuentas con sincronizaci�n en vivo con Google Calendar.
+  ${disponibilidadContexto ? `DISPONIBILIDAD REAL EN GOOGLE CALENDAR:\n${disponibilidadContexto}\n` : ''}
+  
+  ?? CANDADO DE SEGURIDAD PARA CITAS (ESTRICTO):
+  ${tieneExpediente 
+    ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Inv�talo a elegir el que mejor le acomode.\n2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, conf�rmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta t�cnica oculta:\n   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]\n   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])\n3. Si el cliente pide cancelar una cita existente, conf�rmale la cancelaci�n e incluye:\n   [CANCELAR_CITA: YYYY-MM-DD]\n4. Si el cliente insiste en hablar con un humano o tiene dudas m�dicas complejas fuera de tu alcance, incluye [REQUERIR_HUMANO].` 
+    : `? EL PACIENTE A�N NO TIENE LA ETIQUETA 'EXPEDIENTE COMPLETO' O 'AVISO DE PRIVACIDAD'.\nREGLA CR�TICA: EST� ESTRICTAMENTE PROHIBIDO OFRECERLE HORARIOS O AGENDAR UNA CITA. Si el paciente pide cita, debes pedirle amablemente que primero llene su aviso de privacidad o env�e sus documentos para poder abrirle el expediente.`}
+`;
         } else {
             seccionAgendaIA = `
 - REGLA DE DETECCIÓN DE CITAS (CRÍTICO): Si el usuario te confirma que desea agendar una cita, apartar un turno, o solicita hablar con el personal humano, DEBES incluir obligatoriamente la etiqueta oculta [REQUERIR_HUMANO] al final de tu mensaje. Esto le avisará al sistema que debe anotar al cliente de inmediato en el panel.`;
