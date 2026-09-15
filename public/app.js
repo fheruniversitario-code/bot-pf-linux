@@ -808,37 +808,194 @@ document.getElementById('form-enviar-mensaje').addEventListener('submit', async 
 });
 
 // ------------------------------------------------------------------------------
-// 5. TAB 3: AGENDA DE CITAS
+// 5. TAB 3: AGENDA DE CITAS Y GOOGLE CALENDAR
 // ------------------------------------------------------------------------------
+function toggleModuloAgendaVisual(activo) {
+    const badge = document.getElementById('badge-modulo-agenda');
+    if (!badge) return;
+    if (activo) {
+        badge.textContent = 'ACTIVO';
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+    } else {
+        badge.textContent = 'DESACTIVADO';
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700/50';
+    }
+}
+
 async function cargarAgendaCitas() {
     try {
         const citas = await apiFetch('/api/citas');
         const tbody = document.getElementById('tabla-citas-body');
+        if (!tbody) return;
         tbody.innerHTML = '';
 
         if (!citas || citas.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500 text-xs">No hay citas agendadas aún.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-xs">No hay citas agendadas aún.</td></tr>`;
             return;
         }
 
         citas.forEach(c => {
             const tr = document.createElement('tr');
-            tr.className = "hover:bg-slate-850/40 transition";
+            tr.className = "hover:bg-slate-800/40 transition border-b border-slate-800/40";
+            
+            const esCancelada = (c.estado === 'Cancelada');
+            const estadoBadge = esCancelada
+                ? `<span class="px-2.5 py-1 bg-red-500/10 text-red-400 rounded-full text-xs font-bold border border-red-500/20">Cancelada</span>`
+                : `<span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold border border-emerald-500/20">Confirmada</span>`;
+
+            const origenBadge = (c.origen === 'ia')
+                ? `<span class="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded text-[11px] font-semibold border border-indigo-500/20">🤖 WhatsApp IA</span>`
+                : `<span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[11px] font-semibold border border-slate-700">👤 Panel Web</span>`;
+
+            let linkGCal = '';
+            if (c.link_evento) {
+                linkGCal = `<a href="${c.link_evento}" target="_blank" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1" title="Ver evento en Google Calendar">
+                    <i class="fa-brands fa-google"></i>
+                    <span>Ver en Calendar</span>
+                </a>`;
+            } else if (c.google_event_id) {
+                linkGCal = `<span class="text-emerald-400 text-xs flex items-center space-x-1" title="Sincronizado con Google Calendar">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Sincronizado</span>
+                </span>`;
+            }
+
+            let botonAccion = '';
+            if (!esCancelada) {
+                botonAccion = `<button onclick="cancelarCita(${c.id})" class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold border border-red-500/30 transition">
+                    Cancelar
+                </button>`;
+            } else {
+                botonAccion = `<span class="text-slate-600 text-xs italic">Inactiva</span>`;
+            }
+
             tr.innerHTML = `
-                <td class="py-4 font-bold text-white">
+                <td class="py-3.5 font-bold text-white">
                     <div>${c.fecha}</div>
-                    <div class="text-xs text-indigo-400">${c.hora}</div>
+                    <div class="text-xs text-indigo-400 font-normal">${c.hora}${c.hora_fin ? ' - ' + c.hora_fin : ''}</div>
                 </td>
-                <td class="py-4 font-semibold text-slate-200">${c.cliente_nombre}</td>
-                <td class="py-4 text-xs text-slate-400">${c.cliente_telefono}</td>
-                <td class="py-4 text-xs font-medium text-slate-300">${c.servicio}</td>
-                <td class="py-4"><span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-bold border border-emerald-500/20">${c.estado}</span></td>
-                <td class="py-4 text-xs text-slate-400">${c.notas || '---'}</td>
+                <td class="py-3.5 font-semibold text-slate-200">
+                    <div>${c.cliente_nombre}</div>
+                    ${c.notas ? `<div class="text-[11px] text-slate-400 font-normal italic">${c.notas}</div>` : ''}
+                </td>
+                <td class="py-3.5 text-xs text-slate-300">${c.cliente_telefono || '---'}</td>
+                <td class="py-3.5 text-xs font-medium text-slate-200">${c.servicio || 'General'}</td>
+                <td class="py-3.5">
+                    ${origenBadge}
+                    ${linkGCal ? `<div class="mt-1">${linkGCal}</div>` : ''}
+                </td>
+                <td class="py-3.5">${estadoBadge}</td>
+                <td class="py-3.5 text-right">${botonAccion}</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) {
         console.error("Error cargando citas:", e);
+    }
+}
+
+async function guardarConfigAgenda() {
+    try {
+        const btn = document.getElementById('btn-guardar-agenda');
+        const txtOriginal = btn ? btn.innerHTML : '';
+        if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+        const modulo_agenda_activo = document.getElementById('toggle-modulo-agenda')?.checked ? '1' : '0';
+        const google_calendar_id = document.getElementById('config-google-calendar-id')?.value.trim() || '';
+        const google_service_account_json = document.getElementById('config-google-service-account')?.value.trim() || '';
+        const agenda_duracion_cita = document.getElementById('config-duracion-cita')?.value || '30';
+        const agenda_buffer_minutos = document.getElementById('config-buffer-minutos')?.value || '10';
+        const agenda_dias_anticipacion_max = document.getElementById('config-dias-anticipacion')?.value || '15';
+
+        await apiFetch('/api/configuracion', {
+            method: 'POST',
+            body: JSON.stringify({
+                modulo_agenda_activo,
+                google_calendar_id,
+                google_service_account_json,
+                agenda_duracion_cita,
+                agenda_buffer_minutos,
+                agenda_dias_anticipacion_max
+            })
+        });
+
+        if (btn) btn.innerHTML = txtOriginal;
+        alert("✅ Parámetros de agenda y Google Calendar guardados correctamente.");
+    } catch (err) {
+        alert("❌ Error al guardar configuración de agenda: " + err.message);
+    }
+}
+
+async function probarConexionGoogleCalendar() {
+    const feedback = document.getElementById('feedback-conexion-calendar');
+    const btn = document.getElementById('btn-probar-google-calendar');
+    const txtOriginal = btn ? btn.innerHTML : '';
+
+    try {
+        if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i> Probando conexión...`;
+        if (feedback) {
+            feedback.classList.remove('hidden', 'bg-red-500/15', 'text-red-300', 'border-red-500/30', 'bg-emerald-500/15', 'text-emerald-300', 'border-emerald-500/30');
+            feedback.className = 'p-3.5 rounded-2xl text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700';
+            feedback.innerHTML = `Verificando credenciales de Google Service Account y acceso a Google Calendar...`;
+        }
+
+        const calendarId = document.getElementById('config-google-calendar-id')?.value.trim();
+        const credentials = document.getElementById('config-google-service-account')?.value.trim();
+
+        if (!calendarId) {
+            throw new Error("Ingresa el Google Calendar ID antes de probar la conexión.");
+        }
+        if (!credentials) {
+            throw new Error("Pega las credenciales JSON de la cuenta de servicio antes de probar la conexión.");
+        }
+
+        const res = await apiFetch('/api/agenda/probar-conexion', {
+            method: 'POST',
+            body: JSON.stringify({ calendarId, credentials })
+        });
+
+        if (btn) btn.innerHTML = txtOriginal;
+
+        if (res.success) {
+            if (feedback) {
+                feedback.className = 'p-3.5 rounded-2xl text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                feedback.innerHTML = `
+                    <div class="font-bold flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                        <span>${res.mensaje}</span>
+                    </div>
+                    <div class="mt-1 text-[11px] text-emerald-400/80">
+                        Zona horaria: <b>${res.timeZone}</b> | Conectado con: <b>${res.clientEmail}</b>
+                    </div>
+                `;
+            }
+        } else {
+            throw new Error(res.error || 'Error al conectar con Google Calendar');
+        }
+    } catch (err) {
+        if (btn) btn.innerHTML = txtOriginal;
+        if (feedback) {
+            feedback.className = 'p-3.5 rounded-2xl text-xs font-medium bg-red-500/15 text-red-300 border border-red-500/30';
+            feedback.innerHTML = `
+                <div class="font-bold flex items-center space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+                    <span>Error de conexión con Google Calendar</span>
+                </div>
+                <div class="mt-1 text-[11px] text-red-300/90">${err.message}</div>
+            `;
+        }
+    }
+}
+
+async function cancelarCita(id) {
+    if (!confirm("¿Estás seguro de que deseas cancelar esta cita? Si está vinculada a Google Calendar, también se eliminará del calendario.")) {
+        return;
+    }
+    try {
+        await apiFetch(`/api/citas/${id}`, { method: 'DELETE' });
+        cargarAgendaCitas();
+    } catch (e) {
+        alert("Error al cancelar la cita: " + e.message);
     }
 }
 
@@ -1004,8 +1161,17 @@ async function cargarConfiguracion() {
         if (document.getElementById('config-tiempo-pausa')) document.getElementById('config-tiempo-pausa').value = config.tiempo_pausa_humano_mins || '30';
 
         if (document.getElementById('config-google-sheets-url')) document.getElementById('config-google-sheets-url').value = config.google_sheets_url || '';
-        if (document.getElementById('config-duracion-cita')) document.getElementById('config-duracion-cita').value = config.duracion_cita_mins || '30';
-        if (document.getElementById('config-google-calendar-link')) document.getElementById('config-google-calendar-link').value = config.google_calendar_link || '';
+        if (document.getElementById('config-duracion-cita')) document.getElementById('config-duracion-cita').value = config.agenda_duracion_cita || config.duracion_cita_mins || '30';
+        if (document.getElementById('config-google-calendar-id')) document.getElementById('config-google-calendar-id').value = config.google_calendar_id || '';
+        if (document.getElementById('config-google-service-account')) document.getElementById('config-google-service-account').value = config.google_service_account_json || '';
+        if (document.getElementById('config-buffer-minutos')) document.getElementById('config-buffer-minutos').value = config.agenda_buffer_minutos || '10';
+        if (document.getElementById('config-dias-anticipacion')) document.getElementById('config-dias-anticipacion').value = config.agenda_dias_anticipacion_max || '15';
+
+        const toggleAgenda = document.getElementById('toggle-modulo-agenda');
+        if (toggleAgenda) {
+            toggleAgenda.checked = (config.modulo_agenda_activo === '1');
+            toggleModuloAgendaVisual(toggleAgenda.checked);
+        }
 
         if (document.getElementById('config-horario-fisico')) document.getElementById('config-horario-fisico').value = config.horario_sucursal_fisica || '';
         if (document.getElementById('config-horario-online')) document.getElementById('config-horario-online').value = config.horario_asesor_en_linea || '';
@@ -1192,6 +1358,51 @@ async function eliminarOpcionMenu(index) {
     }
 }
 
+function abrirModalGuiaComandos() {
+    const m = document.getElementById('modal-guia-comandos');
+    if (m) m.classList.remove('hidden');
+}
+
+function cerrarModalGuiaComandos() {
+    const m = document.getElementById('modal-guia-comandos');
+    if (m) m.classList.add('hidden');
+}
+
+function previsualizarMenuEnVivo() {
+    const m = document.getElementById('modal-preview-menu');
+    const txtEl = document.getElementById('preview-menu-texto');
+    if (!m || !txtEl) return;
+
+    const nombreNegocio = document.getElementById('config-nombre-negocio')?.value || 'Mi Negocio';
+    const icono = document.getElementById('config-icono-asistente')?.value || '🤖';
+    const horarioFisico = document.getElementById('config-horario-sucursal-fisica')?.value || '';
+
+    let texto = `${icono} 👋 *¡Hola! Bienvenido(a) a ${nombreNegocio}.*\n\n`;
+    if (horarioFisico) {
+        texto += `${horarioFisico} — ¡Estamos para servirte! ☺️\n\n`;
+    } else {
+        texto += `¡Estamos para servirte! ☺️\n\n`;
+    }
+    texto += `Elige una opción:\n\n`;
+
+    if (menuNumericoActual && menuNumericoActual.length > 0) {
+        menuNumericoActual.forEach(o => {
+            texto += `${o.opcion}️⃣ *${o.titulo}*\n`;
+        });
+    } else {
+        texto += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
+    }
+
+    texto += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
+    txtEl.textContent = texto;
+    m.classList.remove('hidden');
+}
+
+function cerrarModalPreviewMenu() {
+    const m = document.getElementById('modal-preview-menu');
+    if (m) m.classList.add('hidden');
+}
+
 // Auto-detectar modelos vigentes de Google Gemini
 async function detectarModelosEnVivo() {
     const icono = document.getElementById('icono-sync-modelos');
@@ -1320,54 +1531,6 @@ function aplicarPlantillaHorario(texto) {
         txtArea.value = texto;
         txtArea.focus();
     }
-}
-
-// ------------------------------------------------------------------------------
-// GUARDAR PARÁMETROS DE AGENDA Y GOOGLE CALENDAR
-// ------------------------------------------------------------------------------
-async function guardarConfigAgenda() {
-    try {
-        await apiFetch('/api/configuracion', {
-            method: 'POST',
-            body: JSON.stringify({
-                duracion_cita_mins: document.getElementById('config-duracion-cita').value,
-                google_calendar_client_id: document.getElementById('config-google-calendar-client-id').value,
-                google_calendar_client_secret: document.getElementById('config-google-calendar-client-secret').value
-            })
-        });
-        alert("✅ Parámetros de Agenda guardados con éxito.");
-    } catch (e) {
-        alert("❌ Error al guardar Agenda: " + e.message);
-    }
-}
-
-async function conectarGoogleCalendar() {
-    try {
-        await apiFetch('/api/configuracion', {
-            method: 'POST',
-            body: JSON.stringify({
-                google_calendar_client_id: document.getElementById('config-google-calendar-client-id').value,
-                google_calendar_client_secret: document.getElementById('config-google-calendar-client-secret').value
-            })
-        });
-
-        const data = await apiFetch('/api/calendar/auth-url');
-        if (data.url) {
-            window.location.href = data.url;
-        } else {
-            alert("No se pudo generar la URL de autenticación.");
-        }
-    } catch (e) {
-        alert("Error al intentar conectar: " + e.message + "\n\nAsegúrate de haber puesto tu Client ID y Client Secret primero.");
-    }
-}
-
-function copiarRedirectUri() {
-    const input = document.getElementById('config-google-calendar-redirect-uri');
-    input.select();
-    input.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(input.value);
-    alert("URI de Redirección copiada al portapapeles.");
 }
 
 function toggleHorarioOnlineVisible(visible) {
@@ -2611,6 +2774,10 @@ socket.on('estado_control_actualizado', () => {
 socket.on('eventos_ausencia_actualizados', () => {
     cargarListaEventosAusencia();
     cargarEstadoControlBot();
+});
+
+socket.on('cita_actualizada', () => {
+    cargarAgendaCitas();
 });
 
 // Inicializar vista por defecto y estado del bot

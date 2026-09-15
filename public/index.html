@@ -598,68 +598,107 @@
             <!-- TAB 3: AGENDA DE CITAS Y GOOGLE CALENDAR -->
             <!-- ============================================================ -->
             <div id="view-citas" class="tab-view hidden space-y-6">
-                <!-- Configuración de Parámetros de Citas y Google Calendar -->
-                <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 space-y-5">
-                    <div>
-                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-                            <i class="fa-solid fa-calendar-days text-indigo-400"></i>
-                            <span>Configuración de Citas & Google Calendar de Tu Negocio</span>
-                        </h2>
-                        <p class="text-xs text-slate-400">Personaliza la duración de las consultas de tu giro comercial y conecta tu Google Calendar.</p>
+                <!-- Tarjeta de Control Maestro Google Calendar -->
+                <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 space-y-6 shadow-xl">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/70 pb-5">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
+                                <i class="fa-solid fa-calendar-days text-indigo-400"></i>
+                                <span>Agendamiento Automatizado con Google Calendar & IA</span>
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-1">Sincroniza citas en vivo con tu Google Calendar y permite que la IA atienda y aparte turnos 24/7 por WhatsApp.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800">
+                            <label for="toggle-modulo-agenda" class="text-xs font-bold text-slate-300 cursor-pointer">
+                                Estado del Módulo:
+                            </label>
+                            <input type="checkbox" id="toggle-modulo-agenda" onchange="toggleModuloAgendaVisual(this.checked)" class="w-5 h-5 accent-indigo-500 cursor-pointer rounded">
+                            <span id="badge-modulo-agenda" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400">Desactivado</span>
+                        </div>
                     </div>
 
+                    <!-- Configuración de Conexión Google Calendar -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
+                                <span>Google Calendar ID</span>
+                                <button type="button" onclick="abrirInstructivo('google-calendar')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                    <span>¿Dónde obtenerlo?</span>
+                                </button>
+                            </label>
+                            <input type="text" id="config-google-calendar-id" placeholder="ejemplo@gmail.com o xxx@group.calendar.google.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                            <p class="text-[11px] text-slate-500 mt-1.5">El ID del calendario de Google donde se registrarán las citas.</p>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Duración Predeterminada por Cita</label>
                             <select id="config-duracion-cita" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
                                 <option value="15">15 minutos (Atención Rápida)</option>
                                 <option value="30" selected>30 minutos (Consulta Estándar)</option>
                                 <option value="45">45 minutos</option>
-                                <option value="60">60 minutos (1 Hora - Tratamientos Largos)</option>
+                                <option value="60">60 minutos (1 Hora)</option>
+                                <option value="90">90 minutos (1 Hora y Media)</option>
                                 <option value="120">120 minutos (2 Horas)</option>
                             </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Google Calendar Client ID</label>
-                            <input type="text" id="config-google-calendar-client-id" placeholder="123456789...apps.googleusercontent.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                            <p class="text-[11px] text-slate-500 mt-1.5">Tiempo asignado en el calendario para cada paciente o cliente.</p>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Google Calendar Client Secret</label>
-                            <input type="password" id="config-google-calendar-client-secret" placeholder="GOCSPX-..." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                        </div>
-
-                        <div>
+                        <div class="md:col-span-2">
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
-                                <span>URI de Redirección (Configurar en Google)</span>
-                                <button type="button" onclick="copiarRedirectUri()" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
-                                    <i class="fa-solid fa-copy"></i>
-                                    <span>Copiar</span>
-                                </button>
+                                <span>Credenciales JSON de Google Service Account</span>
+                                <span class="text-[11px] text-indigo-400 font-normal">Pega el contenido del archivo .json de tu cuenta de servicio</span>
                             </label>
-                            <input type="text" id="config-google-calendar-redirect-uri" readonly value="http://localhost:3001/api/calendar/callback" class="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-xl text-sm text-slate-500 cursor-not-allowed">
+                            <textarea id="config-google-service-account" rows="4" placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}' class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"></textarea>
+                            <p class="text-[11px] text-slate-500 mt-1">Recuerda compartir tu calendario de Google con el <b>client_email</b> dándole permisos de "Hacer cambios en eventos".</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Colchón / Descanso entre Citas</label>
+                            <select id="config-buffer-minutos" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="0">0 minutos (Citas continuas)</option>
+                                <option value="5">5 minutos</option>
+                                <option value="10" selected>10 minutos (Recomendado)</option>
+                                <option value="15">15 minutos</option>
+                                <option value="30">30 minutos</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Días de Anticipación Máxima</label>
+                            <select id="config-dias-anticipacion" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="7">7 días (1 semana hacia el futuro)</option>
+                                <option value="15" selected>15 días (2 semanas)</option>
+                                <option value="30">30 días (1 mes)</option>
+                                <option value="60">60 días (2 meses)</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-                        <button onclick="guardarConfigAgenda()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition">
-                            Guardar Credenciales de Agenda
+                    <!-- Botones de Acción y Diagnóstico -->
+                    <div class="flex flex-wrap items-center gap-3 pt-2">
+                        <button onclick="guardarConfigAgenda()" id="btn-guardar-agenda" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Guardar Parámetros de Agenda</span>
                         </button>
-                        
-                        <button onclick="conectarGoogleCalendar()" class="px-5 py-2.5 bg-white hover:bg-slate-200 text-slate-900 text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
-                            <i class="fa-brands fa-google text-red-500"></i>
-                            <span>Conectar Cuenta Google Calendar</span>
+                        <button onclick="probarConexionGoogleCalendar()" id="btn-probar-google-calendar" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plug text-emerald-400"></i>
+                            <span>🔌 Probar Conexión con Google Calendar</span>
                         </button>
                     </div>
+
+                    <div id="feedback-conexion-calendar" class="hidden p-3.5 rounded-2xl text-xs font-medium"></div>
                 </div>
 
                 <!-- Tabla de Citas -->
                 <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                         <div>
-                            <h2 class="text-lg font-bold text-white">Citas Programadas</h2>
-                            <p class="text-xs text-slate-400">Citas agendadas automáticamente por la IA o registradas por tu personal</p>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <span>Citas Programadas</span>
+                                <button onclick="cargarAgendaCitas()" class="text-slate-400 hover:text-white text-xs ml-2" title="Recargar"><i class="fa-solid fa-rotate"></i></button>
+                            </h2>
+                            <p class="text-xs text-slate-400">Citas agendadas en vivo por la IA de WhatsApp o registradas manualmente</p>
                         </div>
                         <button onclick="abrirModalNuevaCita()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex items-center space-x-2">
                             <i class="fa-solid fa-plus"></i>
@@ -674,13 +713,14 @@
                                     <th class="pb-3 font-semibold">Fecha & Hora</th>
                                     <th class="pb-3 font-semibold">Paciente / Cliente</th>
                                     <th class="pb-3 font-semibold">Teléfono</th>
-                                    <th class="pb-3 font-semibold">Servicio / Motivo</th>
+                                    <th class="pb-3 font-semibold">Servicio</th>
+                                    <th class="pb-3 font-semibold">Origen</th>
                                     <th class="pb-3 font-semibold">Estado</th>
-                                    <th class="pb-3 font-semibold">Notas</th>
+                                    <th class="pb-3 font-semibold text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-citas-body" class="divide-y divide-slate-800/60">
-                                <tr><td colspan="6" class="py-8 text-center text-slate-500">No hay citas registradas.</td></tr>
+                                <tr><td colspan="7" class="py-8 text-center text-slate-500">No hay citas registradas.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -897,6 +937,10 @@
                                 <input type="checkbox" id="config-mostrar-menu-numerico" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked>
                                 <span class="text-xs text-slate-300">Mostrar menú en saludos</span>
                             </label>
+                            <button type="button" onclick="previsualizarMenuEnVivo()" class="px-3.5 py-2 bg-slate-950 hover:bg-slate-800 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 flex-shrink-0">
+                                <i class="fa-solid fa-eye"></i>
+                                <span>Vista Previa</span>
+                            </button>
                             <button onclick="abrirModalNuevaOpcionMenu()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2 flex-shrink-0">
                                 <i class="fa-solid fa-plus"></i>
                                 <span>+ Nueva Opción</span>
@@ -1034,11 +1078,17 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
-                                <i class="fa-solid fa-user-shield text-amber-400"></i>
-                                <span>Teléfonos Administradores Autorizados (Comandos !)</span>
-                            </label>
-                            <p class="text-[11px] text-slate-400 mb-2">Números separados por comas autorizados para enviar <code>!reactivar</code>, <code>!pausa</code>, <code>!resumen</code>.</p>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-semibold text-slate-300 uppercase flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-user-shield text-amber-400"></i>
+                                    <span>Teléfonos Administradores Autorizados</span>
+                                </label>
+                                <button type="button" onclick="abrirModalGuiaComandos()" class="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center space-x-1 transition">
+                                    <i class="fa-solid fa-terminal text-[10px]"></i>
+                                    <span>Ver Comandos WhatsApp</span>
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mb-2">Números separados por comas. <span class="text-amber-400/90 font-medium">💡 O envía <code>!admin tu_clave</code> desde WhatsApp para autorizarte al instante.</span></p>
                             <input type="text" id="config-numeros-admin" placeholder="Ej. 5214111120637, 5214112688857" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:border-amber-500 outline-none">
                         </div>
 
@@ -1445,7 +1495,131 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL AGENDAR NUEVA CITA MANUALMENTE -->
+    <!-- MODAL GUÍA DE COMANDOS WHATSAPP -->
+    <!-- ==================================================================== -->
+    <div id="modal-guia-comandos" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto custom-scroll">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-terminal text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Comandos de WhatsApp</h3>
+                        <p class="text-xs text-slate-400">Controla el bot en vivo desde tu propio chat</p>
+                    </div>
+                </div>
+                <button onclick="cerrarModalGuiaComandos()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5 text-xs text-amber-300 flex items-start space-x-2.5">
+                <i class="fa-solid fa-key text-amber-400 mt-0.5"></i>
+                <div>
+                    <span class="font-bold">¿Cómo vincularte sin copiar códigos técnicos?</span>
+                    <p class="mt-0.5 text-[11px] text-amber-200/90">Envía desde tu WhatsApp al bot el mensaje: <code>!admin tu_contraseña</code> (la misma clave con la que entras al panel). El bot te registrará al instante.</p>
+                </div>
+            </div>
+
+            <div class="space-y-2 text-xs">
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-amber-400 font-mono">!ayuda</code>
+                        <span class="text-[10px] text-slate-400">Guía en vivo</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Muestra en WhatsApp la lista completa de comandos autorizados.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-emerald-400 font-mono">!reactivar</code>
+                        <span class="text-[10px] text-slate-400">Desbloqueo total</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Reanuda la atención normal, elimina todas las pausas humanas y desactiva vacaciones/cursos.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-rose-400 font-mono">!pausa</code>
+                        <span class="text-[10px] text-slate-400">Silencio global</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Pausa las respuestas automáticas del bot a todos los clientes hasta que envíes <code>!reactivar</code>.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-purple-400 font-mono">!probar / !probar off</code>
+                        <span class="text-[10px] text-slate-400">Modo simulación</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">El bot te responderá en tu chat exactamente como si fueras un cliente para que pruebes flujos y menús.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-sky-400 font-mono">!menu</code>
+                        <span class="text-[10px] text-slate-400">Probar menú</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Entrega de inmediato el menú numérico interactivo configurado en el panel.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-indigo-400 font-mono">!curso [hasta el viernes]</code>
+                        <span class="text-[10px] text-slate-400">Capacitación</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Activa el modo capacitación médica; la IA atiende dudas sobre servicios y anota en lista prioritaria.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-teal-400 font-mono">!resumen</code>
+                        <span class="text-[10px] text-slate-400">Últimos contactos</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Entrega un listado rápido con los últimos pacientes atendidos y sus números reales.</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
+                    <div class="flex items-center justify-between">
+                        <code class="font-bold text-amber-300 font-mono">!auditoria</code>
+                        <span class="text-[10px] text-slate-400">Salud VPS</span>
+                    </div>
+                    <p class="text-slate-300 text-[11px]">Reporte forense con memoria RAM consumida por el bot, RAM libre del VPS y estado de WhatsApp.</p>
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button type="button" onclick="cerrarModalGuiaComandos()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- MODAL VISTA PREVIA MENÚ NUMÉRICO -->
+    <!-- ==================================================================== -->
+    <div id="modal-preview-menu" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <i class="fa-brands fa-whatsapp text-emerald-400 text-xl"></i>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Vista Previa del Menú</h3>
+                        <p class="text-xs text-slate-400">Así lo reciben tus clientes en WhatsApp</p>
+                    </div>
+                </div>
+                <button onclick="cerrarModalPreviewMenu()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="p-4 bg-slate-950 border border-emerald-500/30 rounded-2xl">
+                <div class="text-xs text-slate-200 whitespace-pre-line font-sans leading-relaxed" id="preview-menu-texto">
+                    Cargando vista previa...
+                </div>
+            </div>
+
+            <div class="pt-2 flex justify-between items-center text-xs text-slate-400">
+                <span>💬 Interacción automática</span>
+                <button type="button" onclick="cerrarModalPreviewMenu()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
     <!-- ==================================================================== -->
     <div id="modal-nueva-cita" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">

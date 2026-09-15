@@ -129,6 +129,13 @@ async function inicializarBD() {
         )
     `);
 
+    // Migraciones automáticas para Google Calendar en citas_agenda
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN google_event_id TEXT DEFAULT ''"); } catch(e) {}
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN google_calendar_id TEXT DEFAULT ''"); } catch(e) {}
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN hora_fin TEXT DEFAULT ''"); } catch(e) {}
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN origen TEXT DEFAULT 'ia'"); } catch(e) {}
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN link_evento TEXT DEFAULT ''"); } catch(e) {}
+
     // 7. Enlaces para Mini-Sitio Público (Linktree)
     await runQuery(`
         CREATE TABLE IF NOT EXISTS linktree_links (
@@ -328,17 +335,15 @@ async function inicializarBD() {
         icono_asistente: "🤖",
         enlace_formulario_privacidad: "https://forms.gle/zJxZeXXj1TwWGF9N8",
         gemini_api_key: "",
-        gemini_modelo_ia: "gemini-3.6-flash",
-
-        // --- NUEVAS VARIABLES DE AGENDA Y GOOGLE CALENDAR ---
-        google_calendar_client_id: "",
-        google_calendar_client_secret: "",
-        google_calendar_redirect_uri: "http://localhost:3001/api/calendar/callback",
-        google_calendar_refresh_token: "",
+        modulo_agenda_activo: "0",
+        google_calendar_id: "",
+        google_service_account_json: "",
         agenda_duracion_cita: "30",
-        agenda_dias_laborales: "1,2,3,4,5",
-        // ----------------------------------------------------
-
+        agenda_buffer_minutos: "10",
+        agenda_dias_anticipacion_max: "15",
+        agenda_horas_anticipacion_min: "2",
+        agenda_confirmacion_plantilla: "📅 *¡Cita confirmada con éxito!*\n\n👤 *Paciente / Cliente:* {nombre}\n🩺 *Servicio:* {servicio}\n🗓️ *Fecha:* {fecha}\n⏰ *Hora:* {hora}\n📍 *Lugar:* {ubicacion}\n\nTe esperamos con gusto. Si requieres cancelar o reprogramar, por favor avísanos con anticipación por este mismo chat.",
+        gemini_modelo_ia: "gemini-3.6-flash",
         prompt_ia: "Eres el asistente virtual oficial de la empresa. Atiende de manera cordial, profesional, clara y concisa en español.",
         catalogo_servicios: "Servicio General: $450 MXN\nConsulta Especializada: $700 MXN",
         menu_numerico: JSON.stringify([
@@ -346,6 +351,8 @@ async function inicializarBD() {
             { opcion: "2", titulo: "Ubicación y Horarios", respuesta: "Estamos ubicados en Calle Principal #123. Horario de 1pm a 6pm.", enlace: "https://maps.google.com" },
             { opcion: "3", titulo: "Hablar con Asesor Humano", respuesta: "En un momento nuestro personal te atenderá de forma personalizada.", enlace: "" }
         ]),
+        mostrar_menu_numerico: "1",
+        numeros_admins: "",
         infografias_config: JSON.stringify([
             { palabras: ["talla", "tallas", "medida", "medidas"], respuesta: "Aquí tienes nuestra tabla oficial de medidas y tallas.", enlace: "https://mi-empresa.com/guia-tallas.jpg" }
         ]),

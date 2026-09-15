@@ -14,7 +14,7 @@ const multer = require('multer');
 
 const { db, runQuery, getQuery, allQuery, inicializarBD, DB_PATH } = require('./db');
 const Auditor = require('./auditor');
-const Calendar = require('./calendar');
+const calendarService = require('./calendar-service');
 
 const DIR_UPLOADS = path.join(__dirname, 'public', 'uploads');
 const DIR_DOCS = path.join(__dirname, 'documentos');
@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
     }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'omnibot_super_secret_jwt_key_2026';
 
 app.use(cors());
@@ -503,7 +503,7 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                         nombreCalculado = contact.name || contact.pushname || '';
                     }
                     if (!nombreCalculado) {
-                        nombreCalculado = (tel && tel !== 'Grupo') ? `Paciente (+${tel})` : 'Paciente';
+                        nombreCalculado = (tel && tel !== 'Grupo') ? `Cliente (+${tel})` : 'Cliente';
                     }
 
                     chatsParsed.push({
@@ -567,8 +567,8 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
             // Solo considerar tReal si el chat realmente tiene mensajes válidos
             const tReal = (ch.timestamp > 0 && ch.ultimoTexto) ? ch.timestamp * 1000 : 0;
             let nomLimpio = ch.nombre;
-            if (!nomLimpio || nomLimpio === 'Cliente' || nomLimpio.toLowerCase().includes('usuario desconocido') || nomLimpio.startsWith('Paciente (+994')) {
-                nomLimpio = (ch.telefono && ch.telefono !== 'Grupo' && !ch.telefono.startsWith('1660') && ch.telefono.length <= 13) ? `Paciente (+${ch.telefono})` : 'Paciente';
+            if (!nomLimpio || nomLimpio === 'Cliente' || nomLimpio.toLowerCase().includes('usuario desconocido') || nomLimpio.startsWith('Cliente (+994')) {
+                nomLimpio = (ch.telefono && ch.telefono !== 'Grupo' && !ch.telefono.startsWith('1660') && ch.telefono.length <= 13) ? `Cliente (+${ch.telefono})` : 'Cliente';
             }
 
             await runQuery(`
@@ -576,7 +576,7 @@ app.post('/api/etiquetas/sincronizar-whatsapp', autenticarToken, async (req, res
                 VALUES (?, ?, ?, '', ?)
                 ON CONFLICT(jid) DO UPDATE SET
                     telefono = CASE WHEN excluded.telefono != '' THEN excluded.telefono ELSE contactos.telefono END,
-                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre NOT LIKE '%desconocido%' AND excluded.nombre != 'Paciente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
+                    nombre = CASE WHEN excluded.nombre != 'Cliente' AND excluded.nombre NOT LIKE '%desconocido%' AND excluded.nombre != 'Cliente' AND excluded.nombre != '' THEN excluded.nombre ELSE contactos.nombre END,
                     ultimo_contacto = CASE WHEN ? > 0 THEN ? ELSE contactos.ultimo_contacto END
             `, [ch.jid, ch.telefono, nomLimpio, tReal, tReal, tReal]);
 
@@ -671,11 +671,11 @@ app.delete('/api/seguimientos/reglas/:id', autenticarToken, async (req, res) => 
     }
 });
 
-// Bandeja de Pacientes/Clientes con Seguimiento Pendiente o Próximo
+// Bandeja de clientes/Clientes con Seguimiento Pendiente o Próximo
 app.get('/api/seguimientos/pendientes', autenticarToken, async (req, res) => {
     try {
         const reglas = await allQuery("SELECT * FROM reglas_seguimiento WHERE activo = 1");
-        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'Planificación Familiar';
+        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'nuestro negocio';
         const listaPendientes = [];
 
         for (const r of reglas) {
@@ -1245,10 +1245,10 @@ app.patch('/api/pedidos/:id/estado', autenticarToken, async (req, res) => {
     }
 });
 
-// Agenda de Citas
+// Agenda de Citas y Google Calendar
 app.get('/api/citas', autenticarToken, async (req, res) => {
     try {
-        const citas = await allQuery("SELECT * FROM citas_agenda ORDER BY fecha ASC, hora ASC LIMIT 100");
+        const citas = await allQuery("SELECT * FROM citas_agenda ORDER BY fecha DESC, hora ASC LIMIT 150");
         res.json(citas);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -1257,12 +1257,159 @@ app.get('/api/citas', autenticarToken, async (req, res) => {
 
 app.post('/api/citas', autenticarToken, async (req, res) => {
     try {
-        const { cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas } = req.body;
+        const { cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas, duracion } = req.body;
+        
+        let googleEventId = '';
+        let googleCalendarId = '';
+        let horaFin = '';
+        let linkEvento = '';
+
+        // Verificar si el módulo de Google Calendar está encendido
+        const moduloActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        const duracionCita = duracion || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor || 30;
+        const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+
+        if (moduloActivo && calIdConfig && credsConfig) {
+            try {
+                const resGoogle = await calendarService.crearCita({
+                    calendarId: calIdConfig,
+                    credentials: credsConfig,
+                    nombre: cliente_nombre || 'Cliente',
+                    telefono: cliente_telefono || '',
+                    fecha,
+                    hora,
+                    duracionMinutos: parseInt(duracionCita) || 30,
+                    servicio: servicio || 'Consulta General',
+                    notas: notas || '',
+                    timezone
+                });
+                if (resGoogle.success) {
+                    googleEventId = resGoogle.eventId;
+                    googleCalendarId = calIdConfig;
+                    horaFin = resGoogle.horaFin;
+                    linkEvento = resGoogle.htmlLink || '';
+                }
+            } catch (errG) {
+                console.warn("⚠️ No se pudo sincronizar cita con Google Calendar:", errG.message);
+            }
+        }
+
         const result = await runQuery(
-            "INSERT INTO citas_agenda (cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [cliente_telefono, cliente_nombre, fecha, hora, servicio, estado || 'Confirmada', notas || '', Date.now()]
+            `INSERT INTO citas_agenda (
+                cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas,
+                google_event_id, google_calendar_id, hora_fin, origen, link_evento, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'panel', ?, ?)`,
+            [
+                cliente_telefono, cliente_nombre, fecha, hora, servicio, estado || 'Confirmada', notas || '',
+                googleEventId, googleCalendarId, horaFin, linkEvento, Date.now()
+            ]
         );
-        res.json({ id: result.id, success: true });
+
+        io.emit('cita_actualizada');
+        res.json({ id: result.id, success: true, googleEventId, linkEvento });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Cancelar cita en SQLite y Google Calendar
+app.delete('/api/citas/:id', autenticarToken, async (req, res) => {
+    try {
+        const idCita = req.params.id;
+        const cita = await getQuery("SELECT * FROM citas_agenda WHERE id = ?", [idCita]);
+        if (!cita) {
+            return res.status(404).json({ error: "Cita no encontrada" });
+        }
+
+        // Si tiene evento vinculado en Google Calendar, eliminarlo
+        if (cita.google_event_id && cita.google_calendar_id) {
+            const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+            if (credsConfig) {
+                try {
+                    await calendarService.cancelarCita({
+                        calendarId: cita.google_calendar_id,
+                        credentials: credsConfig,
+                        eventId: cita.google_event_id
+                    });
+                } catch (eCal) {
+                    console.warn("Aviso al cancelar evento en Google Calendar:", eCal.message);
+                }
+            }
+        }
+
+        await runQuery("UPDATE citas_agenda SET estado = 'Cancelada' WHERE id = ?", [idCita]);
+        io.emit('cita_actualizada');
+        res.json({ success: true, message: "Cita cancelada con éxito" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Diagnóstico y prueba en vivo de conexión con Google Calendar
+app.post('/api/agenda/probar-conexion', autenticarToken, async (req, res) => {
+    try {
+        let { calendarId, credentials } = req.body;
+        if (!calendarId) {
+            calendarId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        }
+        if (!credentials) {
+            credentials = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        }
+
+        if (!calendarId || !credentials) {
+            return res.status(400).json({
+                success: false,
+                error: "Por favor proporciona el Calendar ID y las credenciales JSON de la cuenta de servicio."
+            });
+        }
+
+        const resultado = await calendarService.verificarConexion(calendarId, credentials);
+        res.json(resultado);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// Consultar disponibilidad de horarios para una fecha
+app.get('/api/agenda/disponibilidad', autenticarToken, async (req, res) => {
+    try {
+        const { fecha } = req.query;
+        if (!fecha) return res.status(400).json({ error: "El parámetro fecha (YYYY-MM-DD) es requerido" });
+
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        const duracionCita = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor || 30;
+        const bufferMinutos = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_buffer_minutos'"))?.valor || 10;
+        const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+
+        const inicioSemana = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '09:00';
+        const finSemana = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '18:00';
+        const inicioSabado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
+        const finSabado = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+
+        // Citas locales ocupadas
+        const citasLocales = await allQuery("SELECT fecha, hora FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada'", [fecha]);
+
+        const resp = await calendarService.obtenerHuecosDisponibles({
+            calendarId: calIdConfig,
+            credentials: credsConfig,
+            fecha,
+            duracionMinutos: parseInt(duracionCita) || 30,
+            bufferMinutos: parseInt(bufferMinutos) || 10,
+            timezone,
+            horarioLaboral: {
+                inicioSemana,
+                finSemana,
+                inicioSabado,
+                finSabado,
+                atiendeDomingo: false
+            },
+            citasLocalesOcupadas: citasLocales
+        });
+
+        res.json(resp);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1295,30 +1442,6 @@ app.post('/api/configuracion', autenticarToken, async (req, res) => {
     }
 });
 
-// --------------------------------------------------------------------------
-// API GOOGLE CALENDAR
-// --------------------------------------------------------------------------
-app.get('/api/calendar/auth-url', autenticarToken, async (req, res) => {
-    try {
-        const url = await Calendar.generateAuthUrl();
-        res.json({ url });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/api/calendar/callback', async (req, res) => {
-    const code = req.query.code;
-    if (!code) return res.send("Error: Código no proporcionado por Google.");
-    
-    try {
-        await Calendar.authenticateWithCode(code);
-        res.send("<h2>✅ ¡Autenticación de Google Calendar completada!</h2><p>El Refresh Token se ha guardado de forma segura en tu base de datos SQLite.</p><script>setTimeout(() => window.location.href='/', 3000);</script>");
-    } catch (e) {
-        res.send("<h2>❌ Error al autenticar:</h2><p>" + e.message + "</p>");
-    }
-});
-
 // Agregar o Remover contacto de la lista de ignorados
 app.post('/api/configuracion/ignorar', autenticarToken, async (req, res) => {
     try {
@@ -1333,7 +1456,7 @@ app.post('/api/configuracion/ignorar', autenticarToken, async (req, res) => {
     }
 });
 
-// Renombrar Contacto / Paciente desde el Dashboard o Chat en Vivo
+// Renombrar Contacto / Cliente desde el Dashboard o Chat en Vivo
 app.put('/api/contactos/:jid/nombre', autenticarToken, async (req, res) => {
     try {
         const { nombre } = req.body;
@@ -1492,7 +1615,7 @@ function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
     }
 
     if (txt.includes('requisito') || txt.includes('papel') || txt.includes('documento') || txt.includes('ine') || txt.includes('curp')) {
-        return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención médica gratuita, presenta:\n• Copia de INE o identificación oficial con fotografía\n• Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
+        return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención gratuita, presenta:\n• Copia de INE o identificación oficial con fotografía\n• Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
     }
 
     return `${icono} 🏥 *¡Hola!* En este momento la red de servidores de Google AI está experimentando una saturación temporal de alta demanda (503).\n\n` +
@@ -1520,8 +1643,8 @@ async function obtenerModelosDisponibles(apiKey) {
                 .map(m => m.name.replace('models/', ''))
                 .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('tts') && !name.includes('transcribe'));
 
-            // Priorizar explícitamente los modelos Flash modernos y de alta disponibilidad (3.6 y 3.5) que no sufren 503
-            const flashModernos = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview']
+            // Priorizar explícitamente gemini-3.6-flash y gemini-3-flash-preview (alta disponibilidad verificada)
+            const flashModernos = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
                 .filter(m => modelosSoportados.includes(m));
 
             const otrosFlash = modelosSoportados.filter(name => name.includes('flash') && !flashModernos.includes(name) && !name.includes('-exp'));
@@ -1655,7 +1778,7 @@ function parsearComandoReceso(textoCompleto, tipoPorDefecto = 'curso') {
     const resto = partes.slice(1).join(' ').trim();
 
     const getMotivoDefault = (t) => {
-        if (t === 'curso') return 'Capacitación y Actualización Médica Continua';
+        if (t === 'curso') return 'Capacitación y Actualización Continua';
         if (t === 'festivo') return 'Día Festivo Oficial / Inhábil';
         return 'Periodo Vacacional';
     };
@@ -1817,7 +1940,7 @@ async function obtenerEstadoHorarioMexico() {
         const esCurso = (tipoReceso === 'curso');
         const esFestivo = (tipoReceso === 'festivo');
         let proximoTexto = esCurso
-            ? 'al reanudar actividades tras la jornada de capacitación médica'
+            ? 'al reanudar actividades tras la jornada de capacitación'
             : (esFestivo ? 'al reanudar labores tras el día festivo oficial' : 'al reanudar actividades tras el periodo vacacional');
 
         if (eventoActivo.fechaFin) {
@@ -1837,7 +1960,7 @@ async function obtenerEstadoHorarioMexico() {
             esCurso,
             esFestivo,
             tipoReceso,
-            motivoReceso: eventoActivo.motivo || (esCurso ? 'Capacitación y Actualización Médica Continua' : (esFestivo ? 'Día Festivo Oficial / Inhábil' : 'Periodo Vacacional')),
+            motivoReceso: eventoActivo.motivo || (esCurso ? 'Capacitación y Actualización Continua' : (esFestivo ? 'Día Festivo Oficial / Inhábil' : 'Periodo Vacacional')),
             proximoTexto,
             esProgramado: !!eventoActivo.esProgramado
         };
@@ -1877,7 +2000,49 @@ async function obtenerEstadoHorarioMexico() {
 
     const esDiaLaboral = diasLaborables.some(d => diaSemana.startsWith(d));
 
-    if (esDiaLaboral && minutosActuales >= minInicio && minutosActuales <= minFin) {
+    let minInicioEfectivo = minInicio;
+    let minFinEfectivo = minFin;
+
+    // Heurística avanzada: si es fin de semana, intentar extraer el horario específico del texto
+    if (esDiaLaboral && (diaSemana.startsWith('s') || diaSemana.startsWith('d'))) {
+        const regexDia = diaSemana.startsWith('s') 
+            ? /(?:s[aá]bado|s[aá]b)[^\d]*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\s*(?:a|al|hasta|-)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)/i 
+            : /(?:domingo|dom)[^\d]*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)\s*(?:a|al|hasta|-)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?)/i;
+        
+        const match = textoBaseRevisar.match(regexDia);
+        if (match) {
+            const parseTimeStr = (t) => {
+                let h = 0, m = 0;
+                const isPm = t.includes('pm') || t.includes('p.m');
+                const isAm = t.includes('am') || t.includes('a.m');
+                const nums = t.replace(/[^\d:]/g, '').split(':');
+                if (nums[0]) h = parseInt(nums[0], 10);
+                if (nums[1]) m = parseInt(nums[1], 10);
+                if (isPm && h < 12) h += 12;
+                if (isAm && h === 12) h = 0;
+                return { h, m, total: h * 60 + m, isAm, isPm };
+            };
+            const iniParsed = parseTimeStr(match[1]);
+            const finParsed = parseTimeStr(match[2]);
+            
+            let ini = iniParsed.total;
+            let fin = finParsed.total;
+            
+            if (!iniParsed.isAm && !iniParsed.isPm) {
+                if (iniParsed.h < 7) ini += 12 * 60; // ej "1 a 3" -> 1 PM
+            }
+            if (!finParsed.isAm && !finParsed.isPm) {
+                if (finParsed.h < 12) fin += 12 * 60; // ej "12 a 3" -> 3 PM
+            }
+            
+            if (ini > 0 && fin > 0) {
+                minInicioEfectivo = ini;
+                minFinEfectivo = fin;
+            }
+        }
+    }
+
+    if (esDiaLaboral && minutosActuales >= minInicioEfectivo && minutosActuales <= minFinEfectivo) {
         return {
             enHorario: true,
             enReceso: false,
@@ -1898,7 +2063,7 @@ async function obtenerEstadoHorarioMexico() {
         } else {
             proximoTexto = `mañana a partir de las ${formatoHoraInicio}`;
         }
-    } else if (minutosActuales > minFin) {
+    } else if (minutosActuales > minFinEfectivo) {
         if (diaSemana.startsWith('v') && !abreSabado && !abreDomingo) {
             proximoTexto = `el próximo lunes a partir de las ${formatoHoraInicio}`;
         } else if (diaSemana.startsWith('v') && !abreSabado && abreDomingo) {
@@ -2044,7 +2209,7 @@ app.delete('/api/bot/eventos-ausencia/:id', autenticarToken, async (req, res) =>
 app.post('/api/bot/curso', autenticarToken, async (req, res) => {
     try {
         const { activa, motivo, fecha_fin } = req.body;
-        const motivoFinal = motivo || 'Capacitación y Actualización Médica Continua';
+        const motivoFinal = motivo || 'Capacitación y Actualización Continua';
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [activa ? '1' : '0']);
         await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_tipo', 'curso') ON CONFLICT(clave) DO UPDATE SET valor = 'curso'");
         if (motivo !== undefined) {
@@ -2217,9 +2382,17 @@ client.on('disconnected', (reason) => {
     console.log('❌ WhatsApp se ha desconectado:', reason);
     
     // Auto-reparación vía Auditor al detectar desconexión fuerte
-    Auditor.registrarEvento('CRITICO', `Desconexión de WhatsApp detectada. Razón: ${reason}. Forzando reinicio para sanar...`).then(() => {
-        setTimeout(() => process.exit(1), 2000);
-    });
+    if (typeof Auditor !== 'undefined') {
+        Auditor.registrarEvento('CRITICO', `Desconexión de WhatsApp detectada. Razón: ${reason}. Forzando reinicio para sanar...`).then(async () => {
+            try { await client.destroy(); } catch(e) {}
+            setTimeout(() => process.exit(1), 2000);
+        });
+    } else {
+        setTimeout(async () => {
+            try { await client.destroy(); } catch(e) {}
+            process.exit(1);
+        }, 2000);
+    }
 });
 
 // Guardián Activo y Keep-Alive periódico cada 60 segundos
@@ -2261,9 +2434,8 @@ async function procesarMensajeEntrante(msg) {
     try {
         if (!msg || msg.from === 'status@broadcast') return;
         remitente = msg.from;
-
-        // NOTA: El evento 'message' solo dispara para mensajes ENTRANTES (fromMe=false).
-        // No se checa idsMensajesEnviadosBot aquí — esos IDs son de mensajes del bot.
+        // NOTA: No se checa idsMensajesEnviadosBot en mensajes entrantes
+        // (event 'message' solo dispara para fromMe=false, no puede tener IDs del bot)
 
         // Deduplicación estricta por ID de mensaje de WhatsApp
         if (msg.id && msg.id._serialized) {
@@ -2319,7 +2491,7 @@ function limpiarNombreParaSaludo(nombre) {
         soloLetras.length < 2 ||
         n.toLowerCase() === 'cliente' ||
         n.toLowerCase().includes('usuario desconocido') ||
-        n.toLowerCase().startsWith('paciente') ||
+        n.toLowerCase().startsWith('cliente') ||
         /\d{2,}/.test(n)
     ) {
         return '';
@@ -2350,7 +2522,7 @@ function limpiarNombreParaSaludo(nombre) {
         if (contactoPrevio.telefono && !contactoPrevio.telefono.startsWith('1660') && telefonoReal.startsWith('1660')) {
             telefonoReal = contactoPrevio.telefono;
         }
-        if (contactoPrevio.nombre && contactoPrevio.nombre !== 'Cliente' && !contactoPrevio.nombre.toLowerCase().includes('usuario desconocido') && !contactoPrevio.nombre.startsWith('Paciente (+')) {
+        if (contactoPrevio.nombre && contactoPrevio.nombre !== 'Cliente' && !contactoPrevio.nombre.toLowerCase().includes('usuario desconocido') && !contactoPrevio.nombre.startsWith('Cliente (+')) {
             nombreContacto = contactoPrevio.nombre;
         }
     }
@@ -2381,7 +2553,9 @@ function limpiarNombreParaSaludo(nombre) {
     // COMANDOS DE CONTROL MÓVIL Y GRUPO [CONTROL-BOT] (vCards y Comandos !)
     // --------------------------------------------------------------------------
     const esVCard = msg.type === 'vcard' || msg.type === 'multi_vcard' || (msg.vCards && msg.vCards.length > 0);
-    const textoLower = texto.toLowerCase().trim();
+    // Sanitizar texto: quitar espacios invisibles Unicode y normalizar
+    const textoLimpio = (texto || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+    const textoLower = textoLimpio.toLowerCase().trim();
 
     // Comprobar si el remitente es un teléfono Administrador registrado (o tiene su LID vinculado)
     const adminsRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'numeros_admins'"))?.valor || '';
@@ -2411,9 +2585,80 @@ function limpiarNombreParaSaludo(nombre) {
         return;
     }
 
+    // --------------------------------------------------------------------------
+    // COMANDO UNIVERSAL DE AUTORREGISTRO ADMIN (!admin <clave> o !clave <clave>)
+    // --------------------------------------------------------------------------
+    if (textoLower.startsWith('!admin ') || textoLower.startsWith('!clave ') || textoLower.startsWith('!vincularadmin ')) {
+        const partes = textoLimpio.split(/\s+/);
+        const passIngresada = partes.slice(1).join(' ').trim();
+        
+        if (!passIngresada) {
+            const sent = await client.sendMessage(remitente, "⚠️ *Uso correcto:* Envía `!admin TU_CONTRASEÑA` (la contraseña que utilizas para entrar al panel web).");
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+            return;
+        }
+
+        const usuariosAdmin = await allQuery("SELECT username, password_hash, rol FROM usuarios WHERE rol IN ('admin', 'superadmin', 'cliente')");
+        let passCorrecta = false;
+        let adminUser = null;
+
+        for (const u of usuariosAdmin) {
+            if (u.password_hash && bcrypt.compareSync(passIngresada, u.password_hash)) {
+                passCorrecta = true;
+                adminUser = u;
+                break;
+            }
+        }
+
+        if (passCorrecta) {
+            let currentAdmins = adminsArray.slice();
+            const idsToAdd = [remitenteNum];
+            if (telefonoReal && telefonoReal !== remitenteNum) idsToAdd.push(telefonoReal);
+
+            idsToAdd.forEach(id => {
+                if (!currentAdmins.includes(id)) currentAdmins.push(id);
+            });
+
+            const nuevoValorAdmins = currentAdmins.join(', ');
+            await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('numeros_admins', ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor", [nuevoValorAdmins]);
+            io.emit('config_actualizada', { numeros_admins: nuevoValorAdmins });
+
+            const sent = await client.sendMessage(remitente, 
+                `✅ *¡ADMINISTRADOR VINCULADO CON ÉXITO!*\n\n` +
+                `👤 *Usuario validado:* ${adminUser.username}\n` +
+                `📱 *Tu identificador registrado:* ${remitenteNum}\n\n` +
+                `Tu chat ahora cuenta con *permisos totales de administrador* en este bot.\n\n` +
+                `📌 *Comandos disponibles listos para usar:*\n` +
+                `• *!ayuda* -> Ver todos los comandos de control\n` +
+                `• *!pausa* -> Pausar el bot globalmente\n` +
+                `• *!reactivar* -> Reactivar y quitar pausas\n` +
+                `• *!probar* -> Probar el bot como cliente\n` +
+                `• *!menu* -> Probar el menú de bienvenida\n` +
+                `• *!curso [días]* -> Activar modo capacitación\n` +
+                `• *!auditoria* -> Reporte de servidor y RAM`
+            );
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+            return;
+        } else {
+            const sent = await client.sendMessage(remitente, "❌ *Contraseña incorrecta.* Verifica la clave de acceso de tu panel web y vuelve a intentarlo con `!admin TU_CONTRASEÑA`.");
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+            return;
+        }
+    }
+
     if (textoLower === '!debugyo') {
         const adminTestSuffixes = adminsArray.map(a => a.length >= 10 ? a.slice(-10) : a);
-        await client.sendMessage(remitente, `🛠️ *DEBUG INFO*\nJID: ${remitente}\nNum: ${remitenteNum}\nAdmins DB: ${adminsRaw}\nSuffixes: ${adminTestSuffixes.join(', ')}\nesAdmin: ${esAdminRemitente}\nTexto Exacto: [${textoLower}]`);
+        await client.sendMessage(remitente, 
+            `🛠️ *DEBUG INFO*\n` +
+            `JID: ${remitente}\n` +
+            `Num: ${remitenteNum}\n` +
+            `TelReal: ${telefonoReal}\n` +
+            `Admins DB: ${adminsRaw}\n` +
+            `Suffixes: ${adminTestSuffixes.join(', ')}\n` +
+            `esAdmin: ${esAdminRemitente}\n` +
+            `Texto: [${textoLower}]\n\n` +
+            `💡 _Para vincularte como admin envía:_ \`!admin TU_CONTRASEÑA\``
+        );
         return;
     }
 
@@ -2442,7 +2687,7 @@ function limpiarNombreParaSaludo(nombre) {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('bot_pausado_global', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('ausencia_activa', '0') ON CONFLICT(clave) DO UPDATE SET valor = '0'");
                 io.emit('estado_control_actualizado', { botPausadoGlobal: false, ausenciaActiva: false, chatsPausadosCount: 0 });
-                const sent = await client.sendMessage(remitente, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia / curso. El bot vuelve a responder con normalidad a todos los pacientes.");
+                const sent = await client.sendMessage(remitente, "✅ *BOT COMPLETAMENTE REACTIVADO.*\n\nSe han eliminado todas las pausas y el modo ausencia / curso. El bot vuelve a responder con normalidad a todos los clientes.");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -2450,7 +2695,7 @@ function limpiarNombreParaSaludo(nombre) {
             if (textoLower === '!probar' || textoLower === '!prueba' || textoLower === '!probar on' || textoLower === '!prueba on' || textoLower === '!modo prueba on' || textoLower === '!modo prueba') {
                 await runQuery("INSERT INTO configuracion (clave, valor) VALUES ('modo_prueba_admins', '1') ON CONFLICT(clave) DO UPDATE SET valor = '1'");
                 io.emit('estado_control_actualizado', { modoPruebaAdmins: true });
-                const sent = await client.sendMessage(remitente, "🧪 *MODO PRUEBA ACTIVADO.*\n\nAhora el bot te responderá en este chat exactamente como si fueras un paciente o cliente nuevo.\n\n_Para desactivarlo envía `!probar off` o `!reactivar`._");
+                const sent = await client.sendMessage(remitente, "🧪 *MODO PRUEBA ACTIVADO.*\n\nAhora el bot te responderá en este chat exactamente como si fueras un cliente o cliente nuevo.\n\n_Para desactivarlo envía `!probar off` o `!reactivar`._");
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -2516,7 +2761,7 @@ function limpiarNombreParaSaludo(nombre) {
                     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
                     `📌 *Motivo:* ${parsed.motivo}\n` +
                     `🗓️ *Reanudación estimada:* ${parsed.fechaFin}\n` +
-                    `🤖 *Rol de la IA:* Activa 24/7 explicando con calidez que el equipo está en actualización médica continua, resolviendo dudas sobre métodos y apartando citas con prioridad para el regreso.\n` +
+                    `🤖 *Rol de la IA:* Activa 24/7 explicando con calidez que el equipo está en Actualización Continua, resolviendo dudas sobre métodos y apartando citas con prioridad para el regreso.\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
                     `💡 _Para desactivar envía \`!curso off\` o \`!reactivar\`._`
                 );
@@ -2595,7 +2840,7 @@ function limpiarNombreParaSaludo(nombre) {
                     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
                     `📌 *Conmemoración / Motivo:* ${parsed.motivo}\n` +
                     `🗓️ *Reanudación estimada:* ${parsed.fechaFin}\n` +
-                    `🤖 *Rol de la IA:* Activa 24/7 explicando con calidez institucional la suspensión de labores, resolviendo dudas sobre métodos anticonceptivos y anotando citas en lista prioritaria para el regreso.\n` +
+                    `🤖 *Rol de la IA:* Activa 24/7 resolviendo dudas sobre el catálogo y servicios del negocio, anotando solicitudes en lista prioritaria para el regreso.\n` +
                     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
                     `💡 _Para desactivar envía \`!festivo off\` o \`!reactivar\`._`
                 );
@@ -2655,12 +2900,42 @@ function limpiarNombreParaSaludo(nombre) {
                     "🌴 `!vacaciones [mensaje/fecha]` -> Activa modo receso vacacional.\n" +
                     "🧪 `!probar` (o `!prueba`) -> Activa Modo Prueba (el bot te responde como cliente).\n" +
                     "🛡️ `!probar off` -> Desactiva Modo Prueba.\n" +
+                    "📋 `!menu` -> Muestra el menú numérico interactivo.\n" +
                     "🚫 `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
                     "✅ `!atender 4111234567` -> Remueve de ignorados.\n" +
-                    "📋 `!resumen` -> Lista los últimos clientes atendidos con sus teléfonos reales.\n" +
-                    "🛡️ `!auditoria` -> Muestra el reporte de salud del servidor (Memoria RAM y estado).\n" +
-                    "📇 _(O envía una tarjeta de contacto al grupo de control para ignorarlo al instante)_"
+                    "📋 `!resumen` -> Lista los últimos clientes atendidos.\n" +
+                    "🛡️ `!auditoria` -> Diagnóstico del servidor, memoria RAM y salud del bot.\n" +
+                    "🔑 `!admin [contraseña]` -> Vincular tu WhatsApp como Administrador."
                 );
+                if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+                return;
+            }
+
+            if (textoLower === '!menu' || textoLower === '!menú') {
+                const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
+                const saludoHeader = nombreMostrar ?
+                    `${iconoAsistente ? iconoAsistente + ' ' : ''}👋 *¡Hola, ${nombreMostrar}! Bienvenido(a) a ${nombreNegocio}.*` :
+                    `${iconoAsistente ? iconoAsistente + ' ' : ''}👋 *¡Hola! Bienvenido(a) a ${nombreNegocio}.*`;
+
+                const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
+                let textoMenu = `${saludoHeader}\n\n¡Estamos para servirte! 🤖\n\nElige una opción:\n\n`;
+                try {
+                    const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
+                    if (menuRaw) {
+                        const menuOpts = JSON.parse(menuRaw);
+                        menuOpts.forEach(o => {
+                            textoMenu += `${o.opcion}️⃣ *${o.titulo}*\n`;
+                        });
+                    } else {
+                        textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
+                    }
+                } catch(e) {
+                    textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
+                }
+                textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
+
+                registrarTextoEnviadoBot(textoMenu);
+                const sent = await client.sendMessage(remitente, textoMenu);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
                 return;
             }
@@ -2670,6 +2945,12 @@ function limpiarNombreParaSaludo(nombre) {
                 await client.sendMessage(remitente, reporte);
                 return;
             }
+
+
+            // Fallback para cualquier comando no reconocido que empiece con !
+            const sent = await client.sendMessage(remitente, "❓ *Comando no reconocido.*\n\nEnvía *!ayuda* para consultar la lista de comandos disponibles.");
+            if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
+            return;
         }
 
         if (esGrupo) return; // En grupos no responder como asistente de IA
@@ -2678,9 +2959,9 @@ function limpiarNombreParaSaludo(nombre) {
     // --------------------------------------------------------------------------
     // FILTROS: Contactos Ignorados / Pausas Humanas / Filtro de Audios
     // --------------------------------------------------------------------------
-    
+    let modoPruebaActivo = false;
     if (esAdminRemitente) {
-        const modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
+        modoPruebaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modo_prueba_admins'"))?.valor === '1';
         if (!modoPruebaActivo) {
             // El bot guarda silencio con sus administradores para no interferir en sus conversaciones personales
             return;
@@ -2745,7 +3026,7 @@ function limpiarNombreParaSaludo(nombre) {
     }
 
     const iconoAsistente = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'icono_asistente'"))?.valor || '🤖';
-    const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'CAISES Jaral'; // Cambia el default en el panel si es necesario
+    const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'nuestro negocio';
     const enlacePrivacidad = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'enlace_formulario_privacidad'"))?.valor || 'https://forms.gle/zJxZeXXj1TwWGF9N8';
     const mostrarMenuNumerico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'mostrar_menu_numerico'"))?.valor !== '0';
     const estadoHorario = await obtenerEstadoHorarioMexico();
@@ -2773,10 +3054,10 @@ function limpiarNombreParaSaludo(nombre) {
                     global.alertasAdminsMemoria.set(claveCooldown, Date.now());
 
                     const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
-                    const nombreLimpio = nombreContacto && nombreContacto !== 'Cliente' ? nombreContacto : (pushname || 'Paciente / Cliente');
+                    const nombreLimpio = nombreContacto && nombreContacto !== 'Cliente' ? nombreContacto : (pushname || 'Cliente / Cliente');
 
                     const alertaMsg = `🚨 *ALERTA OMNIBOT - PALABRA CLAVE DETECTADA* 🚨\n\n` +
-                        `👤 *Cliente / Paciente:* ${nombreLimpio}\n` +
+                        `👤 *Cliente / Cliente:* ${nombreLimpio}\n` +
                         `📱 *WhatsApp:* +${telLimpio}\n` +
                         `🔑 *Palabra detectada:* *"${palabraEncontrada.toUpperCase()}"*\n` +
                         `💬 *Mensaje recibido:*\n"${texto}"\n\n` +
@@ -2848,16 +3129,16 @@ function limpiarNombreParaSaludo(nombre) {
         ];
 
         const esConfirmacionSinNombre = frasesNoNombre.some(f => txtLower === f || txtLower.startsWith(f + ' ') || txtLower.endsWith(' ' + f));
-        const esPreguntaOServicio = /\b(qu[eé]|cu[aá]nto|cu[aá]ndo|c[oó]mo|d[oó]nde|por qu[eé]|tienen|tienes|costo|precio|servicio|horario|ubicaci[oó]n|requisito|implante|diu|mirena|vasectom[ií]a|parche|pastilla|inyecci[oó]n|cita)\b/i.test(txtLower);
+        const esPreguntaOServicio = /\b(qu[eé]|cu[aá]nto|cu[aá]ndo|c[oó]mo|d[oó]nde|por qu[eé]|tienen|tienes|costo|precio|servicio|horario|ubicaci[oó]n|requisito|cat[aá]logo|producto|disponible|pedido|entrega|env[ií]o|cita|talla|oferta|descuento)\b/i.test(txtLower);
 
         if (esPreguntaOServicio) {
-            // Si el cliente envía una duda o pregunta médica, liberar la espera y responderle su duda
+            // Si el cliente envía una duda o duda o pregunta, liberar la espera y responderle su duda
             chatsEsperandoNombre.delete(remitente);
         } else if (esConfirmacionSinNombre || txtClean.length < 3 || /^\d+$/.test(txtClean)) {
             // No es un nombre: insistir amablemente en el nombre para poder registrarlo correctamente
             await simularEscribiendoSeguro(msg, 1000);
 
-            const msjPedirNombre = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Excelente! ✍️ Para poder registrar tu expediente e identificarte con nuestro personal de salud, por favor indícame **cuál es tu nombre completo** (o cómo te gustaría que te llamemos):`;
+            const msjPedirNombre = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Excelente! ✍️ Para registrarte e identificarte con nuestro equipo, por favor indícame **cuál es tu nombre** (o cómo te gustaría que te llamemos):`;
             const sent = await client.sendMessage(remitente, msjPedirNombre);
             if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
             return;
@@ -2885,25 +3166,24 @@ function limpiarNombreParaSaludo(nombre) {
             if (estadoHorario.esFestivo) {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                     `🇲🇽 Con motivo del día festivo oficial (*${estadoHorario.motivoReceso}*), has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme en cualquier momento sobre cualquier método anticonceptivo (implante, DIU, vasectomía, etc.), requisitos o preparaciones y con gusto resolveré tus dudas al instante. ☺️`;
+                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme sobre nuestros productos, catálogo, precios o disponibilidad y con gusto resolveré tus dudas al instante. ☺️`;
             } else if (estadoHorario.esCurso) {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                    `🎓 Nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*). Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme en cualquier momento sobre cualquier método anticonceptivo (implante, DIU, vasectomía, etc.), requisitos o preparaciones y con gusto resolveré tus dudas al instante. ☺️`;
+                    `🎓 nuestro equipo se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*). Has quedado registrado(a) con prioridad en nuestra **Lista de Espera Prioritaria** y te contactaremos **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue activo para ti!* Puedes preguntarme sobre nuestros productos, catálogo, precios o disponibilidad y con gusto resolveré tus dudas al instante. ☺️`;
             } else {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                     `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
-                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo o precios._`;
             }
         } else if (!estadoHorario.enHorario) {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                 `⏰ *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
-                `📌 *Aviso importante:* Toda atención médica en la unidad es EXCLUSIVAMENTE MEDIANTE CITA PREVIA. Por favor no acudas a las instalaciones sin una cita agendada y confirmada por este chat, ya que no se podrá atender sin espacio reservado.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo, precios o disponibilidad._`;
         } else {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
-                `He notificado a nuestro personal de salud de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar métodos o requisitos._`;
+                `He notificado a nuestro equipo de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo o precios._`;
         }
 
         const sent = await client.sendMessage(remitente, msjConfirmado);
@@ -2925,7 +3205,7 @@ function limpiarNombreParaSaludo(nombre) {
 
         await runQuery(
             "INSERT INTO mensajes (chat_id, emisor, emisor_nombre, cuerpo, es_mio, es_ia, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [remitente, 'bot', 'Registro Paciente', msjConfirmado, 1, 1, Date.now()]
+            [remitente, 'bot', 'Registro Cliente', msjConfirmado, 1, 1, Date.now()]
         );
         return;
     }
@@ -2937,10 +3217,11 @@ function limpiarNombreParaSaludo(nombre) {
         'hola', 'buenas', 'buenos dias', 'buen dia', 'buenos días', 'buen día',
         'buenas tardes', 'buenas noches', 'menu', 'menú', 'inicio', 'opciones',
         'empezar', 'hola!', 'hola buenas', 'hola buen dia', 'hola buenos dias',
-        'hola buenas tardes', 'hola buenas noches', 'saludos', 'ola', 'holaa', 'holaaa'
+        'hola buenas tardes', 'hola buenas noches', 'saludos', 'ola', 'holaa', 'holaaa',
+        'que tal', 'qué tal', 'saludos cordiales'
     ];
     
-    // Si ya existe una conversación reciente (últimas 12 horas), mantener fluidez sin reiniciar menú repetitivo
+    // Inactividad: si pasaron más de 60 minutos (1 hora) sin interacción, o si es primera vez, o si está en modo prueba
     const telUltimos8Sal = (telefonoReal && telefonoReal.length >= 8 && !telefonoReal.startsWith('1660')) ? telefonoReal.slice(-8) : '';
     const ultimoMsgPrevio = await getQuery(`
         SELECT timestamp FROM mensajes 
@@ -2950,20 +3231,19 @@ function limpiarNombreParaSaludo(nombre) {
 
     const tiempoInactivo = ultimoMsgPrevio ? (Date.now() - ultimoMsgPrevio.timestamp) : Infinity;
     const esNuevaConversacion = tiempoInactivo > (12 * 60 * 60 * 1000); // 12 horas (máximo 1 menú de bienvenida por jornada/día)
-    const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones', 'empezar'].includes(textoLowerNorm);
+    const pideMenuExplicito = ['menu', 'menú', 'inicio', 'opciones', 'empezar', '!menu', '!menú', 'ver menu', 'ver menú'].includes(textoLowerNorm);
     const esSaludoPuro = saludos.includes(textoLowerNorm);
 
-    // Modificado: Forzar menú en CUALQUIER primer mensaje (o después de 12 hrs) si el menú está activo
     if ((pideMenuExplicito || esNuevaConversacion) && mostrarMenuNumerico) {
         await simularEscribiendoSeguro(msg, 1000);
 
         const nombreMostrar = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : null;
         const saludoHeader = nombreMostrar ?
-            `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola, ${nombreMostrar}! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*` :
-            `${iconoAsistente ? iconoAsistente + ' ' : ''}🏥 *¡Hola! Te damos la bienvenida al servicio de Planificación Familiar de ${nombreNegocio}.*`;
+            `${iconoAsistente ? iconoAsistente + ' ' : ''}👋 *¡Hola, ${nombreMostrar}! Bienvenido(a) a ${nombreNegocio}.*` :
+            `${iconoAsistente ? iconoAsistente + ' ' : ''}👋 *¡Hola! Bienvenido(a) a ${nombreNegocio}.*`;
 
         const horarioFisico = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_sucursal_fisica'"))?.valor || '';
-        let textoMenu = `${saludoHeader}\n\n¡Estamos para servirte! 👇\n\nElige una opción:\n\n`;
+        let textoMenu = `${saludoHeader}\n\n¡Estamos para servirte! 🤖\n\nElige una opción:\n\n`;
         try {
             const menuRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
             if (menuRaw) {
@@ -2972,10 +3252,10 @@ function limpiarNombreParaSaludo(nombre) {
                     textoMenu += `${o.opcion}️⃣ *${o.titulo}*\n`;
                 });
             } else {
-                textoMenu += `1️⃣ 📋 *Requisitos para atención*\n2️⃣ 💊 *Métodos disponibles*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación del CAISES*\n5️⃣ 👨‍⚕️ *Solicitar Asesor / Agendar Cita*\n`;
+                textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
             }
         } catch(e) {
-            textoMenu += `1️⃣ 📋 *Requisitos para atención*\n2️⃣ 💊 *Métodos disponibles*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación del CAISES*\n5️⃣ 👨‍⚕️ *Solicitar Asesor / Agendar Cita*\n`;
+            textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
         }
         textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 
@@ -2991,10 +3271,23 @@ function limpiarNombreParaSaludo(nombre) {
     }
 
     // --------------------------------------------------------------------------
-    // C. SOLICITUD DIRECTA DE ASESOR / AGENDAR CITA (OPCIÓN 5 O PALABRAS CLAVE)
+    // C. SOLICITUD DIRECTA DE ASESOR / AGENDAR CITA
     // --------------------------------------------------------------------------
-    const regexPideAsesor = /\b(asesor|humano|persona|agente|personal|transferir|agendar|cita|atenci[oó]n presencial)\b/i;
-    const esOpcionMenuAsesor = textoLowerNorm === '5' || textoLowerNorm === '3';
+    let esOpcionMenuAsesor = false;
+    let tituloOpcionAsesor = 'Solicitud de Asesor';
+    try {
+        const menuConfigRaw = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
+        if (menuConfigRaw) {
+            const menuOpts = JSON.parse(menuConfigRaw);
+            const opcionAsesorObj = menuOpts.find(o => /\b(asesor|humano|persona|agente|personal|transferir|agendar|cita|cotizaci[oó]n|cotizaciones)\b/i.test(o.titulo + ' ' + (o.respuesta || '')));
+            if (opcionAsesorObj && opcionAsesorObj.opcion.toString().trim() === texto.trim()) {
+                esOpcionMenuAsesor = true;
+                tituloOpcionAsesor = `Menú Opción ${opcionAsesorObj.opcion}: ${opcionAsesorObj.titulo}`;
+            }
+        }
+    } catch(e) {}
+
+    const regexPideAsesor = /\b(asesor|humano|persona|agente|personal|transferir|agendar|cita|atenci[oó]n presencial|cotizaci[oó]n|cotizaciones)\b/i;
     
     // Pide asesor si es opción de menú o si solicita hablar con alguien/agendar cita
     const pideAsesorDirecto = esOpcionMenuAsesor || (
@@ -3026,39 +3319,38 @@ function limpiarNombreParaSaludo(nombre) {
 
         if (estadoHorario.enReceso) {
             if (estadoHorario.esFestivo) {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}📆 *Aviso de Día Festivo / Inhábil Oficial:*\n` +
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🇲🇽 *Aviso de Día Festivo / Inhábil Oficial:*\n` +
                     `${saludoPersonal} Te informamos que hoy es día festivo oficial con suspensión de labores presenciales (*${estadoHorario.motivoReceso}*).\n\n` +
-                    `📝 Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💡 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos (implante subdérmico, DIU de cobre o plata, Mirena, vasectomía sin bisturí, inyecciones, pastillas, parches), requisitos o preparaciones médicas. Con gusto te daré la información detallada de inmediato. 🤖`;
+                    `🗓️ Tu solicitud para atención personalizada ha quedado registrada en nuestra **Lista de Espera Prioritaria**. nuestro equipo se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre el catálogo, productos, precios o disponibilidad. ¡Con gusto te ayudo de inmediato! ☺️`;
             } else if (estadoHorario.esCurso) {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}📚 *Aviso de Capacitación y Actualización Médica:*\n` +
-                    `${saludoPersonal} En este momento nuestro equipo de salud se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte la atención médica más moderna y segura.\n\n` +
-                    `📝 Tu solicitud para cita presencial ha quedado registrada en nuestra **Lista de Espera Prioritaria**. Nuestro personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💡 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte al instante cualquier duda sobre métodos anticonceptivos, requisitos o preparaciones médicas. Con gusto te daré la información de inmediato. 🤖`;
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🎓 *Aviso de Capacitación / Actualización:*\n` +
+                    `${saludoPersonal} En este momento nuestro equipo se encuentra en jornadas de capacitación continua (*${estadoHorario.motivoReceso}*) para brindarte el mejor servicio.\n\n` +
+                    `🗓️ Tu solicitud para atención personalizada ha quedado registrada en nuestra **Lista de Espera Prioritaria**. nuestro equipo se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo en este chat!* Puedo resolverte cualquier duda sobre el catálogo, productos, precios o disponibilidad. ¡Con gusto te ayudo! ☺️`;
             } else {
-                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🏖️ *Aviso de Receso / Vacaciones:*\n` +
+                msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌴 *Aviso de Receso / Vacaciones:*\n` +
                     `${saludoPersonal} Por el momento nuestro personal se encuentra en receso (*${estadoHorario.motivoReceso}*).\n\n` +
-                    `📝 Tu solicitud para cita presencial ha quedado registrada en espera. El personal de salud se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
-                    `💡 *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre métodos, costos o requisitos.`;
+                    `🗓️ Tu solicitud para atención personalizada ha quedado registrada en espera. El equipo de atención se comunicará contigo **${estadoHorario.proximoTexto}**.\n\n` +
+                    `💬 *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre el catálogo, productos o precios.`;
             }
         } else if (!estadoHorario.enHorario) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}🌙 *Fuera de Horario de Atención en Línea:*\n` +
-                `${saludoPersonal} El horario de atención en línea por este chat es: ${horarioAtencionFinal || 'Lunes a Viernes en horario habitual'}.\n\n` +
-                `⏳ Tu solicitud ha quedado registrada en espera. Nuestro personal humano revisará tus mensajes para responderte y agendar tu cita **${estadoHorario.proximoTexto}**.\n\n` +
-                `⚠️ *NOTA IMPORTANTE:* La atención médica presencial (retiro o colocación de métodos, vasectomía, etc.) es EXCLUSIVAMENTE CON CITA PREVIA. Por favor NO acudas a las instalaciones sin una cita confirmada por este chat, ya que no es posible atenderte sin un espacio previamente agendado.`;
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *Fuera de Horario de Atención en Línea:*\n` +
+                `${saludoPersonal} Nuestro horario de atención en línea es: ${horarioAtencionFinal || 'en nuestro horario habitual'}.\n\n` +
+                `🕒 Tu solicitud ha quedado registrada. Nuestro equipo te responderá y atenderá **${estadoHorario.proximoTexto}**.`;
         } else {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro personal de salud de ${nombreNegocio} por este chat.\n\n` +
-                `🕒 Nuestro personal en turno revisará tus mensajes y te responderá por aquí en cuanto se desocupe de la atención a pacientes.\n\n` +
-                `📌 *Nota importante:* Es posible que nuestro personal demore un poco en responderte ya que se encuentran atendiendo consulta médica presencial o en algún procedimiento clínico.`;
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}👨‍⚕️ ${saludoEntendido} He notificado a nuestro equipo de ${nombreNegocio} por este chat.\n\n` +
+                `🕒 Nuestro equipo en turno revisará tus mensajes y te responderá por aquí en cuanto se desocupe.\n\n` +
+                `📌 *Nota importante:* Es posible que nuestro equipo tarde un momento en responderte ya que pueden estar atendiendo a otros clientes.`;
         }
 
-        // Si el paciente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
-        if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Paciente (+')) {
+        // Si el cliente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
+        if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Cliente (+')) {
             msjTransferido += `\n\n📋 *Para agilizar tu turno al reanudar:* Si aún no has llenado tu registro previo, por favor completa este enlace:\n👉 ${enlacePrivacidad}\n\n✍️ Y escríbenos aquí tu *Nombre Completo* para apartar tu lugar en la lista.`;
             chatsEsperandoNombre.set(remitente, Date.now());
         }
 
-        msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas realizar preguntas sobre métodos, cuidados o requisitos._`;
+        msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo, precios o disponibilidad._`;
 
         registrarTextoEnviadoBot(msjTransferido);
         const sent = await client.sendMessage(remitente, msjTransferido);
@@ -3087,7 +3379,7 @@ function limpiarNombreParaSaludo(nombre) {
             if (!yaExiste) {
                 await runQuery(
                     "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
-                    [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Paciente', (esOpcionMenuAsesor ? tituloOpcionAsesor : texto), obtenerFechaHoraLocal(), Date.now()]
+                    [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Cliente', (esOpcionMenuAsesor ? tituloOpcionAsesor : texto), obtenerFechaHoraLocal(), Date.now()]
                 );
                 io.emit('solicitud_asesor_actualizada');
             }
@@ -3097,6 +3389,7 @@ function limpiarNombreParaSaludo(nombre) {
 
         return;
     }
+
 
     // --------------------------------------------------------------------------
     // D. EVALUACIÓN DE OPCIONES DEL MENÚ NUMÉRICO (1, 2, 3...)
@@ -3114,6 +3407,7 @@ function limpiarNombreParaSaludo(nombre) {
                     respMenu += `\n\n🔗 ${opcionEncontrada.enlace}`;
                 }
 
+                registrarTextoEnviadoBot(respMenu);
                 const sent = await client.sendMessage(remitente, respMenu);
                 if (sent?.id) idsMensajesEnviadosBot.add(sent.id._serialized);
 
@@ -3131,6 +3425,23 @@ function limpiarNombreParaSaludo(nombre) {
                     es_ia: 1,
                     timestamp: Date.now()
                 });
+
+                // Si la opción seleccionada es específicamente para solicitar asesor o humano, registrar la solicitud
+                const esOpcionAsesor = /\b(asesor|humano|persona|agente|personal|transferir|agendar|cita)\b/i.test(opcionEncontrada.titulo + ' ' + opcionEncontrada.respuesta);
+                if (esOpcionAsesor) {
+                    try {
+                        const telLimpio = telefonoReal && !telefonoReal.startsWith('1660') ? telefonoReal : remitente.replace(/[^0-9]/g, '');
+                        const yaExiste = await getQuery("SELECT id FROM solicitudes_asesor WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [remitente, `%${telLimpio}%`]);
+                        if (!yaExiste) {
+                            await runQuery(
+                                "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
+                                [remitente, telLimpio, (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : 'Cliente', `Menú Opción ${opcionEncontrada.opcion}: ${opcionEncontrada.titulo}`, obtenerFechaHoraLocal(), Date.now()]
+                            );
+                            io.emit('solicitud_asesor_actualizada');
+                        }
+                    } catch(eSol) {}
+                }
+
                 return;
             }
         }
@@ -3184,29 +3495,12 @@ function limpiarNombreParaSaludo(nombre) {
         console.error("Error buscando imágenes automáticas:", errGaleria);
     }
 
-    // Reglas específicas con títulos enriquecidos
-    if (textoLowerNorm.includes('implante')) {
-        await enviarImagenSiExiste('implante', '🖼️ *Infografía: Implante Subdérmico*');
-    } else if (textoLowerNorm.includes('vasectomia') || textoLowerNorm.includes('vasectomía') || textoLowerNorm.includes('sin bisturi')) {
-        await enviarImagenSiExiste('vasectomia', '🖼️ *Infografía: Vasectomía sin Bisturí*');
-    } else if (textoLowerNorm.includes('cobre') || textoLowerNorm.includes('t de cobre')) {
-        await enviarImagenSiExiste('diu_cobre', '🖼️ *Infografía: DIU de Cobre*');
-    } else if (textoLowerNorm.includes('medicado') || textoLowerNorm.includes('mirena') || textoLowerNorm.includes('levonorgestrel')) {
-        await enviarImagenSiExiste('diu_medicado', '🖼️ *Infografía: DIU Medicado (Mirena)*');
-    } else if (textoLowerNorm.includes('trimestral') || textoLowerNorm.includes('3 meses') || textoLowerNorm.includes('depo')) {
-        await enviarImagenSiExiste('inyeccion_trimestral', '🖼️ *Infografía: Inyección Trimestral*');
-    } else if (textoLowerNorm.includes('bimensual') || textoLowerNorm.includes('2 meses') || textoLowerNorm.includes('noristerat')) {
-        await enviarImagenSiExiste('inyeccion_bimensual', '🖼️ *Infografía: Inyección Bimensual*');
-    } else if (textoLowerNorm.includes('mensual') || textoLowerNorm.includes('cada mes') || textoLowerNorm.includes('mesigyna') || textoLowerNorm.includes('cyclofem')) {
-        await enviarImagenSiExiste('inyeccion_mensual', '🖼️ *Infografía: Inyección Mensual*');
-    } else if (textoLowerNorm.includes('pastilla') || textoLowerNorm.includes('pastillas')) {
-        await enviarImagenSiExiste('pastillas', '🖼️ *Infografía: Pastillas Anticonceptivas*');
-    } else if (textoLowerNorm.includes('parche') || textoLowerNorm.includes('parches')) {
-        await enviarImagenSiExiste('parche', '🖼️ *Infografía: Parches Anticonceptivos*');
-    } else if (textoLowerNorm.includes('emergencia') || textoLowerNorm.includes('postday') || textoLowerNorm.includes('dia siguiente')) {
-        await enviarImagenSiExiste('emergencia', '🖼️ *Infografía: Pastilla de Emergencia*');
-    } else if (textoLowerNorm.includes('metodos') || textoLowerNorm.includes('métodos') || textoLowerNorm.includes('catalogo') || textoLowerNorm.includes('catálogo')) {
-        await enviarImagenSiExiste('metodos', '🖼️ *Catálogo de Métodos Anticonceptivos*');
+    // Las imágenes se detectan automáticamente por nombre de archivo (sistema auto-detección arriba).
+    // Para añadir imágenes por palabra clave, configúralas en el panel → Infografías, o
+    // sube archivos a /imagenes con nombres descriptivos (ej: "uniforme_quirurgico.jpg", "calzado_enfermeria.jpg").
+    if (textoLowerNorm.includes('catalogo') || textoLowerNorm.includes('catálogo') || textoLowerNorm.includes('productos')) {
+        await enviarImagenSiExiste('catalogo', '🖼️ *Catálogo de Productos*');
+        await enviarImagenSiExiste('catalogo_general', '🖼️ *Catálogo General*');
     } else if (textoLowerNorm.includes('promocion') || textoLowerNorm.includes('promociones') || textoLowerNorm.includes('promo') || textoLowerNorm.includes('descuento') || textoLowerNorm.includes('oferta')) {
         await enviarImagenSiExiste('promociones', '🎉 *Nuestras Promociones y Descuentos*');
         await enviarImagenSiExiste('promocion', '🎉 *Nuestras Promociones y Descuentos*');
@@ -3261,7 +3555,7 @@ function limpiarNombreParaSaludo(nombre) {
         const horarioOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_asesor_en_linea'"))?.valor || '';
         const difiereOnline = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'horario_online_diferente'"))?.valor === '1';
         const horarioAtencionFinal = difiereOnline && horarioOnline ? horarioOnline : horarioFisico;
-
+        
         const menuConfigRawIA = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'menu_numerico'"))?.valor;
         let textoOpcionesMenuIA = '';
         if (menuConfigRawIA) {
@@ -3362,7 +3656,7 @@ async function obtenerContenidoGoogleSheets(url) {
             } else if (estadoHorario.esCurso) {
                 reglaHorarioIA = `
 🎓 ESTADO DE CAPACITACIÓN / CONGRESO MÉDICO:
-- El personal de salud se encuentra en: "${estadoHorario.motivoReceso}".
+- El equipo de atención se encuentra en: "${estadoHorario.motivoReceso}".
 - REGLAS DE ATENCIÓN CON IA:
   1. ¡HAZ TU TRABAJO NORMAL! Responde de inmediato cualquier duda sobre el catálogo, productos, servicios, costos y disponibilidad.
   2. NO menciones que el equipo está en capacitación a menos que el cliente pida un turno presencial o hablar con el personal.
@@ -3399,14 +3693,76 @@ async function obtenerContenidoGoogleSheets(url) {
             : `- Nombre del cliente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
 
         const reglaHorarioBase = estadoHorario.enReceso
-            ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'CAPACITACIÓN MÉDICA' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el personal de salud se encuentra en jornadas de capacitación médica' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
+            ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'capacitación' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el equipo de atención se encuentra en jornadas de capacitación' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
             : `3. El horario configurado (${horarioAtencionFinal || 'el horario habitual de atención'}) es de ATENCIÓN EN LÍNEA POR WHATSAPP para resolver dudas y coordinar citas o pedidos.`;
+
+        // Módulo Universal de Agendamiento Automatizado con Google Calendar
+        const moduloAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        const duracionCitaConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor || 30;
+        const bufferMinConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_buffer_minutos'"))?.valor || 10;
+        const timezoneNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+
+        let seccionAgendaIA = '';
+        const textoBusquedaCitas = (texto || '').toLowerCase();
+        const consultaCitas = /cita|citas|agend|turno|apart|horario|disponib|reserv|reprogram|cancelar/.test(textoBusquedaCitas);
+
+        if (moduloAgendaActivo && calIdConfig && credsConfig) {
+            let disponibilidadContexto = '';
+            if (consultaCitas) {
+                try {
+                    const fechasConsultar = calendarService.resolverFechasRelevantes(texto, timezoneNegocio, 3);
+                    const iniSem = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_semana'"))?.valor || '09:00';
+                    const finSem = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_semana'"))?.valor || '18:00';
+                    const iniSab = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_inicio_sab'"))?.valor || '09:00';
+                    const finSab = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'hora_fin_sab'"))?.valor || '14:00';
+
+                    const citasLocales = await allQuery("SELECT fecha, hora FROM citas_agenda WHERE fecha IN (" + fechasConsultar.map(() => '?').join(',') + ") AND estado != 'Cancelada'", fechasConsultar);
+
+                    disponibilidadContexto = await calendarService.obtenerContextoDisponibilidadParaPrompt({
+                        calendarId: calIdConfig,
+                        credentials: credsConfig,
+                        fechas: fechasConsultar,
+                        duracionMinutos: parseInt(duracionCitaConfig) || 30,
+                        bufferMinutos: parseInt(bufferMinConfig) || 10,
+                        timezone: timezoneNegocio,
+                        horarioLaboral: {
+                            inicioSemana: iniSem,
+                            finSemana: finSem,
+                            inicioSabado: iniSab,
+                            finSabado: finSab,
+                            atiendeDomingo: false
+                        },
+                        citasLocalesOcupadas: citasLocales
+                    });
+                } catch (eDisp) {
+                    console.warn("⚠️ Error al obtener disponibilidad para IA:", eDisp.message);
+                }
+            }
+
+            seccionAgendaIA = `
+📅 SISTEMA DE AGENDAMIENTO AUTOMATIZADO CON GOOGLE CALENDAR (ACTIVO):
+Cuentas con sincronización en vivo con Google Calendar.
+${disponibilidadContexto ? `DISPONIBILIDAD REAL EN GOOGLE CALENDAR:\n${disponibilidadContexto}\n` : ''}
+REGLAS ESTRICTAS DE AGENDAMIENTO:
+1. Si el cliente pregunta por horarios, disponibilidad o citas, responde con los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes.
+2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, confírmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta técnica oculta:
+   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]
+   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])
+3. Si el cliente pide cancelar una cita existente, confírmale la cancelación e incluye:
+   [CANCELAR_CITA: YYYY-MM-DD]
+4. Si el cliente insiste en hablar con un humano o tiene dudas médicas complejas fuera de tu alcance, incluye [REQUERIR_HUMANO].`;
+        } else {
+            seccionAgendaIA = `
+- REGLA DE DETECCIÓN DE CITAS (CRÍTICO): Si el usuario te confirma que desea agendar una cita, apartar un turno, o solicita hablar con el personal humano, DEBES incluir obligatoriamente la etiqueta oculta [REQUERIR_HUMANO] al final de tu mensaje. Esto le avisará al sistema que debe anotar al cliente de inmediato en el panel.`;
+        }
 
         const systemInstruction = `
 ${configPrompt}
 ${reglaHorarioIA}
 
-CLIENTE / PACIENTE ACTUAL:
+CLIENTE ACTUAL:
 ${instruccionNombre}
 - Icono distintivo: ${iconoAsistente}
 
@@ -3435,9 +3791,9 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
   ${reglaHorarioBase}
   4. Si aplica para el tipo de negocio, recuerda al cliente que ciertos servicios o atenciones presenciales requieren turno o cita previa coordinada por este chat.
 - REGLA DE FLUIDEZ: Si la conversación ya está en curso (no es el primer saludo), NO repitas saludos largos o de bienvenida. Ve directo a responder la duda de forma fluida.
-- REGLA DE RESPUESTAS MÉDICAS O TÉCNICAS: Si te preguntan sobre un procedimiento (ej. "cómo se coloca", "¿duele?", "¿usan anestesia?"), DEBES responder la duda con información educativa directa y precisa basada en la clínica, ANTES de recordarles que requieren valoración presencial. NUNCA te niegues a dar la información.
+- REGLA DE RESPUESTAS TÉCNICAS O DE PRODUCTOS: Si te preguntan sobre detalles específicos de un producto o servicio, DEBES responder la duda con información directa y precisa basada en tu base de conocimientos.
 - REGLA DE FORMATO ÚNICO: Proporciona tu respuesta completa en un texto continuo. NO dividas tu respuesta en párrafos desconectados ni saludes varias veces en el mismo mensaje.
-- REGLA DE DETECCIÓN DE CITAS (CRÍTICO): Si el usuario te confirma que desea agendar una cita, apartar un turno, o solicita hablar con el personal humano, DEBES incluir obligatoriamente la etiqueta oculta [REQUERIR_HUMANO] al final de tu mensaje. Esto le avisará al sistema que debe anotar al paciente de inmediato en el panel.
+${seccionAgendaIA}
 - REGLA ESTRICTA DE CONTINUIDAD Y REANUDACIÓN TRAS INTERVENCIÓN HUMANA:
   * Si un asesor humano estuvo platicando con el cliente, toma el relevo naturalmente.
   * PROHIBICIÓN TOTAL: NO reinicies la plática ni envíes menús largos.
@@ -3521,13 +3877,13 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
                         // Auditoría de lentitud
                         const latencia = Date.now() - tiempoInicioIA;
                         if (latencia > 10000 && typeof Auditor !== 'undefined') {
-                            Auditor.registrarEvento('SISTEMA', `Google API (${modName}) respondió lento: ${(latencia/1000).toFixed(1)}s`);
+                            Auditor.registrarEvento('SISTEMA', 'Google API (' + modName + ') respondió lento: ' + (latencia/1000).toFixed(1) + 's');
                         }
 
                     } catch (errGen) {
                         if (errGen.message === 'TIMEOUT_API_GEMINI') {
-                            console.warn(`⚠️ Timeout de 15s excedido para ${modName}. La API de Google está colgada.`);
-                            if (typeof Auditor !== 'undefined') Auditor.registrarEvento('ALERTA', `Google API (${modName}) excedió el tiempo límite (15s). Ignorando modelo para evitar retraso al cliente.`);
+                            console.warn('⚠️ Timeout de 15s excedido para ' + modName + '. La API de Google está colgada.');
+                            if (typeof Auditor !== 'undefined') Auditor.registrarEvento('ALERTA', 'Google API (' + modName + ') excedió el tiempo límite (15s). Ignorando modelo para evitar retraso al cliente.');
                             throw errGen; // Pasa al siguiente intento o modelo
                         }
 
@@ -3579,6 +3935,93 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
         if (respuestaIA) {
             let textoRespuestaFinal = respuestaIA.trim();
 
+            // Interceptar etiqueta oculta de la IA para agendar cita automáticamente en Google Calendar
+            const matchAgendar = textoRespuestaFinal.match(/\[AGENDAR_CITA:\s*([^\|\]]+)\|([^\|\]]+)(?:\|([^\|\]]*))?(?:\|([^\]]*))?\]/);
+            if (matchAgendar) {
+                textoRespuestaFinal = textoRespuestaFinal.replace(matchAgendar[0], '').trim();
+                try {
+                    const citaFecha = matchAgendar[1].trim();
+                    const citaHora = matchAgendar[2].trim();
+                    const citaServicio = (matchAgendar[3] || 'Consulta General').trim();
+                    const citaNotas = (matchAgendar[4] || 'Agendada por WhatsApp AI').trim();
+                    const telLimpio = remitente.replace(/[^0-9]/g, '');
+                    const nomCliente = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : (pushname || 'Cliente');
+
+                    let gEventId = '';
+                    let gCalId = '';
+                    let gHoraFin = '';
+                    let gLink = '';
+
+                    if (moduloAgendaActivo && calIdConfig && credsConfig) {
+                        const resCal = await calendarService.crearCita({
+                            calendarId: calIdConfig,
+                            credentials: credsConfig,
+                            nombre: nomCliente,
+                            telefono: telLimpio,
+                            fecha: citaFecha,
+                            hora: citaHora,
+                            duracionMinutos: parseInt(duracionCitaConfig) || 30,
+                            servicio: citaServicio,
+                            notas: citaNotas,
+                            timezone: timezoneNegocio
+                        });
+
+                        if (resCal.success) {
+                            gEventId = resCal.eventId;
+                            gCalId = calIdConfig;
+                            gHoraFin = resCal.horaFin;
+                            gLink = resCal.htmlLink || '';
+                        }
+                    }
+
+                    await runQuery(
+                        `INSERT INTO citas_agenda (
+                            cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas,
+                            google_event_id, google_calendar_id, hora_fin, origen, link_evento, timestamp
+                        ) VALUES (?, ?, ?, ?, ?, 'Confirmada', ?, ?, ?, ?, 'ia', ?, ?)`,
+                        [telLimpio, nomCliente, citaFecha, citaHora, citaServicio, citaNotas, gEventId, gCalId, gHoraFin, gLink, Date.now()]
+                    );
+
+                    console.log(`📅 [Cita IA Confirmada]: ${nomCliente} - ${citaFecha} ${citaHora} (${citaServicio})`);
+                    io.emit('cita_actualizada');
+                } catch (eCita) {
+                    console.error("❌ Error al procesar agendamiento automático desde IA:", eCita.message);
+                }
+            }
+
+            // Interceptar etiqueta oculta de cancelación de citas
+            const matchCancelar = textoRespuestaFinal.match(/\[CANCELAR_CITA:\s*([^\]]+)\]/);
+            if (matchCancelar) {
+                textoRespuestaFinal = textoRespuestaFinal.replace(matchCancelar[0], '').trim();
+                try {
+                    const fechaCancel = matchCancelar[1].trim();
+                    const telLimpio = remitente.replace(/[^0-9]/g, '');
+                    const citaExistente = await getQuery(
+                        "SELECT * FROM citas_agenda WHERE (cliente_telefono LIKE ? OR cliente_telefono = ?) AND (fecha = ? OR ? = '') AND estado != 'Cancelada' ORDER BY fecha DESC LIMIT 1",
+                        [`%${telLimpio.slice(-8)}%`, telLimpio, fechaCancel, fechaCancel]
+                    );
+
+                    if (citaExistente) {
+                        if (citaExistente.google_event_id && citaExistente.google_calendar_id && credsConfig) {
+                            try {
+                                await calendarService.cancelarCita({
+                                    calendarId: citaExistente.google_calendar_id,
+                                    credentials: credsConfig,
+                                    eventId: citaExistente.google_event_id
+                                });
+                            } catch (eCanCal) {
+                                console.warn("Aviso al cancelar evento en Google Calendar desde IA:", eCanCal.message);
+                            }
+                        }
+                        await runQuery("UPDATE citas_agenda SET estado = 'Cancelada' WHERE id = ?", [citaExistente.id]);
+                        console.log(`🚫 [Cita Cancelada vía IA]: ID ${citaExistente.id} para ${citaExistente.cliente_nombre}`);
+                        io.emit('cita_actualizada');
+                    }
+                } catch (eCan) {
+                    console.error("Error al cancelar cita desde IA:", eCan.message);
+                }
+            }
+
             // Interceptar etiqueta oculta de la IA para registrar cita/asesor humano automáticamente
             if (textoRespuestaFinal.includes('[REQUERIR_HUMANO]')) {
                 textoRespuestaFinal = textoRespuestaFinal.replace(/\[REQUERIR_HUMANO\]/g, '').trim();
@@ -3587,7 +4030,7 @@ INSTRUCCIONES CLAVE DE ATENCIÓN Y SEGURIDAD:
                     // Buscar si ya existe la solicitud pendiente
                     const yaExisteIA = await getQuery("SELECT id FROM solicitudes_asesor WHERE (jid = ? OR telefono LIKE ?) AND estado = 'pendiente'", [remitente, `%${telLimpioIA}%`]);
                     if (!yaExisteIA) {
-                        const nomContactoIA = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : (pushname || 'Paciente / Cliente');
+                        const nomContactoIA = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : (pushname || 'Cliente / Cliente');
                         await runQuery(
                             "INSERT INTO solicitudes_asesor (jid, telefono, nombre, motivo, fecha_hora, timestamp, estado) VALUES (?, ?, ?, ?, ?, ?, 'pendiente')",
                             [remitente, telLimpioIA, nomContactoIA, 'Cita/Asesor (Detectado por IA)', obtenerFechaHoraLocal(), Date.now()]
@@ -3654,7 +4097,7 @@ async function procesarSeguimientosAutomaticos() {
         const reglas = await allQuery("SELECT * FROM reglas_seguimiento WHERE activo = 1 AND modo_envio = 'automatico'");
         if (!reglas || reglas.length === 0) return;
 
-        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'Planificación Familiar';
+        const nombreNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'nuestro negocio';
 
         for (const r of reglas) {
             const horaRegla = r.hora_envio || '10:30';
@@ -3753,17 +4196,17 @@ client.on('message_create', async (msg) => {
         if (!msg || !msg.fromMe) return; // Solo mensajes que salen de nuestra propia cuenta
         if (msg.to === 'status@broadcast') return;
 
-        const _mcTimeSince = Date.now() - ultimoEnvioBotMs;
-
         // ── CHECK #0: ¿Hay un sendMessage del bot en vuelo ahora mismo? ──────────────
         // message_create SIEMPRE dispara MIENTRAS origSendMessage aún está en await.
-        // botEnviosPendientes > 0 = envío en vuelo; msSince < 2000 = ventana post-envío.
-        // ⚠️ NO añadir msg.id a idsMensajesEnviadosBot aquí — el interceptor ya lo hace.
-        if (botEnviosPendientes > 0 || _mcTimeSince < 2000) {
+        // Si botEnviosPendientes > 0, este evento ES del bot — sin importar JID o formato.
+        // También cubre la ventana de 2s post-envío por si el evento llega tarde.
+        if (botEnviosPendientes > 0 || Date.now() - ultimoEnvioBotMs < 2000) {
+            // ⚠️ NO añadir aquí: contamina el set con IDs de mensajes del USUARIO
             return;
         }
 
-        // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────        // Esperar 2000ms para dar tiempo a que los sendMessage registren sus IDs y evitar falsos positivos por latencia de red
+        // ── Para mensajes enviados > 2s atrás, aplicar checks de respaldo ────────────
+        // Esperar 2000ms para dar tiempo a que los sendMessage registren sus IDs y evitar falsos positivos por latencia de red
         await new Promise(r => setTimeout(r, 2000));
 
         // 1. Check por ID
@@ -3791,7 +4234,6 @@ client.on('message_create', async (msg) => {
             }
 
             if (jidBotActivo) {
-                if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
                 return;
             }
         }
@@ -3810,7 +4252,6 @@ client.on('message_create', async (msg) => {
             }
         }
         if (coincideTextoBot) {
-            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
             return;
         }
 
@@ -3849,7 +4290,6 @@ client.on('message_create', async (msg) => {
         );
 
         if (esMensajeIA) {
-            if (msg.id) idsMensajesEnviadosBot.add(msg.id._serialized);
             return;
         }
 
@@ -3982,7 +4422,7 @@ inicializarBD().then(async () => {
 
         // 6. Limpiar números falsos de @lid y nombres raros
         await runQuery("UPDATE contactos SET telefono = '' WHERE jid LIKE '%@lid' AND LENGTH(telefono) > 12");
-        await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Paciente' END WHERE nombre LIKE 'Paciente (+%' AND (jid LIKE '%@lid' OR LENGTH(telefono) > 12)");
+        await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Cliente' END WHERE nombre LIKE 'Cliente (+%' AND (jid LIKE '%@lid' OR LENGTH(telefono) > 12)");
         console.log("🧹 [DB-CLEAN] Limpieza integral de BD completada: sin notificaciones, sin códigos base64 y chats ordenados canónicamente.");
     } catch (eClean) {
         console.error("Error en auto-limpieza BD:", eClean.message);
