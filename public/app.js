@@ -822,9 +822,13 @@ function toggleModuloAgendaVisual(activo) {
     }
 }
 
+let todasLasCitas = [];
+
 async function cargarAgendaCitas() {
     try {
         const citas = await apiFetch('/api/citas');
+        todasLasCitas = citas;
+        
         const tbody = document.getElementById('tabla-citas-body');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -845,7 +849,7 @@ async function cargarAgendaCitas() {
 
             const origenBadge = (c.origen === 'ia')
                 ? `<span class="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded text-[11px] font-semibold border border-indigo-500/20">🤖 WhatsApp IA</span>`
-                : `<span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[11px] font-semibold border border-slate-700">👤 Panel Web</span>`;
+                : `<span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[11px] font-semibold border border-slate-700">🖥️ Panel Web</span>`;
 
             let linkGCal = '';
             if (c.link_evento) {
@@ -862,9 +866,15 @@ async function cargarAgendaCitas() {
 
             let botonAccion = '';
             if (!esCancelada) {
-                botonAccion = `<button onclick="cancelarCita(${c.id})" class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold border border-red-500/30 transition">
-                    Cancelar
-                </button>`;
+                botonAccion = `
+                <div class="flex items-center justify-end space-x-2">
+                    <button onclick="editarCita(${c.id})" class="px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-semibold border border-indigo-500/30 transition">
+                        Editar
+                    </button>
+                    <button onclick="cancelarCita(${c.id})" class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-xs font-semibold border border-red-500/30 transition">
+                        Cancelar
+                    </button>
+                </div>`;
             } else {
                 botonAccion = `<span class="text-slate-600 text-xs italic">Inactiva</span>`;
             }
@@ -892,6 +902,11 @@ async function cargarAgendaCitas() {
     } catch (e) {
         console.error("Error cargando citas:", e);
     }
+}
+
+function editarCita(id) {
+    const cita = todasLasCitas.find(x => x.id === id);
+    if (cita) abrirModalNuevaCita(cita);
 }
 
 async function guardarConfigAgenda() {
@@ -1018,12 +1033,30 @@ async function cancelarCita(id) {
     }
 }
 
-function abrirModalNuevaCita() {
+let citaEditandoId = null;
+
+function abrirModalNuevaCita(cita = null) {
+    if (cita) {
+        citaEditandoId = cita.id;
+        document.querySelector('#modal-nueva-cita h3').innerText = 'Editar Cita';
+        document.getElementById('cita-nombre-input').value = cita.cliente_nombre || '';
+        document.getElementById('cita-telefono-input').value = cita.cliente_telefono || '';
+        document.getElementById('cita-servicio-input').value = cita.servicio || '';
+        document.getElementById('cita-fecha-input').value = cita.fecha || '';
+        document.getElementById('cita-hora-input').value = cita.hora || '';
+        document.getElementById('cita-notas-input').value = cita.notas || '';
+        document.getElementById('cita-duracion-input').value = '';
+    } else {
+        citaEditandoId = null;
+        document.querySelector('#modal-nueva-cita h3').innerText = 'Agendar Nueva Cita';
+        document.getElementById('form-nueva-cita').reset();
+    }
     document.getElementById('modal-nueva-cita').classList.remove('hidden');
 }
 
 function cerrarModalNuevaCita() {
     document.getElementById('modal-nueva-cita').classList.add('hidden');
+    citaEditandoId = null;
 }
 
 async function guardarNuevaCita(e) {
@@ -1035,26 +1068,30 @@ async function guardarNuevaCita(e) {
         const fecha = document.getElementById('cita-fecha-input').value;
         const hora = document.getElementById('cita-hora-input').value;
         const notas = document.getElementById('cita-notas-input').value.trim();
+        const duracion = document.getElementById('cita-duracion-input').value.trim();
 
-        await apiFetch('/api/citas', {
-            method: 'POST',
+        const endpoint = citaEditandoId ? `/api/citas/${citaEditandoId}` : '/api/citas';
+        const method = citaEditandoId ? 'PUT' : 'POST';
+
+        await apiFetch(endpoint, {
+            method: method,
             body: JSON.stringify({
                 cliente_nombre,
                 cliente_telefono,
                 servicio,
                 fecha,
                 hora,
+                duracion,
                 notas,
                 estado: 'Confirmada'
             })
         });
 
-        alert("¡Cita agendada con éxito!");
+        alert(citaEditandoId ? "¡Cita actualizada con éxito!" : "¡Cita agendada con éxito!");
         cerrarModalNuevaCita();
-        document.getElementById('form-nueva-cita').reset();
         cargarAgendaCitas();
     } catch (err) {
-        alert("Error al agendar cita: " + err.message);
+        alert("Error al guardar cita: " + err.message);
     }
 }
 

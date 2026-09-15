@@ -1750,15 +1750,20 @@
                     <input type="text" id="cita-servicio-input" required placeholder="Ej. Consulta Médica / Limpieza / Asesoría" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Fecha</label>
+                        <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">Fecha</label>
                         <input type="date" id="cita-fecha-input" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Hora</label>
+                        <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">Hora</label>
                         <input type="time" id="cita-hora-input" required class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">Duración (min)</label>
+                        <input type="number" id="cita-duracion-input" placeholder="Ej. 30 o 60" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                     </div>
                 </div>
 
@@ -2419,6 +2424,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=3"></script>
 </body>
 </html>

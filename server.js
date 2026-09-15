@@ -1248,7 +1248,7 @@ app.patch('/api/pedidos/:id/estado', autenticarToken, async (req, res) => {
 // Agenda de Citas y Google Calendar
 app.get('/api/citas', autenticarToken, async (req, res) => {
     try {
-        const citas = await allQuery("SELECT * FROM citas_agenda ORDER BY fecha DESC, hora ASC LIMIT 150");
+        const citas = await allQuery("SELECT * FROM citas_agenda WHERE estado != 'Cancelada' ORDER BY fecha DESC, hora ASC LIMIT 150");
         res.json(citas);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -1261,14 +1261,25 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
         
         let googleEventId = '';
         let googleCalendarId = '';
-        let horaFin = '';
         let linkEvento = '';
 
         // Verificar si el módulo de Google Calendar está encendido
         const moduloActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
         const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
         const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
-        const duracionCita = duracion || (await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor || 30;
+        let duracionCita = parseInt(duracion) || parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor) || 30;
+        
+        // Logica personalizada de duración
+        const servicioNorm = (servicio || '').toLowerCase();
+        if (!duracion && (servicioNorm.includes('vasectom') || servicioNorm.includes('embarazo'))) {
+            duracionCita = 60;
+        }
+
+        const [hIni, mIni] = (hora || '10:00').split(':').map(Number);
+        const totalMinFin = hIni * 60 + mIni + duracionCita;
+        const pad = (num) => String(num).padStart(2, '0');
+        let horaFin = `${pad(Math.floor(totalMinFin / 60))}:${pad(totalMinFin % 60)}`;
+
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
         if (moduloActivo && calIdConfig && credsConfig) {
@@ -1315,6 +1326,92 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
 });
 
 // Cancelar cita en SQLite y Google Calendar
+app.put('/api/citas/:id', autenticarToken, async (req, res) => {
+    try {
+        const idCita = req.params.id;
+        const { fecha, hora, duracion, servicio, notas } = req.body;
+        const citaVieja = await getQuery("SELECT * FROM citas_agenda WHERE id = ?", [idCita]);
+        if (!citaVieja) return res.status(404).json({ error: "Cita no encontrada" });
+
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        const moduloActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+
+        // 1. Cancelar evento anterior si existe
+        if (citaVieja.google_event_id && citaVieja.google_calendar_id && credsConfig) {
+            try {
+                await calendarService.cancelarCita({
+                    calendarId: citaVieja.google_calendar_id,
+                    credentials: credsConfig,
+                    eventId: citaVieja.google_event_id
+                });
+            } catch (e) {
+                console.warn("Aviso: No se pudo cancelar evento anterior en Google", e.message);
+            }
+        }
+
+        // 2. Calcular nueva duración
+        let duracionCita = parseInt(duracion);
+        if (!duracionCita) {
+            const servicioNorm = (servicio || citaVieja.servicio || '').toLowerCase();
+            duracionCita = (servicioNorm.includes('vasectom') || servicioNorm.includes('embarazo')) ? 60 : parseInt((await getQuery("SELECT valor FROM configuracion WHERE clave = 'agenda_duracion_cita'"))?.valor) || 30;
+        }
+
+        const [hIni, mIni] = (hora || citaVieja.hora || '10:00').split(':').map(Number);
+        const totalMinFin = hIni * 60 + mIni + duracionCita;
+        const pad = (num) => String(num).padStart(2, '0');
+        let nuevaHoraFin = `${pad(Math.floor(totalMinFin / 60))}:${pad(totalMinFin % 60)}`;
+
+        let nuevoEvId = '';
+        let nuevoLink = '';
+        const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+
+        // 3. Crear nuevo evento
+        if (moduloActivo && calIdConfig && credsConfig) {
+            const resGoogle = await calendarService.crearCita({
+                calendarId: calIdConfig,
+                credentials: credsConfig,
+                fecha: fecha || citaVieja.fecha,
+                hora: hora || citaVieja.hora,
+                duracionMinutos: duracionCita,
+                clienteNombre: citaVieja.cliente_nombre,
+                clienteTelefono: citaVieja.cliente_telefono,
+                servicio: servicio || citaVieja.servicio,
+                notas: notas !== undefined ? notas : citaVieja.notas,
+                timezone
+            });
+            if (resGoogle.success) {
+                nuevoEvId = resGoogle.eventId;
+                nuevaHoraFin = resGoogle.horaFin;
+                nuevoLink = resGoogle.link;
+            }
+        }
+
+        await runQuery(
+            `UPDATE citas_agenda SET 
+             fecha = ?, hora = ?, servicio = ?, notas = ?, 
+             google_event_id = ?, google_calendar_id = ?, hora_fin = ?, link_evento = ?
+             WHERE id = ?`,
+            [
+                fecha || citaVieja.fecha, 
+                hora || citaVieja.hora, 
+                servicio || citaVieja.servicio, 
+                notas !== undefined ? notas : citaVieja.notas, 
+                nuevoEvId || '', 
+                calIdConfig || '', 
+                nuevaHoraFin, 
+                nuevoLink || '', 
+                idCita
+            ]
+        );
+
+        io.emit('cita_actualizada');
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.delete('/api/citas/:id', autenticarToken, async (req, res) => {
     try {
         const idCita = req.params.id;
@@ -3754,13 +3851,13 @@ async function obtenerContenidoGoogleSheets(url) {
             reglaHorarioIA = `
 🔴 ESTADO DE HORARIO DE ATENCIÓN (FUERA DE HORARIO DE ATENCIÓN POR CHAT):
 - Fecha y hora actual en México: ${obtenerFechaHoraLocal()}.
-- Actualmente estamos FUERA del horario en que el personal humano responde mensajes por este chat. El personal responderá mensajes y coordinará citas por WhatsApp: ${estadoHorario.proximoTexto}.
+- Actualmente estamos FUERA del horario en que el personal humano responde mensajes por este chat. El personal responderá mensajes por WhatsApp: ${estadoHorario.proximoTexto}.
 - REGLAS ESTRICTAS DE HORARIO Y CITAS (NO CONFUNDIR ATENCIÓN EN LÍNEA CON ATENCIÓN FÍSICA):
   1. NUNCA le digas al cliente que puede acudir o presentarse físicamente sin haber coordinado previamente por este chat.
-  2. Aclara que el horario de atención en línea (${horarioAtencionFinal || 'el horario habitual de atención'}) es para responder dudas por WhatsApp y coordinar citas o pedidos.
-  3. Para cualquier atención, entrega de producto o servicio presencial, el cliente debe coordinarlo previamente por este chat.
-  4. Adviértele amablemente que no visite las instalaciones sin haber coordinado previamente, ya que no siempre es posible atenderlo de forma inmediata.
-  5. Si el cliente pide explícitamente un turno o cita, confírmale que su solicitud quedó registrada para coordinarla en cuanto inicie el turno de atención en línea.`;
+  2. Aclara que el horario de atención en línea (${horarioAtencionFinal || 'el horario habitual de atención'}) es para responder dudas por WhatsApp y atención humana.
+  3. Para cualquier atención presencial, el cliente debe tener una cita confirmada.
+  4. Adviértele amablemente que no visite las instalaciones sin haber coordinado previamente.
+  5. SI CUENTAS CON EL MÓDULO DE AGENDAMIENTO AUTOMÁTICO (lee más abajo), puedes ofrecerle los horarios disponibles y agendar su cita de inmediato. Si NO cuentas con disponibilidad, confírmale que su solicitud quedó registrada para coordinarla en cuanto el personal inicie su turno.`;
         } else {
             reglaHorarioIA = `
 🟢 ESTADO DE HORARIO DE ATENCIÓN (DENTRO DE HORARIO DE CHAT):
