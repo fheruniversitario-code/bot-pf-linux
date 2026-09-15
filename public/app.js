@@ -3374,33 +3374,29 @@ async function eliminarRespuestaRapida(id) {
 
 async function inyectarDisponibilidadChat(event) {
     const fecha = document.getElementById('input-chat-fecha-disponibilidad')?.value;
-    if (!fecha) return alert('Selecciona una fecha primero haciendo clic en el icono del calendario.');
+    if (!fecha) return alert('Selecciona una fecha primero.');
     const inputTexto = document.getElementById('input-mensaje-texto');
     const btn = event.currentTarget;
     const oldHtml = btn.innerHTML;
     try {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
         const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
-        
         if (!res.success) {
             alert('Error: ' + res.error);
             return;
         }
-
         if (!res.disponibles || res.disponibles.length === 0) {
-             alert('No hay horarios disponibles para el ' + fecha + ' o el negocio est� cerrado ese d�a.');
+             alert('No hay horarios disponibles para el ' + fecha + '.');
              return;
         }
-        
         const fechaFormat = fecha.split('-').reverse().join('/');
-        let texto = 'Para el ' + fechaFormat + ' tenemos los siguientes horarios disponibles:\n\n';
-        res.disponibles.forEach(h => { texto += '� ' + h.horaTexto + '\n'; });
-        texto += '\n�A qu� hora te anoto?';
-        
+        let texto = 'Para el ' + fechaFormat + ' tenemos estos horarios:\n\n';
+        res.disponibles.forEach(h => { texto += ' - ' + h.horaTexto + '\n'; });
+        texto += '\n�A que hora te anoto?';
         inputTexto.value = (inputTexto.value ? inputTexto.value + '\n\n' : '') + texto;
         inputTexto.focus();
     } catch (e) {
-        alert('Error al obtener disponibilidad: ' + e.message);
+        alert('Error: ' + e.message);
     } finally {
         btn.innerHTML = oldHtml;
     }

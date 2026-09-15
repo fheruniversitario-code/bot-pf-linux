@@ -591,7 +591,7 @@
                                 <i class="fa-solid fa-calendar-day text-indigo-400"></i>
                                 <span>Ver Huecos:</span>
                             </span>
-                            <input type="date" id="input-chat-fecha-disponibilidad" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 outline-none focus:border-indigo-500 cursor-pointer text-xs">
+                            <input type="date" id="input-chat-fecha-disponibilidad" onclick="if(this.showPicker) this.showPicker();" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 outline-none focus:border-indigo-500 cursor-pointer text-xs w-32">
                             <button type="button" onclick="inyectarDisponibilidadChat(event)" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 rounded-lg font-bold transition flex items-center space-x-1.5 shadow-sm">
                                 <i class="fa-solid fa-angles-down text-[10px]"></i>
                                 <span>Copiar al chat</span>
