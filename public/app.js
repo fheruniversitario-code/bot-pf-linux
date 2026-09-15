@@ -27,7 +27,10 @@ async function apiFetch(endpoint, options = {}) {
         defaultHeaders['Content-Type'] = 'application/json';
     }
 
-    const res = await fetch(endpoint, {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const finalEndpoint = `${endpoint}${separator}_t=${Date.now()}`;
+
+    const res = await fetch(finalEndpoint, {
         ...options,
         headers: { ...defaultHeaders, ...(options.headers || {}) }
     });
