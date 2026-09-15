@@ -3390,9 +3390,9 @@ async function inyectarDisponibilidadChat(event) {
              return;
         }
         const fechaFormat = fecha.split('-').reverse().join('/');
-        let texto = 'Para el ' + fechaFormat + ' tenemos estos horarios:\n\n';
-        res.disponibles.forEach(h => { texto += ' - ' + h.horaTexto + '\n'; });
-        texto += '\n�A que hora te anoto?';
+        let texto = '📅 Para el ' + fechaFormat + ' tenemos estos horarios:\n\n';
+        res.disponibles.forEach(h => { texto += '  🕓 ' + h.horaTexto + '\n'; });
+        texto += '\n✅ A que hora te anoto?';
         inputTexto.value = (inputTexto.value ? inputTexto.value + '\n\n' : '') + texto;
         inputTexto.focus();
     } catch (e) {
