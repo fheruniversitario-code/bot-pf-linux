@@ -4642,9 +4642,14 @@ app.post('/api/webhook/google-forms', async (req, res) => {
         const { telefono, etiqueta_asignar } = req.body;
         if (!telefono) return res.status(400).json({ error: "Telefono es requerido en el cuerpo (JSON)" });
         
-        let num = telefono.replace(/[^0-9]/g, '');
-        if (num.length === 10) num = `521${num}`;
-        const jid = `${num}@c.us`;
+                let num = telefono.replace(/[^0-9]/g, '');
+        let last10 = num.slice(-10);
+        
+        let jid = '521' + last10 + '@c.us';
+        const contactoBD = await getQuery('SELECT jid FROM contactos WHERE jid LIKE ?', ['%' + last10 + '@c.us']);
+        if (contactoBD && contactoBD.jid) {
+            jid = contactoBD.jid;
+        }
 
         const tagName = etiqueta_asignar || "?? Aviso de Privacidad";
         const color = '#10b981'; // Verde por defecto
