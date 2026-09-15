@@ -1291,7 +1291,7 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
                     telefono: cliente_telefono || '',
                     fecha,
                     hora,
-                    duracionMinutos: parseInt(duracionCita) || 30,
+                    duracionMinutos: isNaN(parseInt(duracionCita)) ? 30 : parseInt(duracionCita),
                     servicio: servicio || 'Consulta General',
                     notas: notas || '',
                     timezone
@@ -1498,8 +1498,8 @@ app.get('/api/agenda/disponibilidad', autenticarToken, async (req, res) => {
             calendarId: calIdConfig,
             credentials: credsConfig,
             fecha,
-            duracionMinutos: parseInt(duracionCita) || 30,
-            bufferMinutos: parseInt(bufferMinutos) || 10,
+            duracionMinutos: isNaN(parseInt(duracionCita)) ? 30 : parseInt(duracionCita),
+            bufferMinutos: isNaN(parseInt(bufferMinutos)) ? 10 : parseInt(bufferMinutos),
             timezone,
             horarioLaboral: {
                 turno1_inicio,
@@ -3913,8 +3913,8 @@ async function obtenerContenidoGoogleSheets(url) {
                         calendarId: calIdConfig,
                         credentials: credsConfig,
                         fechas: fechasConsultar,
-                        duracionMinutos: parseInt(duracionCitaConfig) || 30,
-                        bufferMinutos: parseInt(bufferMinConfig) || 10,
+                        duracionMinutos: isNaN(parseInt(duracionCitaConfig)) ? 30 : parseInt(duracionCitaConfig),
+                        bufferMinutos: isNaN(parseInt(bufferMinConfig)) ? 10 : parseInt(bufferMinConfig),
                         timezone: timezoneNegocio,
                         horarioLaboral: {
                             turno1_inicio,
@@ -4152,7 +4152,7 @@ ${seccionAgendaIA}
                             telefono: telLimpio,
                             fecha: citaFecha,
                             hora: citaHora,
-                            duracionMinutos: parseInt(duracionCitaConfig) || 30,
+                            duracionMinutos: isNaN(parseInt(duracionCitaConfig)) ? 30 : parseInt(duracionCitaConfig),
                             servicio: citaServicio,
                             notas: citaNotas,
                             timezone: timezoneNegocio
