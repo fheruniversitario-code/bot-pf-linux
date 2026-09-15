@@ -3275,11 +3275,11 @@ async function cargarRespuestasRapidasModal() {
                 </div>
                 <p class="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap line-clamp-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/40">${r.contenido}</p>
                 <div class="flex items-center justify-end space-x-2 pt-1">
-                    <button type="button" onclick="insertarRespuestaRapida('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
+                    <button type="button" onclick="insertarRespuestaRapida('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\n")}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition">
                         <i class="fa-solid fa-arrow-turn-down text-[10px] text-indigo-400"></i>
                         <span>Pegar en Mensaje</span>
                     </button>
-                    <button type="button" onclick="enviarRespuestaRapidaDirecta('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm">
+                    <button type="button" onclick="enviarRespuestaRapidaDirecta('${r.contenido.replace(/'/g, "\\'").replace(/\n/g, "\n")}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow-sm">
                         <i class="fa-solid fa-paper-plane text-[10px]"></i>
                         <span>Enviar Ahora</span>
                     </button>
@@ -3369,33 +3369,30 @@ async function eliminarRespuestaRapida(id) {
 }
 
 
- 
- a s y n c   f u n c t i o n   i n y e c t a r D i s p o n i b i l i d a d C h a t ( )   {  
-         c o n s t   f e c h a   =   d o c u m e n t . g e t E l e m e n t B y I d ( ' i n p u t - c h a t - f e c h a - d i s p o n i b i l i d a d ' ) ? . v a l u e ;  
-         i f   ( ! f e c h a )   r e t u r n   a l e r t ( ' S e l e c c i o n a   u n a   f e c h a   p r i m e r o . ' ) ;  
-         c o n s t   i n p u t T e x t o   =   d o c u m e n t . g e t E l e m e n t B y I d ( ' i n p u t - m e n s a j e - t e x t o ' ) ;  
-         c o n s t   b t n   =   e v e n t . c u r r e n t T a r g e t ;  
-         c o n s t   o l d H t m l   =   b t n . i n n e r H T M L ;  
-         t r y   {  
-                 b t n . i n n e r H T M L   =   ' < i   c l a s s = \  
- f a - s o l i d  
- f a - s p i n n e r  
- f a - s p i n \ > < / i >   B u s c a n d o . . . ' ;  
-                 c o n s t   r e s   =   a w a i t   a p i F e t c h ( ' / a p i / a g e n d a / d i s p o n i b i l i d a d ? f e c h a = '   +   f e c h a ) ;  
-                 i f   ( ! r e s . h u e c o s   | |   r e s . h u e c o s . l e n g t h   = = =   0 )   {  
-                           a l e r t ( ' N o   h a y   h o r a r i o s   d i s p o n i b l e s   p a r a   e l   '   +   f e c h a   +   '   o   e l   n e g o c i o   n o   a t i e n d e   e s e   d í a . ' ) ;  
-                           r e t u r n ;  
-                 }  
-                 c o n s t   f e c h a F o r m a t   =   f e c h a . s p l i t ( ' - ' ) . r e v e r s e ( ) . j o i n ( ' / ' ) ;  
-                 l e t   t e x t o   =   ' P a r a   e l   '   +   f e c h a F o r m a t   +   '   t e n e m o s   l o s   s i g u i e n t e s   h o r a r i o s   d i s p o n i b l e s : \ \ n ' ;  
-                 r e s . h u e c o s . f o r E a c h ( h   = >   {   t e x t o   + =   ' "   '   +   h   +   ' \ \ n ' ;   } ) ;  
-                 t e x t o   + =   ' \ \ n ¿ A   q u é   h o r a   t e   a n o t o ? ' ;  
-                 i n p u t T e x t o . v a l u e   =   ( i n p u t T e x t o . v a l u e   ?   i n p u t T e x t o . v a l u e   +   ' \ \ n \ \ n '   :   ' ' )   +   t e x t o ;  
-                 i n p u t T e x t o . f o c u s ( ) ;  
-         }   c a t c h   ( e )   {  
-                 a l e r t ( ' E r r o r   a l   o b t e n e r   d i s p o n i b i l i d a d :   '   +   e . m e s s a g e ) ;  
-         }   f i n a l l y   {  
-                 b t n . i n n e r H T M L   =   o l d H t m l ;  
-         }  
- }  
- 
+
+
+async function inyectarDisponibilidadChat(event) {
+    const fecha = document.getElementById('input-chat-fecha-disponibilidad')?.value;
+    if (!fecha) return alert('Selecciona una fecha primero.');
+    const inputTexto = document.getElementById('input-mensaje-texto');
+    const btn = event.currentTarget;
+    const oldHtml = btn.innerHTML;
+    try {
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Buscando...';
+        const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
+        if (!res.huecos || res.huecos.length === 0) {
+             alert('No hay horarios disponibles para el ' + fecha + ' o el negocio no atiende ese dï¿½a.');
+             return;
+        }
+        const fechaFormat = fecha.split('-').reverse().join('/');
+        let texto = 'Para el ' + fechaFormat + ' tenemos los siguientes horarios disponibles:\n';
+        res.huecos.forEach(h => { texto += 'ï¿½ ' + h + '\n'; });
+        texto += '\nï¿½A quï¿½ hora te anoto?';
+        inputTexto.value = (inputTexto.value ? inputTexto.value + '\n\n' : '') + texto;
+        inputTexto.focus();
+    } catch (e) {
+        alert('Error al obtener disponibilidad: ' + e.message);
+    } finally {
+        btn.innerHTML = oldHtml;
+    }
+}
