@@ -216,7 +216,7 @@ class CalendarService {
             const ahora = new Date();
             const hoyStr = ahora.toLocaleDateString('en-CA', { timeZone: timezone }); // 'YYYY-MM-DD'
             const esHoy = (hoyStr === fecha);
-            const minAnticipacionMs = 2 * 60 * 60 * 1000; // 2 horas de anticipación mínima para hoy
+            const minAnticipacionMs = 0;
 
             for (const franja of franjas) {
                 const [hIniH, hIniM] = franja.inicio.split(':').map(Number);

@@ -4644,6 +4644,7 @@ app.post('/api/webhook/google-forms', async (req, res) => {
         
                 let num = telefono.replace(/[^0-9]/g, '');
         let last10 = num.slice(-10);
+        if (last10.length !== 10) return res.status(400).json({ error: 'El n�mero debe tener al menos 10 d�gitos' });
         
         let jid = '521' + last10 + '@c.us';
         const contactoBD = await getQuery('SELECT jid FROM contactos WHERE jid LIKE ?', ['%' + last10 + '@c.us']);
