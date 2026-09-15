@@ -4633,6 +4633,49 @@ inicializarBD().then(async () => {
 
 // Iniciar Auditor Centinela (Watchdog)
 Auditor.iniciar(client, getQuery, runQuery);
+    
+// ==========================================
+// WEBHOOK PARA FORMULARIOS DE GOOGLE (AVISO DE PRIVACIDAD / EXPEDIENTE)
+// ==========================================
+app.post('/api/webhook/google-forms', async (req, res) => {
+    try {
+        const { telefono, etiqueta_asignar } = req.body;
+        if (!telefono) return res.status(400).json({ error: "Telefono es requerido en el cuerpo (JSON)" });
+        
+        let num = telefono.replace(/[^0-9]/g, '');
+        if (num.length === 10) num = `521${num}`;
+        const jid = `${num}@c.us`;
+
+        const tagName = etiqueta_asignar || "?? Aviso de Privacidad";
+        const color = '#10b981'; // Verde por defecto
+
+        // 1. Crear etiqueta si no existe
+        await runQuery("INSERT OR IGNORE INTO etiquetas (nombre, color, creado_en) VALUES (?, ?, ?)", [tagName, color, Date.now()]);
+        
+        // 2. Obtener el ID de la etiqueta
+        const etiquetaBD = await getQuery("SELECT id FROM etiquetas WHERE nombre = ?", [tagName]);
+        
+        if (etiquetaBD) {
+            // 3. Asignarla al contacto
+            await runQuery("INSERT OR IGNORE INTO contactos_etiquetas (jid, etiqueta_id, asignado_en) VALUES (?, ?, ?)", [jid, etiquetaBD.id, Date.now()]);
+            console.log(`? Webhook: Etiqueta '${tagName}' asignada a ${jid} autom�ticamente.`);
+            
+            // Emitir evento por socket.io para que el panel se actualice en vivo
+            if (typeof io !== 'undefined') {
+                io.emit('etiqueta_actualizada', { jid, tagName });
+            }
+
+            res.json({ success: true, message: `Etiqueta asignada al contacto ${jid}` });
+        } else {
+            res.status(500).json({ error: "No se pudo crear o encontrar la etiqueta en SQLite." });
+        }
+    } catch (e) {
+        console.error("? Error en webhook google forms:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
     server.listen(PORT, () => {
         console.log(`🌐 Servidor OmniBot SaaS activo en: http://localhost:${PORT}`);
         console.log(`📱 Mini-Sitio Linktree público en: http://localhost:${PORT}/pagina.html`);
