@@ -164,8 +164,11 @@ class CalendarService {
             }
 
             // Calcular ventanas ocupadas de Google Calendar
-            const timeMinISO = `${fecha}T00:00:00Z`;
-            const timeMaxISO = `${fecha}T23:59:59Z`;
+            const [y, m, d] = fecha.split('-').map(Number);
+            const minDate = new Date(Date.UTC(y, m - 1, d - 1, 0, 0, 0));
+            const maxDate = new Date(Date.UTC(y, m - 1, d + 2, 0, 0, 0));
+            const timeMinISO = minDate.toISOString();
+            const timeMaxISO = maxDate.toISOString();
 
             let busyIntervals = [];
 
