@@ -631,7 +631,12 @@
                             </h2>
                             <p class="text-xs text-slate-400">Citas agendadas en vivo por la IA de WhatsApp o registradas manualmente</p>
                         </div>
-                        <input type="text" id="buscar-cita-input" oninput="aplicarFiltroCitas()" placeholder="?? Buscar nombre, fecha o servicio..." class="px-4 py-2 mr-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white shadow-md focus:border-indigo-500 outline-none w-64">
+                        <div class="flex items-center space-x-2 mr-3 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 shadow-md focus-within:border-indigo-500">
+                              <i class="fa-regular fa-calendar text-slate-400"></i>
+                              <input type="date" id="filtro-fecha-input" onchange="aplicarFiltroCitas()" title="Filtrar por fecha espec�fica" class="bg-transparent text-xs text-white outline-none">
+                              <button onclick="document.getElementById('filtro-fecha-input').value=''; aplicarFiltroCitas();" title="Quitar filtro de fecha" class="text-slate-500 hover:text-rose-400 px-1"><i class="fa-solid fa-xmark"></i></button>
+                          </div>
+                          <input type="text" id="buscar-cita-input" oninput="aplicarFiltroCitas()" placeholder="?? Buscar nombre, fecha o servicio..." class="px-4 py-2 mr-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white shadow-md focus:border-indigo-500 outline-none w-64">
                         <button onclick="imprimirReporteCitas()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-2 mr-2">
                             <i class="fa-solid fa-print"></i>
                             <span>Imprimir Reporte</span>
@@ -2457,6 +2462,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="/app_v8.js"></script>
+    <script src="/app_v9.js"></script>
 </body>
 </html>
