@@ -4617,9 +4617,11 @@ inicializarBD().then(async () => {
             WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid AND cuerpo NOT LIKE '%e2e_notification%') > 0
         `);
 
-        // 6. Limpiar números falsos de @lid y nombres raros
+                // 6. Limpiar numeros falsos y limpiar fantasmas
+        await runQuery("DELETE FROM contactos_etiquetas WHERE jid IN (SELECT jid FROM contactos WHERE (SELECT COUNT(*) FROM mensajes WHERE chat_id = contactos.jid) = 0)");
         await runQuery("UPDATE contactos SET telefono = '' WHERE jid LIKE '%@lid' AND LENGTH(telefono) > 12");
         await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Cliente' END WHERE nombre LIKE 'Cliente (+%' AND (jid LIKE '%@lid' OR LENGTH(telefono) > 12)");
+        await runQuery("DELETE FROM contactos_etiquetas WHERE jid = '0@s.whatsapp.net'");
         console.log("🧹 [DB-CLEAN] Limpieza integral de BD completada: sin notificaciones, sin códigos base64 y chats ordenados canónicamente.");
     } catch (eClean) {
         console.error("Error en auto-limpieza BD:", eClean.message);
@@ -4647,7 +4649,7 @@ app.post('/api/webhook/google-forms', async (req, res) => {
         if (last10.length !== 10) return res.status(400).json({ error: 'El n�mero debe tener al menos 10 d�gitos' });
         
         let jid = '521' + last10 + '@c.us';
-        const contactoBD = await getQuery('SELECT jid FROM contactos WHERE jid LIKE ?', ['%' + last10 + '@c.us']);
+        const contactoBD = await getQuery('SELECT jid FROM contactos WHERE jid LIKE ? ORDER BY ultimo_contacto DESC LIMIT 1', ['%' + last10 + '@c.us']);
         if (contactoBD && contactoBD.jid) {
             jid = contactoBD.jid;
         }
