@@ -1386,21 +1386,21 @@
                     <div class="border-b border-slate-800/70 pb-5">
                         <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
                             <i class="fa-solid fa-bell text-amber-400"></i>
-                            <span>Recordatorios Autom�ticos por WhatsApp</span>
+                            <span>Recordatorios Automáticos por WhatsApp</span>
                         </h2>
-                        <p class="text-xs text-slate-400 mt-1">El bot despertar� a la hora programada, buscar� las citas de ese d�a y enviar� este mensaje a cada paciente.</p>
+                        <p class="text-xs text-slate-400 mt-1">El bot despertará a la hora programada, buscará las citas de ese día y enviará este mensaje a cada paciente.</p>
                     </div>
                     <form id="config-recordatorios-form" class="space-y-6">
                         <div class="flex items-center space-x-3 mb-4">
                             <input type="checkbox" id="config-recordatorio-activo" class="w-5 h-5 accent-indigo-500 rounded">
-                            <label class="text-sm font-bold text-slate-200">Activar el env�o de recordatorios diarios</label>
+                            <label class="text-sm font-bold text-slate-200">Activar el envío de recordatorios diarios</label>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Hora de env�o autom�tico</label>
                                 <input type="time" id="config-recordatorio-hora" value="08:00" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
-                                <p class="text-[10px] text-slate-500 mt-1">Se evaluar� diariamente a esta hora exacta.</p>
+                                <p class="text-[10px] text-slate-500 mt-1">Se evaluará diariamente a esta hora exacta.</p>
                             </div>
                         </div>
 
@@ -1408,8 +1408,8 @@
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Plantilla del Mensaje</label>
                             <textarea id="config-recordatorio-texto" rows="4" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none" placeholder="Hola {nombre}, te recordamos tu cita de hoy a las {hora} para {servicio}."></textarea>
                             <div class="bg-slate-800/50 rounded-lg p-3 mt-2 border border-slate-700">
-                                <p class="text-[11px] font-mono text-indigo-300">Variables din�micas soportadas:</p>
-                                <p class="text-[10px] text-slate-400 mt-1">Usa <b>{nombre}</b> para el paciente, <b>{hora}</b> para la hora de su cita, y <b>{servicio}</b> para el tratamiento. <br><br><b>Ejemplo sugerido:</b><br>Hola {nombre} ??, somos de la cl�nica. Te recordamos tu cita programada para hoy a las {hora} para {servicio}.<br>�Nos confirmas tu asistencia? (Si deseas cancelar o reagendar, por favor av�sanos por este medio).</p>
+                                <p class="text-[11px] font-mono text-indigo-300">Variables dinámicas soportadas:</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Usa <b>{nombre}</b> para el paciente, <b>{hora}</b> para la hora de su cita, y <b>{servicio}</b> para el tratamiento. <br><br><b>Ejemplo sugerido:</b><br>Hola {nombre} 👋, somos de la clínica. Te recordamos tu cita programada para hoy a las {hora} para {servicio}.<br>¿Nos confirmas tu asistencia? (Si deseas cancelar o reagendar, por favor avísanos por este medio).</p>
                             </div>
                         </div>
 
@@ -2504,6 +2504,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="/app_v12.js"></script>
+    <script src="/app_v13.js"></script>
 </body>
 </html>
