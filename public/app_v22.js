@@ -796,7 +796,7 @@ async function renombrarContactoActual() {
         if (res.success) {
             nomElem.textContent = res.nombre;
             document.getElementById('chat-avatar').textContent = res.nombre.charAt(0).toUpperCase();
-            cargarConversaciones();
+            cargarListaConversaciones();
             alert(`✅ Contacto renombrado con éxito a: ${res.nombre}`);
         }
     } catch (e) {
