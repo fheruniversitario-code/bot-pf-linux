@@ -411,7 +411,11 @@ async function inicializarBD() {
         `);
     }
 
-    console.log("💾 Base de Datos SQLite inicializada con éxito.");
+    // Actualizaciones de esquema (Migraciones en vivo)
+    try { await runQuery("ALTER TABLE contactos ADD COLUMN correo TEXT DEFAULT ''"); } catch (e) { /* Ya existe */ }
+    try { await runQuery("ALTER TABLE contactos ADD COLUMN expediente TEXT DEFAULT ''"); } catch (e) { /* Ya existe */ }
+
+    console.log("🚀 Base de Datos SQLite inicializada con éxito.");
 }
 
 module.exports = {

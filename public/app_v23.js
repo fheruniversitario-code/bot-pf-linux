@@ -105,6 +105,7 @@ async function guardarMiCuenta(e) {
 // 2. NAVEGACIÓN Y CAMBIO DE PESTAÑAS (SPA)
 // ------------------------------------------------------------------------------
 const TITULOS_TABS = {
+    directorio: { titulo: "Directorio de Pacientes", subtitulo: "Base de datos maestra de clientes y CRM" },
     ventas: { titulo: "Reporte de ventas", subtitulo: "Ingresos, conversión y cotizaciones pendientes" },
     conversaciones: { titulo: "Conversaciones en Vivo", subtitulo: "Historial y monitoreo de chats con intervención humana" },
     citas: { titulo: "Agenda de Citas", subtitulo: "Control de pacientes y servicios programados" },
@@ -654,6 +655,10 @@ async function seleccionarChat(jid, nombre, telefono = '') {
                 <button id="btn-gestionar-etiquetas" onclick="abrirModalEtiquetasContacto()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Asignar Etiquetas / Listas">
                     <i class="fa-solid fa-tags text-indigo-400"></i>
                     <span>Etiquetas</span>
+                </button>
+                <button onclick="abrirModalDirectorioActual()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm" title="Datos del Paciente / Directorio">
+                    <i class="fa-solid fa-address-book text-sky-400"></i>
+                    <span>Directorio</span>
                 </button>
                 <button onclick="toggleIgnorarChatActual('${jid}', ${esIgnorado ? 0 : 1})" class="px-3.5 py-1.5 ${esIgnorado ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} border rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm">
                     <i class="fa-solid ${esIgnorado ? 'fa-user-slash text-rose-400' : 'fa-user-check text-slate-400'}"></i>
@@ -3676,5 +3681,167 @@ async function sincronizarConGoogle() {
         }
     } catch (e) {
         Swal.fire('Error', e.message, 'error');
+    }
+}
+
+
+// ==============================================================================
+// MODULO: DIRECTORIO DE PACIENTES (CRM)
+// ==============================================================================
+
+let directorioMem = [];
+
+async function cargarDirectorio() {
+    try {
+        const query = document.getElementById('buscar-directorio-input')?.value || '';
+        const url = query ? `/api/directorio?q=${encodeURIComponent(query)}` : '/api/directorio';
+        directorioMem = await apiFetch(url);
+        renderizarDirectorio(directorioMem);
+    } catch (e) {
+        console.error("Error cargando directorio:", e);
+    }
+}
+
+document.getElementById('buscar-directorio-input')?.addEventListener('input', (e) => {
+    // Simple debounce
+    clearTimeout(window.dirDebounce);
+    window.dirDebounce = setTimeout(() => {
+        cargarDirectorio();
+    }, 400);
+});
+
+function renderizarDirectorio(lista) {
+    const cont = document.getElementById('lista-directorio-container');
+    if (!cont) return;
+    cont.innerHTML = '';
+    
+    if (lista.length === 0) {
+        cont.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-500 text-sm">No se encontraron contactos en el directorio.</td></tr>';
+        return;
+    }
+    
+    lista.forEach(c => {
+        const tagsHtml = (c.etiquetas_lista || []).map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-white ml-1" style="background-color: ${t.color};">${t.nombre}</span>`).join('');
+        
+        cont.innerHTML += `
+            <tr class="hover:bg-slate-800/30 transition border-b border-slate-800/50">
+                <td class="py-3 px-4">
+                    <div class="font-bold text-slate-200 text-sm flex items-center">
+                        ${c.nombre || 'Cliente'} ${tagsHtml}
+                    </div>
+                </td>
+                <td class="py-3 px-4 text-sm text-slate-400 font-mono">+${c.telefono}</td>
+                <td class="py-3 px-4 text-sm text-sky-300 font-medium">${c.expediente || '<span class="text-slate-600 italic">N/A</span>'}</td>
+                <td class="py-3 px-4 text-sm text-slate-400">${c.correo || '<span class="text-slate-600 italic">N/A</span>'}</td>
+                <td class="py-3 px-4 text-sm text-slate-400">${c.total_mensajes > 0 ? `<span class="text-emerald-400 font-bold">${c.total_mensajes}</span>` : '0'}</td>
+                <td class="py-3 px-4 text-right space-x-2">
+                    <button onclick="editarContactoDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-[11px] font-bold transition"><i class="fa-solid fa-pen"></i></button>
+                    ${c.total_mensajes > 0 ? `<button onclick="abrirChatDesdeDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-lg text-[11px] font-bold transition" title="Ir al Chat"><i class="fa-solid fa-comment"></i></button>` : ''}
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function abrirChatDesdeDirectorio(jid) {
+    cambiarTab('conversaciones');
+    // Filtrar de nuevo y seleccionar
+    const inputBusq = document.getElementById('buscar-chat-input');
+    if (inputBusq) {
+        inputBusq.value = jid.replace(/[^0-9]/g, '');
+        aplicarFiltrosConversaciones();
+    }
+}
+
+function editarContactoDirectorio(jid) {
+    const c = directorioMem.find(x => x.jid === jid);
+    if (!c) return;
+    abrirModalDirectorioCompleto(jid, c.nombre, c.telefono, c.correo, c.expediente);
+}
+
+function abrirModalDirectorioActual() {
+    const jid = chatActivoJid;
+    if (!jid) return;
+    
+    // Obtener datos del encabezado actual
+    const nombre = document.getElementById('chat-nombre-cliente').textContent;
+    const telefono = window.chatActivoTelefono || '';
+    
+    // Buscar si ya tenemos su correo/expediente de la memoria (si est� cargado) o usar vac�o
+    // Para asegurar precisi�n, mejor consultamos directo a la API en el backend
+    apiFetch(`/api/conversaciones`) // Podemos sacar la data de la DB o usar un fetch de un solo user
+    .then(() => {
+        // En lugar de fetch costoso, buscamos en la lista de conversaciones cargadas en memoria
+        const c = listaConversacionesMem.find(x => x.jid === jid);
+        abrirModalDirectorioCompleto(jid, nombre, telefono, c?.correo || '', c?.expediente || '');
+    });
+}
+
+function abrirModalDirectorioNuevo() {
+    abrirModalDirectorioCompleto('', '', '', '', '');
+}
+
+function abrirModalDirectorioCompleto(jid, nombre, telefono, correo, expediente) {
+    document.getElementById('dir-jid-input').value = jid || '';
+    document.getElementById('dir-nombre-input').value = nombre || '';
+    document.getElementById('dir-telefono-input').value = telefono || '';
+    document.getElementById('dir-correo-input').value = correo || '';
+    document.getElementById('dir-expediente-input').value = expediente || '';
+    
+    // Bloquear tel�fono si es edici�n
+    const telInput = document.getElementById('dir-telefono-input');
+    if (jid) {
+        telInput.setAttribute('disabled', 'true');
+        telInput.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        telInput.removeAttribute('disabled');
+        telInput.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    
+    document.getElementById('modal-directorio').classList.remove('hidden');
+}
+
+async function guardarDatosDirectorio() {
+    const jid = document.getElementById('dir-jid-input').value;
+    const nombre = document.getElementById('dir-nombre-input').value.trim();
+    const telefono = document.getElementById('dir-telefono-input').value.trim();
+    const correo = document.getElementById('dir-correo-input').value.trim();
+    const expediente = document.getElementById('dir-expediente-input').value.trim();
+    
+    if (!jid && !telefono) {
+        return alert("El n�mero de tel�fono es obligatorio para un nuevo paciente.");
+    }
+    
+    const body = { nombre, telefono, correo, expediente };
+    
+    try {
+        if (jid) {
+            // Edit
+            await apiFetch(`/api/directorio/${encodeURIComponent(jid)}`, {
+                method: 'PUT',
+                body: JSON.stringify(body)
+            });
+        } else {
+            // Create
+            await apiFetch(`/api/directorio`, {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+        }
+        
+        document.getElementById('modal-directorio').classList.add('hidden');
+        
+        // Refrescar vistas
+        if (currentTab === 'directorio') {
+            cargarDirectorio();
+        } else if (currentTab === 'conversaciones') {
+            cargarListaConversaciones();
+            if (chatActivoJid === jid && nombre) {
+                document.getElementById('chat-nombre-cliente').textContent = nombre;
+            }
+        }
+        
+    } catch(e) {
+        alert("Error al guardar: " + e.message);
     }
 }

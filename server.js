@@ -305,6 +305,86 @@ function formatearTiempoRelativo(timestampMs) {
     return { texto, dias: difDias, meses: difMeses, fecha: fechaFormateada };
 }
 
+// ============================================================================
+// DIRECTORIO DE PACIENTES / CLIENTES (MINI-CRM)
+// ============================================================================
+
+app.get('/api/directorio', autenticarToken, async (req, res) => {
+    try {
+        const queryBusqueda = (req.query.q || '').trim();
+        let whereClause = '';
+        let params = [];
+
+        if (queryBusqueda) {
+            whereClause = `WHERE (c.nombre LIKE ? OR c.telefono LIKE ? OR c.correo LIKE ? OR c.expediente LIKE ?)`;
+            const likeParam = `%${queryBusqueda}%`;
+            params = [likeParam, likeParam, likeParam, likeParam];
+        }
+
+        const contactos = await allQuery(`
+            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente,
+                   (SELECT COUNT(*) FROM mensajes WHERE chat_id = c.jid) as total_mensajes
+            FROM contactos c
+            ${whereClause}
+            ORDER BY c.nombre ASC
+            LIMIT 500
+        `, params);
+
+        // Obtener etiquetas para el directorio
+        const listaJids = contactos.map(c => c.jid);
+        if (listaJids.length > 0) {
+            const etqsAsignadas = await allQuery(`
+                SELECT ce.jid, e.id, e.nombre, e.color 
+                FROM contactos_etiquetas ce
+                JOIN etiquetas e ON ce.etiqueta_id = e.id
+                WHERE ce.jid IN (${listaJids.map(() => '?').join(',')})
+            `, listaJids);
+            
+            contactos.forEach(c => {
+                c.etiquetas_lista = etqsAsignadas.filter(et => et.jid === c.jid);
+            });
+        } else {
+            contactos.forEach(c => c.etiquetas_lista = []);
+        }
+
+        res.json(contactos);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/directorio', autenticarToken, async (req, res) => {
+    try {
+        const { telefono, nombre, correo, expediente } = req.body;
+        if (!telefono) return res.status(400).json({ error: "El teléfono es requerido" });
+        const telLimpio = telefono.replace(/[^0-9]/g, '');
+        const jid = telLimpio.length === 10 ? `521${telLimpio}@c.us` : `${telLimpio}@c.us`;
+
+        await runQuery(
+            "INSERT INTO contactos (jid, telefono, nombre, correo, expediente, ultimo_contacto) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(jid) DO UPDATE SET nombre = excluded.nombre, correo = excluded.correo, expediente = excluded.expediente",
+            [jid, telLimpio, nombre || 'Nuevo Paciente', correo || '', expediente || '', Date.now()]
+        );
+        res.json({ success: true, jid });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/directorio/:jid', autenticarToken, async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        const { nombre, correo, expediente } = req.body;
+        
+        await runQuery(
+            "UPDATE contactos SET nombre = ?, correo = ?, expediente = ? WHERE jid = ?",
+            [nombre, correo || '', expediente || '', jid]
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Lista de Conversaciones Mejorada (Live Chat con Etiquetas y Tiempo Relativo)
 app.get('/api/conversaciones', autenticarToken, async (req, res) => {
     try {
@@ -319,7 +399,7 @@ app.get('/api/conversaciones', autenticarToken, async (req, res) => {
         }
 
         const chats = await allQuery(`
-            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.es_ignorado, c.ultimo_contacto,
+            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente, c.es_ignorado, c.ultimo_contacto,
                    (SELECT CASE 
                         WHEN cuerpo LIKE '/9j/%' OR cuerpo LIKE 'data:image%' THEN '📷 (Imagen / Infografía)'
                         ELSE cuerpo 
