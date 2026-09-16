@@ -367,6 +367,91 @@
             </div>
 
             <!-- ============================================================ -->
+            
+            <!-- ============================================================ -->
+            <!-- TAB: DIRECTORIO (MINI-CRM) -->
+            <!-- ============================================================ -->
+            <div id="view-directorio" class="tab-view hidden h-[calc(100vh-10rem)] bg-slate-900 border border-slate-800/80 rounded-3xl flex flex-col overflow-hidden">
+                <div class="p-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/90">
+                    <div>
+                        <h2 class="font-bold text-white text-xl flex items-center space-x-2">
+                            <i class="fa-solid fa-address-book text-sky-400"></i>
+                            <span>Directorio de Pacientes / Clientes</span>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-1">Busca, edita y administra tu base de datos global de contactos independientemente de WhatsApp.</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o n�mero..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
+                        </div>
+                        <button onclick="abrirModalDirectorioNuevo()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-sky-900/50">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Nuevo Paciente</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-auto p-6 bg-slate-950">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800">
+                                <th class="pb-3 px-4">Nombre Completo</th>
+                                <th class="pb-3 px-4">Tel�fono</th>
+                                <th class="pb-3 px-4">Expediente</th>
+                                <th class="pb-3 px-4">Correo Electr�nico</th>
+                                <th class="pb-3 px-4 text-center">Msj.</th>
+                                <th class="pb-3 px-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-directorio-container" class="divide-y divide-slate-800/50">
+                            <tr><td colspan="6" class="text-center py-10 text-slate-500 text-sm">Cargando directorio...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal: Crear/Editar en Directorio -->
+            <div id="modal-directorio" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div class="bg-slate-900 rounded-2xl border border-slate-800 w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+                    <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
+                        <h3 id="modal-directorio-titulo" class="font-bold text-white text-lg flex items-center space-x-2">
+                            <i class="fa-solid fa-user-edit text-sky-400"></i>
+                            <span>Datos del Paciente</span>
+                        </h3>
+                        <button onclick="document.getElementById('modal-directorio').classList.add('hidden')" class="text-slate-500 hover:text-white transition">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <input type="hidden" id="dir-jid-input">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre Completo</label>
+                            <input type="text" id="dir-nombre-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. Juan P�rez">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">N�mero de Tel�fono</label>
+                            <input type="text" id="dir-telefono-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="10 d�gitos">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">No. de Expediente (Opcional)</label>
+                            <input type="text" id="dir-expediente-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. EXP-2023-01">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo Electr�nico (Opcional)</label>
+                            <input type="email" id="dir-correo-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="paciente@correo.com">
+                        </div>
+                    </div>
+                    <div class="p-5 border-t border-slate-800 bg-slate-900/50 flex justify-end space-x-3">
+                        <button onclick="document.getElementById('modal-directorio').classList.add('hidden')" class="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition">Cancelar</button>
+                        <button onclick="guardarDatosDirectorio()" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-sky-900/50 flex items-center space-x-2">
+                            <i class="fa-solid fa-save"></i>
+                            <span>Guardar Datos</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- TAB 1: REPORTE DE VENTAS & CRM (VISTA DE CAPTURA 1) -->
             <!-- ============================================================ -->
             <div id="view-ventas" class="tab-view space-y-6">
