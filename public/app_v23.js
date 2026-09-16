@@ -3836,7 +3836,7 @@ async function guardarDatosDirectorio() {
     const domicilio = domInput ? domInput.value.trim() : '';
     
     if (!jid && !telefono) {
-        return alert("El nmero de telfono es obligatorio para un nuevo paciente.");
+        return alert("El número de teléfono es obligatorio para un nuevo paciente.");
     }
     
     // Check duplicados

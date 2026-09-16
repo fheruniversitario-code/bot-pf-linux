@@ -385,9 +385,10 @@
                             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
                             <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o n�mero..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
                         </div>
-                        <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg">
+                        <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg" title="El archivo debe tener 5 columnas: Nombre, Tel�fono, Correo, Expediente, Domicilio.">
                             <i class="fa-solid fa-file-csv"></i>
                             <span>Importar CSV</span>
+                            <i class="fa-solid fa-circle-info ml-1 opacity-70" title="Instrucciones:&#10;1. Crea un Excel con 5 columnas en este exacto orden: Nombre, Tel�fono, Correo, Expediente, Domicilio.&#10;2. La fila 1 debe ser de t�tulos.&#10;3. Gu�rdalo como 'CSV (delimitado por comas)'."></i>
                         </button>
                         <input type="file" id="importar-csv-input" accept=".csv" class="hidden" onchange="importarCSVDirectorio(event)">
                         <button onclick="abrirModalDirectorioNuevo()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-sky-900/50">
@@ -433,22 +434,22 @@
                         <input type="hidden" id="dir-jid-input">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre Completo</label>
-                            <input type="text" id="dir-nombre-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. Juan P�rez">
+                            <input type="text" id="dir-nombre-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. Juan Pérez">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">N�mero de Tel�fono</label>
-                            <input type="text" id="dir-telefono-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="10 d�gitos">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Número de Teléfono</label>
+                            <input type="text" id="dir-telefono-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="10 dígitos">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">No. de Expediente (Opcional)</label>
                             <input type="text" id="dir-expediente-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. EXP-2023-01">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo Electr�nico (Opcional)</label>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo Electrónico (Opcional)</label>
                             <input type="email" id="dir-correo-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="paciente@correo.com">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Domicilio / Direcci�n (Opcional)</label>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Domicilio / Dirección (Opcional)</label>
                             <textarea id="dir-domicilio-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition resize-none h-20" placeholder="Ej. Calle Principal #123, Colonia Centro"></textarea>
                         </div>
                     </div>
