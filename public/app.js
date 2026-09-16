@@ -3401,3 +3401,109 @@ async function inyectarDisponibilidadChat(event) {
         btn.innerHTML = oldHtml;
     }
 }
+
+
+async function abrirModalAgendarChat() {
+    const fecha = document.getElementById('input-chat-fecha-disponibilidad')?.value;
+    if (!fecha) return alert('Selecciona una fecha primero en el calendario inferior.');
+    
+    if (!currentChatJid) return alert('Selecciona un chat primero.');
+    
+    // Fetch slots
+    Swal.fire({
+        title: 'Buscando horarios...',
+        didOpen: () => Swal.showLoading(),
+        allowOutsideClick: false
+    });
+    
+    try {
+        const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
+        if (!res.success) throw new Error(res.error);
+        if (!res.disponibles || res.disponibles.length === 0) {
+            return Swal.fire('Sin horarios', 'No hay horarios disponibles para el ' + fecha, 'info');
+        }
+        
+        let optionsHtml = res.disponibles.map(h => `<option value="${h.hora24}">${h.horaTexto}</option>`).join('');
+        
+        Swal.fire({
+            title: 'Agendar Cita R�pida',
+            html: `
+                <div class="text-left space-y-4 text-sm mt-4">
+                    <div>
+                        <label class="block text-slate-500 mb-1">Fecha seleccionada</label>
+                        <input type="date" value="${fecha}" readonly class="w-full p-2 border border-slate-300 rounded bg-slate-100 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 font-bold mb-1">Horario Disponible</label>
+                        <select id="swal-cita-hora" class="w-full p-2 border border-slate-300 rounded bg-white text-slate-800">
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-700 font-bold mb-1">Servicio / Motivo</label>
+                        <input type="text" id="swal-cita-servicio" placeholder="Ej: Consulta General" value="Consulta General" class="w-full p-2 border border-slate-300 rounded bg-white text-slate-800">
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-check mr-2"></i> Confirmar y Enviar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            preConfirm: () => {
+                return {
+                    hora: document.getElementById('swal-cita-hora').value,
+                    servicio: document.getElementById('swal-cita-servicio').value,
+                    horaTexto: document.getElementById('swal-cita-hora').options[document.getElementById('swal-cita-hora').selectedIndex].text
+                }
+            }
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const { hora, servicio, horaTexto } = result.value;
+                const telLimpio = currentChatJid.replace(/[^0-9]/g, '');
+                
+                // Obtener nombre del contacto
+                let nombre = 'Paciente';
+                const contactoItem = document.querySelector(`.chat-item[onclick*="${currentChatJid}"]`);
+                if (contactoItem) {
+                    const nombreEl = contactoItem.querySelector('b');
+                    if (nombreEl) nombre = nombreEl.innerText;
+                }
+                
+                Swal.fire({title: 'Agendando...', didOpen: () => Swal.showLoading(), allowOutsideClick: false});
+                
+                // Llamar a la API de crear cita
+                const resCita = await apiFetch('/api/citas', 'POST', {
+                    cliente_telefono: telLimpio,
+                    cliente_nombre: nombre,
+                    fecha: fecha,
+                    hora: hora,
+                    servicio: servicio,
+                    estado: 'Confirmada',
+                    notas: 'Agendada manualmente desde chat en vivo',
+                    duracion: 30
+                });
+                
+                if (resCita.success) {
+                    Swal.close();
+                    
+                    // Inyectar mensaje de confirmaci�n al chat y enviarlo
+                    const fechaFormat = fecha.split('-').reverse().join('/');
+                    const msjConfirmacion = `? *Cita Confirmada*\n\nHola ${nombre}, tu cita ha quedado programada para el d�a *${fechaFormat}* a las *${horaTexto}*.\n\nMotivo: ${servicio}\n\n�Te esperamos!`;
+                    
+                    const input = document.getElementById('input-mensaje-texto');
+                    if (input) {
+                        input.value = msjConfirmacion;
+                        enviarMensaje(); // Env�a autom�ticamente
+                    }
+                    
+                    Swal.fire('��xito!', 'Cita agendada en Google Calendar y mensaje enviado al paciente.', 'success');
+                } else {
+                    Swal.fire('Error', resCita.error || 'No se pudo agendar la cita.', 'error');
+                }
+            }
+        });
+        
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
