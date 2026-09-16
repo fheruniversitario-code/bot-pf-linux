@@ -3758,6 +3758,7 @@ function renderizarDirectorio(lista) {
                 <td class="py-3 px-4 text-sm text-slate-400 truncate max-w-[150px]">${c.domicilio || '<span class="text-slate-600 italic">N/A</span>'}</td>
                 <td class="py-3 px-4 text-sm text-slate-400">${c.total_mensajes > 0 ? `<span class="text-emerald-400 font-bold">${c.total_mensajes}</span>` : '0'}</td>
                 <td class="py-3 px-4 text-right space-x-2">
+                    <button onclick="eliminarContactoDirectorio('${c.jid}', '${(c.nombre || '').replace(/'/g, "\'")}')" class="px-2.5 py-1.5 bg-rose-900/20 hover:bg-rose-600/40 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-bold transition" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
                     <button onclick="editarContactoDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-[11px] font-bold transition"><i class="fa-solid fa-pen"></i></button>
                     <button onclick="abrirModalEtiquetasContacto('${c.jid}', '${(c.nombre || '').replace(/'/g, "\'")}')" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-lg text-[11px] font-bold transition" title="Gestionar Etiquetas"><i class="fa-solid fa-tags"></i></button>
                     <button onclick="agendarDesdeDirectorio('${(c.nombre || '').replace(/'/g, "\\'")}', '${c.telefono || ''}')" class="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-bold transition" title="Agendar Cita"><i class="fa-solid fa-calendar-plus"></i></button>
@@ -3781,6 +3782,17 @@ function abrirChatDesdeDirectorio(jid) {
 function agendarDesdeDirectorio(nombre, telefono) {
     cambiarTab('citas');
     abrirModalNuevaCita({ cliente_nombre: nombre, cliente_telefono: telefono, fecha: '', hora: '' });
+}
+
+
+async function eliminarContactoDirectorio(jid, nombre) {
+    if (!confirm(`�Est�s seguro de que deseas eliminar permanentemente a "${nombre}" del directorio? Esto no borrar� sus mensajes en WhatsApp pero lo quitar� del CRM.`)) return;
+    try {
+        await apiFetch(`/api/directorio/${encodeURIComponent(jid)}`, { method: 'DELETE' });
+        cargarDirectorio();
+    } catch (e) {
+        alert("Error al eliminar contacto: " + e.message);
+    }
 }
 
 function editarContactoDirectorio(jid) {
@@ -3830,11 +3842,26 @@ function abrirModalDirectorioCompleto(jid, nombre, telefono, correo, expediente,
     // Bloquear tel�fono si es edici�n
     const telInput = document.getElementById('dir-telefono-input');
     if (jid) {
-        telInput.setAttribute('disabled', 'true');
-        telInput.classList.add('opacity-50', 'cursor-not-allowed');
+        // telInput.setAttribute('disabled', 'true');
+        // telInput.classList.add('opacity-50', 'cursor-not-allowed');
     } else {
         telInput.removeAttribute('disabled');
         telInput.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    
+    
+    // Si es nuevo paciente, mostrar selector de etiquetas y llenarlo
+    const wrapper = document.getElementById('dir-etiquetas-wrapper');
+    const selectTag = document.getElementById('dir-etiqueta-input');
+    if (wrapper && selectTag) {
+        if (!jid) {
+            wrapper.classList.remove('hidden');
+            selectTag.innerHTML = '<option value="">-- Sin etiqueta --</option>' + 
+                listaEtiquetasMem.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+            selectTag.value = '';
+        } else {
+            wrapper.classList.add('hidden');
+        }
     }
     
     document.getElementById('modal-directorio').classList.remove('hidden');
@@ -3875,10 +3902,18 @@ async function guardarDatosDirectorio() {
             });
         } else {
             // Create
-            await apiFetch(`/api/directorio`, {
+            const res = await apiFetch(`/api/directorio`, {
                 method: 'POST',
                 body: JSON.stringify(body)
             });
+            
+            const tagVal = document.getElementById('dir-etiqueta-input') ? document.getElementById('dir-etiqueta-input').value : null;
+            if (tagVal && res.jid) {
+                await apiFetch(`/api/contactos/${encodeURIComponent(res.jid)}/etiquetas`, {
+                    method: 'POST',
+                    body: JSON.stringify({ etiqueta_id: tagVal, accion: 'asignar' })
+                });
+            }
         }
         
         document.getElementById('modal-directorio').classList.add('hidden');

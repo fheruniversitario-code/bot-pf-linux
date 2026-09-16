@@ -447,6 +447,17 @@ app.get('/api/conversaciones', autenticarToken, async (req, res) => {
 // ------------------------------------------------------------------------------
 // GESTIÓN DE ETIQUETAS / LISTAS DE WHATSAPP (LABELS & CRM TAGS)
 // ------------------------------------------------------------------------------
+
+app.delete('/api/directorio/:jid', autenticarToken, async (req, res) => {
+    try {
+        const jid = decodeURIComponent(req.params.jid);
+        await runQuery("DELETE FROM contactos WHERE jid = ?", [jid]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/etiquetas', autenticarToken, async (req, res) => {
     try {
         const etiquetas = await allQuery(`
