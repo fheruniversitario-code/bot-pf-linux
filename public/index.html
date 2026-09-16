@@ -619,197 +619,7 @@
             <!-- ============================================================ -->
             <div id="view-citas" class="tab-view hidden space-y-6">
                 <!-- Tarjeta de Control Maestro Google Calendar -->
-                <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 space-y-6 shadow-xl">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/70 pb-5">
-                        <div>
-                            <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
-                                <i class="fa-solid fa-calendar-days text-indigo-400"></i>
-                                <span>Agendamiento Automatizado con Google Calendar & IA</span>
-                            </h2>
-                            <p class="text-xs text-slate-400 mt-1">Sincroniza citas en vivo con tu Google Calendar y permite que la IA atienda y aparte turnos 24/7 por WhatsApp.</p>
-                        </div>
-                        <div class="flex items-center space-x-3 bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800">
-                            <label for="toggle-modulo-agenda" class="text-xs font-bold text-slate-300 cursor-pointer">
-                                Estado del Módulo:
-                            </label>
-                            <input type="checkbox" id="toggle-modulo-agenda" onchange="toggleModuloAgendaVisual(this.checked)" class="w-5 h-5 accent-indigo-500 cursor-pointer rounded">
-                            <span id="badge-modulo-agenda" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400">Desactivado</span>
-                        </div>
-                    </div>
-
-                    <!-- Configuración de Conexión Google Calendar -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
-                                <span>Google Calendar ID</span>
-                                <button type="button" onclick="abrirInstructivo('google-calendar')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
-                                    <i class="fa-solid fa-circle-info"></i>
-                                    <span>¿Dónde obtenerlo?</span>
-                                </button>
-                            </label>
-                            <input type="text" id="config-google-calendar-id" placeholder="ejemplo@gmail.com o xxx@group.calendar.google.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                            <p class="text-[11px] text-slate-500 mt-1.5">El ID del calendario de Google donde se registrarán las citas.</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Duración Predeterminada por Cita</label>
-                            <select id="config-duracion-cita" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="15">15 minutos (Atención Rápida)</option>
-                                <option value="30" selected>30 minutos (Consulta Estándar)</option>
-                                <option value="45">45 minutos</option>
-                                <option value="60">60 minutos (1 Hora)</option>
-                                <option value="90">90 minutos (1 Hora y Media)</option>
-                                <option value="120">120 minutos (2 Horas)</option>
-                            </select>
-                            <p class="text-[11px] text-slate-500 mt-1.5">Tiempo asignado en el calendario para cada paciente o cliente.</p>
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
-                                <span>Credenciales JSON de Google Service Account</span>
-                                <span class="text-[11px] text-indigo-400 font-normal">Pega el contenido del archivo .json de tu cuenta de servicio</span>
-                            </label>
-                            <textarea id="config-google-service-account" rows="4" placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}' class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"></textarea>
-                            <p class="text-[11px] text-slate-500 mt-1">Recuerda compartir tu calendario de Google con el <b>client_email</b> dándole permisos de "Hacer cambios en eventos".</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Colchón / Descanso entre Citas</label>
-                            <select id="config-buffer-minutos" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="0">0 minutos (Citas continuas)</option>
-                                <option value="5">5 minutos</option>
-                                <option value="10" selected>10 minutos (Recomendado)</option>
-                                <option value="15">15 minutos</option>
-                                <option value="30">30 minutos</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Días de Anticipación Máxima</label>
-                            <select id="config-dias-anticipacion" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="7">7 días (1 semana hacia el futuro)</option>
-                                <option value="15" selected>15 días (2 semanas)</option>
-                                <option value="30">30 días (1 mes)</option>
-                                <option value="60">60 días (2 meses)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Franjas Horarias de Consulta y Turnos Divididos -->
-                    <div class="border-t border-slate-800/80 pt-5 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
-                                    <i class="fa-solid fa-business-time text-emerald-400"></i>
-                                    <span>Horarios de Consulta y Turnos Divididos</span>
-                                </h3>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Define los turnos en que el bot puede ofrecer citas. Los espacios entre turnos (comida, trámites administrativos) quedarán bloqueados automáticamente.</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Turno 1 (Lunes a Viernes) -->
-                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                        <span>Turno 1 (Lunes a Viernes)</span>
-                                    </span>
-                                    <span class="text-[10px] text-slate-500 uppercase font-semibold">Principal</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
-                                        <input type="time" id="config-agenda-turno1-inicio" value="14:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
-                                        <input type="time" id="config-agenda-turno1-fin" value="17:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                </div>
-                                <p class="text-[10px] text-slate-500">Ejemplo: De 2:00 PM a 5:00 PM (la mañana se reserva para actividades administrativas).</p>
-                            </div>
-
-                            <!-- Turno 2 (Lunes a Viernes - Opcional) -->
-                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                                        <span>Turno 2 (Vespertino / Post-Comida)</span>
-                                    </span>
-                                    <label class="flex items-center space-x-2 cursor-pointer">
-                                        <input type="checkbox" id="config-agenda-turno2-activo" checked class="w-4 h-4 accent-indigo-500 rounded">
-                                        <span class="text-[11px] text-slate-300 font-semibold">Activo</span>
-                                    </label>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
-                                        <input type="time" id="config-agenda-turno2-inicio" value="18:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
-                                        <input type="time" id="config-agenda-turno2-fin" value="20:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                </div>
-                                <p class="text-[10px] text-slate-500">Reanuda tras receso de comida (ej. 5:00 a 6:00 PM pausa libre, 6:00 a 8:00 PM citas).</p>
-                            </div>
-
-                            <!-- Sábado -->
-                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                                        <span>Atención en Sábados</span>
-                                    </span>
-                                    <label class="flex items-center space-x-2 cursor-pointer">
-                                        <input type="checkbox" id="config-agenda-sabado-activo" checked class="w-4 h-4 accent-amber-500 rounded">
-                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar Sábados</span>
-                                    </label>
-                                </div>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
-                                        <input type="time" id="config-agenda-sabado-inicio" value="09:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
-                                        <input type="time" id="config-agenda-sabado-fin" value="14:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Domingo -->
-                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3 flex flex-col justify-between">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                                        <span>Atención en Domingos</span>
-                                    </span>
-                                    <label class="flex items-center space-x-2 cursor-pointer">
-                                        <input type="checkbox" id="config-agenda-domingo-activo" class="w-4 h-4 accent-rose-500 rounded">
-                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar Domingos</span>
-                                    </label>
-                                </div>
-                                <p class="text-[11px] text-slate-500">Por defecto los domingos no se agendan citas a menos que marques esta casilla.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Botones de Acción y Diagnóstico -->
-                    <div class="flex flex-wrap items-center gap-3 pt-2">
-                        <button onclick="guardarConfigAgenda()" id="btn-guardar-agenda" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
-                            <i class="fa-solid fa-floppy-disk"></i>
-                            <span>Guardar Parámetros de Agenda</span>
-                        </button>
-                        <button onclick="probarConexionGoogleCalendar()" id="btn-probar-google-calendar" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-2">
-                            <i class="fa-solid fa-plug text-emerald-400"></i>
-                            <span>🔌 Probar Conexión con Google Calendar</span>
-                        </button>
-                    </div>
-
-                    <div id="feedback-conexion-calendar" class="hidden p-3.5 rounded-2xl text-xs font-medium"></div>
-                </div>
+                
 
                 <!-- Tabla de Citas -->
                 <div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6">
@@ -1372,7 +1182,200 @@
                     </div>
                 </div>
 
-                <!-- 3. Modo Vacaciones / Ausencia -->
+                <!-- Agenda de Citas (Movido) -->
+<div class="bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 space-y-6 shadow-xl">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/70 pb-5">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
+                                <i class="fa-solid fa-calendar-days text-indigo-400"></i>
+                                <span>Agendamiento Automatizado con Google Calendar & IA</span>
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-1">Sincroniza citas en vivo con tu Google Calendar y permite que la IA atienda y aparte turnos 24/7 por WhatsApp.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800">
+                            <label for="toggle-modulo-agenda" class="text-xs font-bold text-slate-300 cursor-pointer">
+                                Estado del Módulo:
+                            </label>
+                            <input type="checkbox" id="toggle-modulo-agenda" onchange="toggleModuloAgendaVisual(this.checked)" class="w-5 h-5 accent-indigo-500 cursor-pointer rounded">
+                            <span id="badge-modulo-agenda" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400">Desactivado</span>
+                        </div>
+                    </div>
+
+                    <!-- Configuración de Conexión Google Calendar -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
+                                <span>Google Calendar ID</span>
+                                <button type="button" onclick="abrirInstructivo('google-calendar')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                    <span>¿Dónde obtenerlo?</span>
+                                </button>
+                            </label>
+                            <input type="text" id="config-google-calendar-id" placeholder="ejemplo@gmail.com o xxx@group.calendar.google.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                            <p class="text-[11px] text-slate-500 mt-1.5">El ID del calendario de Google donde se registrarán las citas.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Duración Predeterminada por Cita</label>
+                            <select id="config-duracion-cita" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="15">15 minutos (Atención Rápida)</option>
+                                <option value="30" selected>30 minutos (Consulta Estándar)</option>
+                                <option value="45">45 minutos</option>
+                                <option value="60">60 minutos (1 Hora)</option>
+                                <option value="90">90 minutos (1 Hora y Media)</option>
+                                <option value="120">120 minutos (2 Horas)</option>
+                            </select>
+                            <p class="text-[11px] text-slate-500 mt-1.5">Tiempo asignado en el calendario para cada paciente o cliente.</p>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
+                                <span>Credenciales JSON de Google Service Account</span>
+                                <span class="text-[11px] text-indigo-400 font-normal">Pega el contenido del archivo .json de tu cuenta de servicio</span>
+                            </label>
+                            <textarea id="config-google-service-account" rows="4" placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}' class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"></textarea>
+                            <p class="text-[11px] text-slate-500 mt-1">Recuerda compartir tu calendario de Google con el <b>client_email</b> dándole permisos de "Hacer cambios en eventos".</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Colchón / Descanso entre Citas</label>
+                            <select id="config-buffer-minutos" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="0">0 minutos (Citas continuas)</option>
+                                <option value="5">5 minutos</option>
+                                <option value="10" selected>10 minutos (Recomendado)</option>
+                                <option value="15">15 minutos</option>
+                                <option value="30">30 minutos</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Días de Anticipación Máxima</label>
+                            <select id="config-dias-anticipacion" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <option value="7">7 días (1 semana hacia el futuro)</option>
+                                <option value="15" selected>15 días (2 semanas)</option>
+                                <option value="30">30 días (1 mes)</option>
+                                <option value="60">60 días (2 meses)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Franjas Horarias de Consulta y Turnos Divididos -->
+                    <div class="border-t border-slate-800/80 pt-5 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                                    <i class="fa-solid fa-business-time text-emerald-400"></i>
+                                    <span>Horarios de Consulta y Turnos Divididos</span>
+                                </h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Define los turnos en que el bot puede ofrecer citas. Los espacios entre turnos (comida, trámites administrativos) quedarán bloqueados automáticamente.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Turno 1 (Lunes a Viernes) -->
+                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        <span>Turno 1 (Lunes a Viernes)</span>
+                                    </span>
+                                    <span class="text-[10px] text-slate-500 uppercase font-semibold">Principal</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
+                                        <input type="time" id="config-agenda-turno1-inicio" value="14:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
+                                        <input type="time" id="config-agenda-turno1-fin" value="17:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-500">Ejemplo: De 2:00 PM a 5:00 PM (la mañana se reserva para actividades administrativas).</p>
+                            </div>
+
+                            <!-- Turno 2 (Lunes a Viernes - Opcional) -->
+                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                                        <span>Turno 2 (Vespertino / Post-Comida)</span>
+                                    </span>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="config-agenda-turno2-activo" checked class="w-4 h-4 accent-indigo-500 rounded">
+                                        <span class="text-[11px] text-slate-300 font-semibold">Activo</span>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
+                                        <input type="time" id="config-agenda-turno2-inicio" value="18:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
+                                        <input type="time" id="config-agenda-turno2-fin" value="20:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-500">Reanuda tras receso de comida (ej. 5:00 a 6:00 PM pausa libre, 6:00 a 8:00 PM citas).</p>
+                            </div>
+
+                            <!-- Sábado -->
+                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                        <span>Atención en Sábados</span>
+                                    </span>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="config-agenda-sabado-activo" checked class="w-4 h-4 accent-amber-500 rounded">
+                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar Sábados</span>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Inicio</label>
+                                        <input type="time" id="config-agenda-sabado-inicio" value="09:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-400 mb-1">Hora Fin</label>
+                                        <input type="time" id="config-agenda-sabado-fin" value="14:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Domingo -->
+                            <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3 flex flex-col justify-between">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-white flex items-center space-x-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                                        <span>Atención en Domingos</span>
+                                    </span>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" id="config-agenda-domingo-activo" class="w-4 h-4 accent-rose-500 rounded">
+                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar Domingos</span>
+                                    </label>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Por defecto los domingos no se agendan citas a menos que marques esta casilla.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción y Diagnóstico -->
+                    <div class="flex flex-wrap items-center gap-3 pt-2">
+                        <button onclick="guardarConfigAgenda()" id="btn-guardar-agenda" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Guardar Parámetros de Agenda</span>
+                        </button>
+                        <button onclick="probarConexionGoogleCalendar()" id="btn-probar-google-calendar" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plug text-emerald-400"></i>
+                            <span>🔌 Probar Conexión con Google Calendar</span>
+                        </button>
+                    </div>
+
+                    <div id="feedback-conexion-calendar" class="hidden p-3.5 rounded-2xl text-xs font-medium"></div>
+                </div>
+
+                  <!-- 3. Modo Vacaciones / Ausencia -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
