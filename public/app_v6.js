@@ -1074,6 +1074,15 @@ async function guardarNuevaCita(e) {
         const servicio = document.getElementById('cita-servicio-input').value.trim();
                 const fecha = document.getElementById('cita-fecha-input').value;
         const hora = document.getElementById('cita-hora-input').value;
+        if (hora && hora < '06:00') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Horario inusual (Madrugada)',
+                text: 'Has seleccionado las ' + hora + ' AM de la madrugada. Si te refieres a la tarde, por favor selecciona el horario PM (ejemplo: 15:30 o cambia el selector a PM).',
+                confirmButtonText: 'Corregir'
+            });
+            return;
+        }
         let notas = document.getElementById('cita-notas-input').value.trim();
         const exp = document.getElementById('cita-expediente-input')?.value.trim();
         if (exp) {
