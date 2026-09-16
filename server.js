@@ -3956,7 +3956,13 @@ async function obtenerContenidoGoogleSheets(url) {
   
   ?? CANDADO DE SEGURIDAD PARA CITAS (ESTRICTO):
   ${tieneExpediente 
-    ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Inv�talo a elegir el que mejor le acomode.\n2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, conf�rmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta t�cnica oculta:\n   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]\n   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])\n3. Si el cliente pide cancelar una cita existente, conf�rmale la cancelaci�n e incluye:\n   [CANCELAR_CITA: YYYY-MM-DD]\n4. SOLO si el cliente EXPL�CITAMENTE usa las palabras 'asesor' o 'humano', incluye [REQUERIR_HUMANO]. NUNCA incluyas [REQUERIR_HUMANO] si solo piden cita.` 
+    ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, DEBES ofrecer 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios.
+2. UNA VEZ QUE EL CLIENTE ELIJA UN HORARIO, es ESTRICTAMENTE OBLIGATORIO que le pidas que te escriba los siguientes datos ANTES de dar por agendada la cita: Su Nombre completo, N�mero de Expediente (si lo tiene), N�mero de tel�fono, y Motivo de la consulta.
+3. CUANDO EL CLIENTE YA TE HAYA ESCRITO ESOS DATOS, conf�rmale la cita e INCLUYE obligatoriamente al final de tu mensaje esta etiqueta oculta (respeta las barras |):
+   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Nombre Completo proporcionado|Motivo de consulta|Expediente: {numero}, Tel: {telefono}]
+   (Ejemplo: [AGENDAR_CITA: 2026-09-24|17:30|Maria Lopez|Revision de DIU|Exp: 1234, Tel: 5551234567])
+3. Si el cliente pide cancelar una cita existente, conf�rmale la cancelaci�n e incluye:
+   [CANCELAR_CITA: YYYY-MM-DD]\n4. SOLO si el cliente EXPL�CITAMENTE usa las palabras 'asesor' o 'humano', incluye [REQUERIR_HUMANO]. NUNCA incluyas [REQUERIR_HUMANO] si solo piden cita.` 
     : `? ? EL PACIENTE A�N NO TIENE LA ETIQUETA 'EXPEDIENTE COMPLETO' O 'AVISO DE PRIVACIDAD'.\n
 EMBUDO DE ATENCI�N (REGLAS ESTRICTAS):\n
 1. SALUDOS INICIALES ("Hola", "Buen d�a"): Tienes PROHIBIDO hablar de avisos de privacidad, expedientes o requisitos de citas si el paciente solo est� saludando o haciendo una pregunta general. Solo dale la bienvenida amablemente e inv�talo a elegir una opci�n del men� num�rico o a hacer su pregunta (Ej: m�todos anticonceptivos).\n
@@ -4151,16 +4157,17 @@ ${seccionAgendaIA}
             let textoRespuestaFinal = respuestaIA.trim();
 
             // Interceptar etiqueta oculta de la IA para agendar cita automáticamente en Google Calendar
-            const matchAgendar = textoRespuestaFinal.match(/\[AGENDAR_CITA:\s*([^\|\]]+)\|([^\|\]]+)(?:\|([^\|\]]*))?(?:\|([^\]]*))?\]/);
+            const matchAgendar = textoRespuestaFinal.match(/\[AGENDAR_CITA:\s*([^\|\]]+)\|([^\|\]]+)\|([^\|\]]+)\|([^\|\]]+)(?:\|([^\]]*))?\]/);
             if (matchAgendar) {
                 textoRespuestaFinal = textoRespuestaFinal.replace(matchAgendar[0], '').trim();
                 try {
                     const citaFecha = matchAgendar[1].trim();
                     const citaHora = matchAgendar[2].trim();
-                    const citaServicio = (matchAgendar[3] || 'Consulta General').trim();
-                    const citaNotas = (matchAgendar[4] || 'Agendada por WhatsApp AI').trim();
+                    const nomCliente = matchAgendar[3].trim();
+                    const citaServicio = matchAgendar[4].trim();
+                    const citaNotas = (matchAgendar[5] || 'Agendada por WhatsApp AI').trim();
                     const telLimpio = remitente.replace(/[^0-9]/g, '');
-                    const nomCliente = (nombreContacto && nombreContacto !== 'Cliente') ? nombreContacto : (pushname || 'Cliente');
+
 
                     let gEventId = '';
                     let gCalId = '';
