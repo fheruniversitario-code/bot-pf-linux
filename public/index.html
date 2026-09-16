@@ -385,6 +385,10 @@
                             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
                             <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o número..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
                         </div>
+                        <button onclick="exportarCSVDirectorio()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Exportar</span>
+                        </button>
                         <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg" title="El archivo debe tener 5 columnas: Nombre, Teléfono, Correo, Expediente, Domicilio.">
                             <i class="fa-solid fa-file-csv"></i>
                             <span>Importar CSV</span>

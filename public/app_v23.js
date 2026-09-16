@@ -2870,6 +2870,18 @@ socket.on('cita_actualizada', () => {
 
 // Inicializar vista por defecto y estado del bot
 cambiarTab('ventas');
+
+// Cargar logo global
+async function cargarLogoGlobal() {
+    try {
+        const config = await apiFetch('/api/configuracion');
+        if (config.linktree_logo_url && document.getElementById('header-logo-container')) {
+            document.getElementById('header-logo-container').innerHTML = '<img src="' + config.linktree_logo_url + '" class="w-full h-full object-cover rounded-xl">';
+        }
+    } catch(e) {}
+}
+cargarLogoGlobal();
+
 cargarEstadoControlBot();
     cargarConfigRecordatorios();
 
@@ -3626,6 +3638,7 @@ function aplicarFiltroCitas() {
                 <span class="px-2 py-1 rounded-md font-bold ${c.estado === 'Confirmada' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50' : 'bg-slate-800 text-slate-400'}">${c.estado || 'Confirmada'}</span>
             </td>
             <td class="py-3 px-1 text-right space-x-1 text-xs">
+                <button onclick="registrarCitaEnDirectorio('${(c.cliente_nombre || '').replace(/'/g, "\\'")}', '${c.cliente_telefono || ''}')" class="px-3 py-1.5 bg-sky-900/30 text-sky-400 hover:bg-sky-600 hover:text-white border border-sky-500/30 rounded transition" title="Guardar en Directorio"><i class="fa-solid fa-address-book"></i></button>
                 <button onclick='abrirModalNuevaCita(${JSON.stringify(c)})' class="px-3 py-1.5 bg-indigo-900/30 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 rounded transition">Editar</button>
                 <button onclick="cancelarCita(${c.id})" class="px-3 py-1.5 bg-rose-900/20 text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/20 rounded transition">Cancelar</button>
             </td>
@@ -3884,6 +3897,38 @@ async function guardarDatosDirectorio() {
     }
 }
 
+
+
+function exportarCSVDirectorio() {
+    if (!directorioMem || directorioMem.length === 0) {
+        return alert("El directorio est� vac�o.");
+    }
+    
+    // Preparar cabeceras
+    let csvContent = "Nombre,Telefono,Correo,Expediente,Domicilio\n";
+    
+    // Filas
+    directorioMem.forEach(c => {
+        let nombre = (c.nombre || '').replace(/"/g, '""');
+        let telefono = c.telefono || '';
+        let correo = (c.correo || '').replace(/"/g, '""');
+        let expediente = (c.expediente || '').replace(/"/g, '""');
+        let domicilio = (c.domicilio || '').replace(/"/g, '""');
+        
+        csvContent += `"${nombre}",${telefono},"${correo}","${expediente}","${domicilio}"\n`;
+    });
+    
+    // Descargar
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `directorio_pacientes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 async function importarCSVDirectorio(event) {
     const file = event.target.files[0];
