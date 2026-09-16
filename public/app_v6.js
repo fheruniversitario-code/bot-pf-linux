@@ -1051,6 +1051,7 @@ function abrirModalNuevaCita(cita = null) {
         document.getElementById('cita-fecha-input').value = cita.fecha || '';
         document.getElementById('cita-hora-input').value = cita.hora || '';
         document.getElementById('cita-notas-input').value = cita.notas || '';
+        document.getElementById('cita-expediente-input').value = '';
         document.getElementById('cita-duracion-input').value = '';
     } else {
         citaEditandoId = null;
@@ -1071,9 +1072,13 @@ async function guardarNuevaCita(e) {
         const cliente_nombre = document.getElementById('cita-nombre-input').value.trim();
         const cliente_telefono = document.getElementById('cita-telefono-input').value.trim();
         const servicio = document.getElementById('cita-servicio-input').value.trim();
-        const fecha = document.getElementById('cita-fecha-input').value;
+                const fecha = document.getElementById('cita-fecha-input').value;
         const hora = document.getElementById('cita-hora-input').value;
-        const notas = document.getElementById('cita-notas-input').value.trim();
+        let notas = document.getElementById('cita-notas-input').value.trim();
+        const exp = document.getElementById('cita-expediente-input')?.value.trim();
+        if (exp) {
+            notas = (notas ? notas + '\n' : '') + 'Expediente: ' + exp;
+        }
         const duracion = document.getElementById('cita-duracion-input').value.trim();
 
         const endpoint = citaEditandoId ? `/api/citas/${citaEditandoId}` : '/api/citas';
@@ -3510,4 +3515,78 @@ Motivo: ${servicio}
     } catch (e) {
         alert('Error inesperado: ' + e.message);
     }
+}
+
+
+function imprimirReporteCitas() {
+    const today = new Date().toISOString().split('T')[0];
+    Swal.fire({
+        title: 'Imprimir Reporte',
+        html: '<label class="block text-sm font-semibold text-slate-700 mb-2">Selecciona la fecha:</label><input type="date" id="print-date" value="' + today + '" class="w-full p-2 border border-slate-300 rounded bg-white text-slate-800">',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-print mr-2"></i> Generar Reporte',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#4f46e5',
+        preConfirm: () => document.getElementById('print-date').value
+    }).then(result => {
+        if (result.isConfirmed && result.value) {
+            const date = result.value;
+            if (typeof citasAgendaMem === 'undefined' || citasAgendaMem.length === 0) {
+                return Swal.fire('Error', 'No hay citas cargadas en el sistema.', 'error');
+            }
+            const citasDelDia = citasAgendaMem.filter(c => c.fecha === date && c.estado !== 'Cancelada');
+            if (citasDelDia.length === 0) {
+                return Swal.fire('Vac�o', 'No hay citas programadas para el ' + date, 'info');
+            }
+            
+            citasDelDia.sort((a, b) => a.hora.localeCompare(b.hora));
+
+            let tableHtml = `
+            <html><head><title>Reporte ${date}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+                th { background-color: #e5e7eb; font-size: 11px; text-transform: uppercase; }
+                h2 { text-align: center; margin-bottom: 5px; }
+                .firma { width: 120px; }
+            </style>
+            </head><body>
+            <h2>Reporte de Citas / Archivo Cl�nico</h2>
+            <div style="text-align: center; margin-bottom: 20px;"><b>Fecha:</b> ${date.split('-').reverse().join('/')} | <b>Total de pacientes:</b> ${citasDelDia.length}</div>
+            <table>
+                <tr>
+                    <th>Hora</th>
+                    <th>Paciente</th>
+                    <th>Expediente / Notas</th>
+                    <th>Servicio / Tratamiento</th>
+                    <th>Tel�fono</th>
+                    <th class="firma">Firma / Asistencia</th>
+                </tr>
+            `;
+
+            citasDelDia.forEach(c => {
+                let exp = c.notas || '';
+                tableHtml += `
+                <tr>
+                    <td><b>${c.hora}</b></td>
+                    <td style="text-transform: uppercase;"><b>${c.cliente_nombre}</b></td>
+                    <td>${exp}</td>
+                    <td>${c.servicio || '-'}</td>
+                    <td>${c.cliente_telefono || '-'}</td>
+                    <td></td>
+                </tr>`;
+            });
+
+            tableHtml += `</table></body></html>`;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(tableHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+    });
 }
