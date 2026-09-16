@@ -279,6 +279,26 @@ class CalendarService {
     /**
      * Crea un evento formal en Google Calendar.
      */
+    
+    async verificarEstadoEventos(calendarId, credentials, eventIds) {
+        const auth = this.obtenerAuth(credentials);
+        const calendar = google.calendar({ version: 'v3', auth });
+        const resultados = {};
+        for (const eventId of eventIds) {
+            try {
+                const res = await calendar.events.get({ calendarId, eventId });
+                resultados[eventId] = res.data.status; // 'confirmed', 'cancelled', etc.
+            } catch (e) {
+                if (e.code === 404 || e.code === 410) {
+                    resultados[eventId] = 'cancelled';
+                } else {
+                    resultados[eventId] = 'error';
+                }
+            }
+        }
+        return resultados;
+    }
+
     async crearCita({
         calendarId,
         credentials,

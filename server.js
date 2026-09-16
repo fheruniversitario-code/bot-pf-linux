@@ -1266,6 +1266,36 @@ app.get('/api/citas', autenticarToken, async (req, res) => {
     }
 });
 
+
+// Endpoint para purgar citas borradas en Google Calendar
+app.post('/api/citas/sincronizar-google', autenticarToken, async (req, res) => {
+    try {
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        if (!calIdConfig || !credsConfig) return res.status(400).json({ error: 'Faltan credenciales de Google Calendar.' });
+
+        // Traer todas las citas futuras activas que tengan un eventId
+        const hoyIso = new Date().toISOString().split('T')[0];
+        const citasActivas = await allQuery("SELECT * FROM citas_agenda WHERE estado != 'Cancelada' AND google_event_id IS NOT NULL AND google_event_id != '' AND fecha >= ?", [hoyIso]);
+        
+        if (citasActivas.length === 0) return res.json({ success: true, canceladas: 0 });
+
+        const eventIds = citasActivas.map(c => c.google_event_id);
+        const estados = await calendarService.verificarEstadoEventos(calIdConfig, credsConfig, eventIds);
+
+        let canceladasCont = 0;
+        for (const cita of citasActivas) {
+            if (estados[cita.google_event_id] === 'cancelled') {
+                await runQuery("UPDATE citas_agenda SET estado = 'Cancelada' WHERE id = ?", [cita.id]);
+                canceladasCont++;
+            }
+        }
+        res.json({ success: true, canceladas: canceladasCont });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/api/citas', autenticarToken, async (req, res) => {
     try {
         const { cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas, duracion } = req.body;
