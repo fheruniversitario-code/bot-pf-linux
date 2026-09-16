@@ -178,7 +178,7 @@ async function cargarVentasYCRM() {
         tbody.innerHTML = '';
 
         if (!pedidos || pedidos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500 text-xs">No hay cotizaciones o pedidos registrados aún.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-xs">No hay cotizaciones o pedidos registrados aún.</td></tr>`;
             return;
         }
 
@@ -253,7 +253,7 @@ async function cargarSolicitudesAsesor() {
         tbody.innerHTML = '';
 
         if (!solicitudes || solicitudes.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500 text-xs">No hay solicitudes de asesor pendientes.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-500 text-xs">No hay solicitudes de asesor pendientes.</td></tr>`;
             return;
         }
 
@@ -3716,7 +3716,7 @@ function renderizarDirectorio(lista) {
     cont.innerHTML = '';
     
     if (lista.length === 0) {
-        cont.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-slate-500 text-sm">No se encontraron contactos en el directorio.</td></tr>';
+        cont.innerHTML = '<tr><td colspan="7" class="text-center py-10 text-slate-500 text-sm">No se encontraron contactos en el directorio.</td></tr>';
         return;
     }
     
@@ -3733,6 +3733,7 @@ function renderizarDirectorio(lista) {
                 <td class="py-3 px-4 text-sm text-slate-400 font-mono">+${c.telefono}</td>
                 <td class="py-3 px-4 text-sm text-sky-300 font-medium">${c.expediente || '<span class="text-slate-600 italic">N/A</span>'}</td>
                 <td class="py-3 px-4 text-sm text-slate-400">${c.correo || '<span class="text-slate-600 italic">N/A</span>'}</td>
+                <td class="py-3 px-4 text-sm text-slate-400 truncate max-w-[150px]">${c.domicilio || '<span class="text-slate-600 italic">N/A</span>'}</td>
                 <td class="py-3 px-4 text-sm text-slate-400">${c.total_mensajes > 0 ? `<span class="text-emerald-400 font-bold">${c.total_mensajes}</span>` : '0'}</td>
                 <td class="py-3 px-4 text-right space-x-2">
                     <button onclick="editarContactoDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-[11px] font-bold transition"><i class="fa-solid fa-pen"></i></button>
@@ -3756,7 +3757,7 @@ function abrirChatDesdeDirectorio(jid) {
 function editarContactoDirectorio(jid) {
     const c = directorioMem.find(x => x.jid === jid);
     if (!c) return;
-    abrirModalDirectorioCompleto(jid, c.nombre, c.telefono, c.correo, c.expediente);
+    abrirModalDirectorioCompleto(jid, c.nombre, c.telefono, c.correo, c.expediente, c.domicilio);
 }
 
 function abrirModalDirectorioActual() {
@@ -3780,20 +3781,22 @@ function abrirModalDirectorioActual() {
     })
     .catch(err => {
         console.error("Error obteniendo datos del directorio:", err);
-        abrirModalDirectorioCompleto(jid, nombre, telefono, '', '');
+        abrirModalDirectorioCompleto(jid, nombre, telefono, '', '', '');
     });
 }
 
 function abrirModalDirectorioNuevo() {
-    abrirModalDirectorioCompleto('', '', '', '', '');
+    abrirModalDirectorioCompleto('', '', '', '', '', '');
 }
 
-function abrirModalDirectorioCompleto(jid, nombre, telefono, correo, expediente) {
+function abrirModalDirectorioCompleto(jid, nombre, telefono, correo, expediente, domicilio) {
     document.getElementById('dir-jid-input').value = jid || '';
     document.getElementById('dir-nombre-input').value = nombre || '';
     document.getElementById('dir-telefono-input').value = telefono || '';
     document.getElementById('dir-correo-input').value = correo || '';
     document.getElementById('dir-expediente-input').value = expediente || '';
+    const domInput = document.getElementById('dir-domicilio-input');
+    if(domInput) domInput.value = domicilio || '';
     
     // Bloquear tel�fono si es edici�n
     const telInput = document.getElementById('dir-telefono-input');
@@ -3814,12 +3817,14 @@ async function guardarDatosDirectorio() {
     const telefono = document.getElementById('dir-telefono-input').value.trim();
     const correo = document.getElementById('dir-correo-input').value.trim();
     const expediente = document.getElementById('dir-expediente-input').value.trim();
+    const domInput = document.getElementById('dir-domicilio-input');
+    const domicilio = domInput ? domInput.value.trim() : '';
     
     if (!jid && !telefono) {
         return alert("El n�mero de tel�fono es obligatorio para un nuevo paciente.");
     }
     
-    const body = { nombre, telefono, correo, expediente };
+    const body = { nombre, telefono, correo, expediente, domicilio };
     
     try {
         if (jid) {
@@ -3851,4 +3856,56 @@ async function guardarDatosDirectorio() {
     } catch(e) {
         alert("Error al guardar: " + e.message);
     }
+}
+
+
+async function importarCSVDirectorio(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        const rows = text.split('\n');
+        
+        let exitos = 0;
+        let errores = 0;
+        
+        // Asume cabeceras en primera fila. Formato simple: Nombre, Telefono, Correo, Expediente, Domicilio
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            // Parsear CSV (b�sico)
+            let cols = rows[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+            if (cols.length < 2) continue;
+            
+            const nombre = cols[0];
+            const telefono = cols[1];
+            if (!telefono) continue;
+            
+            const correo = cols[2] || '';
+            const expediente = cols[3] || '';
+            const domicilio = cols[4] || '';
+            
+            try {
+                await apiFetch('/api/directorio', {
+                    method: 'POST',
+                    body: JSON.stringify({ nombre, telefono, correo, expediente, domicilio })
+                });
+                exitos++;
+            } catch (err) {
+                errores++;
+            }
+        }
+        
+        alert(`Importaci�n completada.\n�xitos: ${exitos}\nErrores: ${errores}`);
+        cargarDirectorio(); // Refrescar vista
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
+}
+
+function registrarCitaEnDirectorio(nombre, telefono) {
+    abrirModalDirectorioCompleto('', nombre, telefono, '', '', '');
 }

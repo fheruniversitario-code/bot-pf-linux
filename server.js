@@ -322,7 +322,7 @@ app.get('/api/directorio', autenticarToken, async (req, res) => {
         }
 
         const contactos = await allQuery(`
-            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente,
+            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente, c.domicilio,
                    (SELECT COUNT(*) FROM mensajes WHERE chat_id = c.jid) as total_mensajes
             FROM contactos c
             ${whereClause}
@@ -355,14 +355,14 @@ app.get('/api/directorio', autenticarToken, async (req, res) => {
 
 app.post('/api/directorio', autenticarToken, async (req, res) => {
     try {
-        const { telefono, nombre, correo, expediente } = req.body;
+        const { telefono, nombre, correo, expediente, domicilio } = req.body;
         if (!telefono) return res.status(400).json({ error: "El teléfono es requerido" });
         const telLimpio = telefono.replace(/[^0-9]/g, '');
         const jid = telLimpio.length === 10 ? `521${telLimpio}@c.us` : `${telLimpio}@c.us`;
 
         await runQuery(
-            "INSERT INTO contactos (jid, telefono, nombre, correo, expediente, ultimo_contacto) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(jid) DO UPDATE SET nombre = excluded.nombre, correo = excluded.correo, expediente = excluded.expediente",
-            [jid, telLimpio, nombre || 'Nuevo Paciente', correo || '', expediente || '', Date.now()]
+            "INSERT INTO contactos (jid, telefono, nombre, correo, expediente, domicilio, ultimo_contacto) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(jid) DO UPDATE SET nombre = excluded.nombre, correo = excluded.correo, expediente = excluded.expediente, domicilio = excluded.domicilio",
+            [jid, telLimpio, nombre || 'Nuevo Paciente', correo || '', expediente || '', domicilio || '', Date.now()]
         );
         res.json({ success: true, jid });
     } catch (e) {
@@ -373,11 +373,11 @@ app.post('/api/directorio', autenticarToken, async (req, res) => {
 app.put('/api/directorio/:jid', autenticarToken, async (req, res) => {
     try {
         const jid = decodeURIComponent(req.params.jid);
-        const { nombre, correo, expediente } = req.body;
+        const { nombre, correo, expediente, domicilio } = req.body;
         
         await runQuery(
-            "UPDATE contactos SET nombre = ?, correo = ?, expediente = ? WHERE jid = ?",
-            [nombre, correo || '', expediente || '', jid]
+            "UPDATE contactos SET nombre = ?, correo = ?, expediente = ?, domicilio = ? WHERE jid = ?",
+            [nombre, correo || '', expediente || '', domicilio || '', jid]
         );
         res.json({ success: true });
     } catch (e) {
@@ -399,7 +399,7 @@ app.get('/api/conversaciones', autenticarToken, async (req, res) => {
         }
 
         const chats = await allQuery(`
-            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente, c.es_ignorado, c.ultimo_contacto,
+            SELECT c.jid, c.telefono, c.nombre, c.pushname, c.correo, c.expediente, c.domicilio, c.es_ignorado, c.ultimo_contacto,
                    (SELECT CASE 
                         WHEN cuerpo LIKE '/9j/%' OR cuerpo LIKE 'data:image%' THEN '📷 (Imagen / Infografía)'
                         ELSE cuerpo 

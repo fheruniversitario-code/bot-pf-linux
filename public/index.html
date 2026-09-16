@@ -385,6 +385,11 @@
                             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
                             <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o n�mero..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
                         </div>
+                        <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>Importar CSV</span>
+                        </button>
+                        <input type="file" id="importar-csv-input" accept=".csv" class="hidden" onchange="importarCSVDirectorio(event)">
                         <button onclick="abrirModalDirectorioNuevo()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-sky-900/50">
                             <i class="fa-solid fa-user-plus"></i>
                             <span>Nuevo Paciente</span>
@@ -400,6 +405,7 @@
                                 <th class="pb-3 px-4">Tel�fono</th>
                                 <th class="pb-3 px-4">Expediente</th>
                                 <th class="pb-3 px-4">Correo Electr�nico</th>
+                                <th class="pb-3 px-4">Domicilio</th>
                                 <th class="pb-3 px-4 text-center">Msj.</th>
                                 <th class="pb-3 px-4 text-right">Acciones</th>
                             </tr>
@@ -423,7 +429,7 @@
                             <i class="fa-solid fa-xmark text-lg"></i>
                         </button>
                     </div>
-                    <div class="p-6 space-y-4">
+                    <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                         <input type="hidden" id="dir-jid-input">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre Completo</label>
@@ -440,6 +446,10 @@
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo Electr�nico (Opcional)</label>
                             <input type="email" id="dir-correo-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="paciente@correo.com">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Domicilio / Direcci�n (Opcional)</label>
+                            <textarea id="dir-domicilio-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition resize-none h-20" placeholder="Ej. Calle Principal #123, Colonia Centro"></textarea>
                         </div>
                     </div>
                     <div class="p-5 border-t border-slate-800 bg-slate-900/50 flex justify-end space-x-3">
