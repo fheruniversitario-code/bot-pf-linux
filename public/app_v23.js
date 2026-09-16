@@ -136,6 +136,7 @@ function cambiarTab(tabId) {
 
     // Cargar datos de la pestaña
     if (tabId === 'ventas') cargarVentasYCRM();
+    if (tabId === 'directorio') cargarDirectorio();
     if (tabId === 'conversaciones') { 
         const badgeNuevos = document.getElementById('badge-mensajes-nuevos');
         if (badgeNuevos) badgeNuevos.classList.add('hidden');
