@@ -3410,6 +3410,7 @@ async function abrirModalAgendarChat() {
     if (!currentChatJid) return alert('Selecciona un chat primero.');
     
     // Fetch slots
+    if (typeof Swal === 'undefined') return alert('Error: La libreria Swal no se ha cargado. Por favor, limpia la cache (Ctrl+Shift+R).');
     Swal.fire({
         title: 'Buscando horarios...',
         didOpen: () => Swal.showLoading(),
