@@ -3763,17 +3763,24 @@ function abrirModalDirectorioActual() {
     const jid = chatActivoJid;
     if (!jid) return;
     
-    // Obtener datos del encabezado actual
     const nombre = document.getElementById('chat-nombre-cliente').textContent;
     const telefono = window.chatActivoTelefono || '';
     
-    // Buscar si ya tenemos su correo/expediente de la memoria (si est� cargado) o usar vac�o
-    // Para asegurar precisi�n, mejor consultamos directo a la API en el backend
-    apiFetch(`/api/conversaciones`) // Podemos sacar la data de la DB o usar un fetch de un solo user
-    .then(() => {
-        // En lugar de fetch costoso, buscamos en la lista de conversaciones cargadas en memoria
-        const c = listaConversacionesMem.find(x => x.jid === jid);
-        abrirModalDirectorioCompleto(jid, nombre, telefono, c?.correo || '', c?.expediente || '');
+    // Obtenemos los datos frescos desde la API para asegurar que correo/expediente vengan
+    apiFetch(`/api/conversaciones?q=${encodeURIComponent(telefono || nombre)}`)
+    .then((data) => {
+        let correo = '';
+        let expediente = '';
+        if (data && data.length > 0) {
+            const c = data.find(x => x.jid === jid) || data[0];
+            correo = c.correo || '';
+            expediente = c.expediente || '';
+        }
+        abrirModalDirectorioCompleto(jid, nombre, telefono, correo, expediente);
+    })
+    .catch(err => {
+        console.error("Error obteniendo datos del directorio:", err);
+        abrirModalDirectorioCompleto(jid, nombre, telefono, '', '');
     });
 }
 
