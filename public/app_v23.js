@@ -583,7 +583,7 @@ function renderizarListaConversaciones(chats) {
 }
 
 async function refrescarChatActivo() {
-    if (!chatActivoJid) return;
+    const targetJid = window.jidEnEdicionEtiquetas || chatActivoJid; if (!targetJid) return;
     const btn = document.getElementById('btn-refrescar-chat');
     if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-emerald-400"></i> <span>Sincronizando...</span>';
     await seleccionarChat(chatActivoJid, document.getElementById('chat-nombre-cliente').textContent);
@@ -2522,6 +2522,7 @@ async function sincronizarEtiquetasWhatsApp() {
             alert("✅ " + res.message);
             await cargarEtiquetasFiltro();
             await cargarListaConversaciones();
+        if (currentTab === 'directorio') cargarDirectorio();
             if (chatActivoJid) {
                 const nomElem = document.getElementById('chat-nombre-cliente');
                 seleccionarChat(chatActivoJid, nomElem ? nomElem.textContent : '');
@@ -2539,15 +2540,21 @@ async function sincronizarEtiquetasWhatsApp() {
     }
 }
 
-async function abrirModalEtiquetasContacto() {
-    if (!chatActivoJid) return alert("Selecciona un chat primero");
+async function abrirModalEtiquetasContacto(jidOverride, nombreOverride) {
+    const targetJid = jidOverride || chatActivoJid;
+    if (!targetJid) return alert("Selecciona un contacto primero");
+    
+    // Guardar para que las funciones de guardar/quitar etiqueta sepan a qui�n afectar
+    window.jidEnEdicionEtiquetas = targetJid; 
+    
     const nomElem = document.getElementById('chat-nombre-cliente');
-    document.getElementById('modal-etiquetas-nombre-cliente').textContent = nomElem ? nomElem.textContent : '';
+    const displayNombre = nombreOverride || (nomElem ? nomElem.textContent : '');
+    document.getElementById('modal-etiquetas-nombre-cliente').textContent = displayNombre;
 
     try {
         const [todasEtiquetas, tagsContacto] = await Promise.all([
             apiFetch('/api/etiquetas'),
-            apiFetch(`/api/contactos/${encodeURIComponent(chatActivoJid)}/etiquetas`)
+            apiFetch(`/api/contactos/${encodeURIComponent(targetJid)}/etiquetas`)
         ]);
 
         const idsAsignados = new Set((tagsContacto || []).map(t => t.id));
@@ -2586,9 +2593,9 @@ function cerrarModalEtiquetasContacto() {
 }
 
 async function toggleEtiquetaContacto(etiquetaId, estaMarcado) {
-    if (!chatActivoJid) return;
+    const targetJid = window.jidEnEdicionEtiquetas || chatActivoJid; if (!targetJid) return;
     try {
-        await apiFetch(`/api/contactos/${encodeURIComponent(chatActivoJid)}/etiquetas`, {
+        await apiFetch(`/api/contactos/${encodeURIComponent(targetJid)}/etiquetas`, {
             method: 'POST',
             body: JSON.stringify({
                 etiqueta_id: etiquetaId,
@@ -2631,7 +2638,8 @@ async function guardarNuevaEtiqueta(e) {
         cerrarModalNuevaEtiqueta();
         await cargarEtiquetasFiltro();
         await cargarListaConversaciones();
-        if (chatActivoJid) abrirModalEtiquetasContacto();
+        if (currentTab === 'directorio') cargarDirectorio();
+        if (window.jidEnEdicionEtiquetas) abrirModalEtiquetasContacto(window.jidEnEdicionEtiquetas, document.getElementById("modal-etiquetas-nombre-cliente").textContent); else if (chatActivoJid) abrirModalEtiquetasContacto();
     } catch (err) {
         alert("Error al guardar etiqueta: " + err.message);
     }
@@ -3706,7 +3714,7 @@ document.getElementById('buscar-directorio-input')?.addEventListener('input', (e
     // Simple debounce
     clearTimeout(window.dirDebounce);
     window.dirDebounce = setTimeout(() => {
-        cargarDirectorio();
+        if (typeof cargarDirectorio === "function") cargarDirectorio();
     }, 400);
 });
 
@@ -3737,6 +3745,8 @@ function renderizarDirectorio(lista) {
                 <td class="py-3 px-4 text-sm text-slate-400">${c.total_mensajes > 0 ? `<span class="text-emerald-400 font-bold">${c.total_mensajes}</span>` : '0'}</td>
                 <td class="py-3 px-4 text-right space-x-2">
                     <button onclick="editarContactoDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-[11px] font-bold transition"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="abrirModalEtiquetasContacto('${c.jid}', '${(c.nombre || '').replace(/'/g, "\'")}')" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-lg text-[11px] font-bold transition" title="Gestionar Etiquetas"><i class="fa-solid fa-tags"></i></button>
+                    <button onclick="agendarDesdeDirectorio('${(c.nombre || '').replace(/'/g, "\\'")}', '${c.telefono || ''}')" class="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-bold transition" title="Agendar Cita"><i class="fa-solid fa-calendar-plus"></i></button>
                     ${c.total_mensajes > 0 ? `<button onclick="abrirChatDesdeDirectorio('${c.jid}')" class="px-2.5 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-500/30 rounded-lg text-[11px] font-bold transition" title="Ir al Chat"><i class="fa-solid fa-comment"></i></button>` : ''}
                 </td>
             </tr>
@@ -3752,6 +3762,11 @@ function abrirChatDesdeDirectorio(jid) {
         inputBusq.value = jid.replace(/[^0-9]/g, '');
         aplicarFiltrosConversaciones();
     }
+}
+
+function agendarDesdeDirectorio(nombre, telefono) {
+    cambiarTab('citas');
+    abrirModalNuevaCita({ cliente_nombre: nombre, cliente_telefono: telefono, fecha: '', hora: '' });
 }
 
 function editarContactoDirectorio(jid) {
@@ -3821,7 +3836,18 @@ async function guardarDatosDirectorio() {
     const domicilio = domInput ? domInput.value.trim() : '';
     
     if (!jid && !telefono) {
-        return alert("El n�mero de tel�fono es obligatorio para un nuevo paciente.");
+        return alert("El nmero de telfono es obligatorio para un nuevo paciente.");
+    }
+    
+    // Check duplicados
+    if (!jid && directorioMem) {
+        const telLimpio = telefono.replace(/[^0-9]/g, '');
+        const existe = directorioMem.find(x => x.telefono === telLimpio || x.telefono === '521' + telLimpio || x.telefono === '52' + telLimpio || (x.telefono.length > 5 && telLimpio.includes(x.telefono)));
+        if (existe) {
+            if (!confirm(`⚠️ ¡Atención! El teléfono ${telefono} ya está registrado a nombre de: "${existe.nombre}".\n\n¿Deseas fusionar/actualizar sus datos con esta nueva información en lugar de crear un duplicado?`)) {
+                return;
+            }
+        }
     }
     
     const body = { nombre, telefono, correo, expediente, domicilio };
@@ -3845,7 +3871,7 @@ async function guardarDatosDirectorio() {
         
         // Refrescar vistas
         if (currentTab === 'directorio') {
-            cargarDirectorio();
+            if (typeof cargarDirectorio === "function") cargarDirectorio();
         } else if (currentTab === 'conversaciones') {
             cargarListaConversaciones();
             if (chatActivoJid === jid && nombre) {
@@ -3869,18 +3895,20 @@ async function importarCSVDirectorio(event) {
         const rows = text.split('\n');
         
         let exitos = 0;
+        let actualizados = 0;
         let errores = 0;
         
         // Asume cabeceras en primera fila. Formato simple: Nombre, Telefono, Correo, Expediente, Domicilio
         for (let i = 1; i < rows.length; i++) {
             if (!rows[i].trim()) continue;
-            // Parsear CSV (b�sico)
+            // Parsear CSV (básico)
             let cols = rows[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
             if (cols.length < 2) continue;
             
             const nombre = cols[0];
             const telefono = cols[1];
             if (!telefono) continue;
+            const telLimpio = telefono.replace(/[^0-9]/g, '');
             
             const correo = cols[2] || '';
             const expediente = cols[3] || '';
@@ -3891,14 +3919,18 @@ async function importarCSVDirectorio(event) {
                     method: 'POST',
                     body: JSON.stringify({ nombre, telefono, correo, expediente, domicilio })
                 });
-                exitos++;
+                if (directorioMem && directorioMem.some(x => x.telefono === telLimpio || x.telefono === '521'+telLimpio || x.telefono === '52'+telLimpio || (x.telefono.length > 5 && telLimpio.includes(x.telefono)))) {
+                    actualizados++;
+                } else {
+                    exitos++;
+                }
             } catch (err) {
                 errores++;
             }
         }
         
-        alert(`Importaci�n completada.\n�xitos: ${exitos}\nErrores: ${errores}`);
-        cargarDirectorio(); // Refrescar vista
+        alert(`Importación completada.\nNuevos Pacientes: ${exitos}\nDuplicados Actualizados: ${actualizados}\nErrores: ${errores}`);
+        if (typeof cargarDirectorio === "function") cargarDirectorio(); // Refrescar vista
     };
     reader.readAsText(file);
     
