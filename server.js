@@ -4811,3 +4811,36 @@ app.post('/api/webhook/google-forms', async (req, res) => {
         console.log(`📱 Mini-Sitio Linktree público en: http://localhost:${PORT}/pagina.html`);
     });
 });
+
+
+// ==============================================================================
+// CRON: SINCRONIZACION AUTOMATICA DE CITAS BORRADAS EN GOOGLE CALENDAR
+// ==============================================================================
+setInterval(async () => {
+    try {
+        const calIdConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+        const credsConfig = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+        if (!calIdConfig || !credsConfig) return;
+
+        const hoyIso = new Date().toISOString().split('T')[0];
+        const citasActivas = await allQuery("SELECT * FROM citas_agenda WHERE estado != 'Cancelada' AND google_event_id IS NOT NULL AND google_event_id != '' AND fecha >= ?", [hoyIso]);
+        
+        if (citasActivas.length === 0) return;
+
+        const eventIds = citasActivas.map(c => c.google_event_id);
+        const estados = await calendarService.verificarEstadoEventos(calIdConfig, credsConfig, eventIds);
+
+        let canceladasCont = 0;
+        for (const cita of citasActivas) {
+            if (estados[cita.google_event_id] === 'cancelled') {
+                await runQuery("UPDATE citas_agenda SET estado = 'Cancelada' WHERE id = ?", [cita.id]);
+                canceladasCont++;
+            }
+        }
+        if(canceladasCont > 0) {
+            console.log(`Sincronizaci�n autom�tica: ${canceladasCont} citas borradas en Google Calendar fueron canceladas en la BD.`);
+        }
+    } catch (e) {
+        console.error("Error en sincronizacion automatica de calendario:", e.message);
+    }
+}, 5 * 60 * 1000); // Cada 5 minutos
