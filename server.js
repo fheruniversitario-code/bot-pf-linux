@@ -3353,16 +3353,16 @@ function limpiarNombreParaSaludo(nombre) {
             } else {
                 msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                     `📌 Actualmente nuestro personal se encuentra en: ${estadoHorario.motivoReceso}. Te atenderemos prioritariamente **${estadoHorario.proximoTexto}**.\n\n` +
-                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo o precios._`;
+                    `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar nuestros servicios o requisitos._`;
             }
         } else if (!estadoHorario.enHorario) {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                 `⏰ *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo, precios o disponibilidad._`;
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar nuestros servicios, requisitos o disponibilidad._`;
         } else {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. ✍️✅\n\n` +
                 `He notificado a nuestro equipo de ${nombreNegocio}. En un momento te atenderán de forma personalizada.\n\n` +
-                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo o precios._`;
+                `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar nuestros servicios o requisitos._`;
         }
 
         const sent = await client.sendMessage(remitente, msjConfirmado);
@@ -3529,7 +3529,7 @@ function limpiarNombreParaSaludo(nombre) {
             chatsEsperandoNombre.set(remitente, Date.now());
         }
 
-        msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar el catálogo, precios o disponibilidad._`;
+        msjTransferido += `\n\n_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar nuestros servicios, requisitos o disponibilidad._`;
 
         registrarTextoEnviadoBot(msjTransferido);
         const sent = await client.sendMessage(remitente, msjTransferido);
@@ -3942,12 +3942,12 @@ async function obtenerContenidoGoogleSheets(url) {
   
   ?? CANDADO DE SEGURIDAD PARA CITAS (ESTRICTO):
   ${tieneExpediente 
-    ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Inv�talo a elegir el que mejor le acomode.\n2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, conf�rmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta t�cnica oculta:\n   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]\n   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])\n3. Si el cliente pide cancelar una cita existente, conf�rmale la cancelaci�n e incluye:\n   [CANCELAR_CITA: YYYY-MM-DD]\n4. Si el cliente insiste en hablar con un humano o tiene dudas m�dicas complejas fuera de tu alcance, incluye [REQUERIR_HUMANO].` 
+    ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, pregunta por horarios o disponibilidad, DEBES responder mencionando proactivamente 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios inexistentes. Inv�talo a elegir el que mejor le acomode.\n2. Si el cliente elige o confirma una fecha y hora disponible, y se cuenta con su nombre y el servicio requerido, conf�rmale de inmediato la cita con calidez e INCLUYE obligatoriamente al final de tu mensaje la etiqueta t�cnica oculta:\n   [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Servicio|Notas]\n   (Ejemplo: [AGENDAR_CITA: 2026-09-15|16:00|Consulta General|Agendado por WhatsApp])\n3. Si el cliente pide cancelar una cita existente, conf�rmale la cancelaci�n e incluye:\n   [CANCELAR_CITA: YYYY-MM-DD]\n4. SOLO si el cliente EXPL�CITAMENTE usa las palabras 'asesor' o 'humano', incluye [REQUERIR_HUMANO]. NUNCA incluyas [REQUERIR_HUMANO] si solo piden cita.` 
     : `? ? EL PACIENTE A�N NO TIENE LA ETIQUETA 'EXPEDIENTE COMPLETO' O 'AVISO DE PRIVACIDAD'.\n
 EMBUDO DE ATENCI�N (REGLAS ESTRICTAS):\n
 1. SALUDOS INICIALES ("Hola", "Buen d�a"): Tienes PROHIBIDO hablar de avisos de privacidad, expedientes o requisitos de citas si el paciente solo est� saludando o haciendo una pregunta general. Solo dale la bienvenida amablemente e inv�talo a elegir una opci�n del men� num�rico o a hacer su pregunta (Ej: m�todos anticonceptivos).\n
 2. RESOLUCI�N DE DUDAS: Responde sus dudas sobre m�todos o precios usando la base de conocimiento, sin mencionar requisitos de expediente.\n
-3. SOLICITUD DE ASESOR / HUMANO: Si pide hablar con un humano, incluye [REQUERIR_HUMANO] y dile que en un momento lo atender�n. Si quieres, inv�talo amablemente a ir llenando su aviso de privacidad en este enlace: ${enlacePrivacidad}.\n
+3. SOLICITUD EXPL�CITA DE ASESOR: SOLO si el paciente pide hablar con un 'asesor' o 'humano', incluye [REQUERIR_HUMANO] y dile que en un momento lo atender�n. Si quieres, inv�talo amablemente a ir llenando su aviso de privacidad en este enlace: ${enlacePrivacidad}.\n
 4. SOLICITUD EXPL�CITA DE CITA: SOLO si el paciente PIDE EXPL�CITAMENTE AGENDAR UNA CITA, se activa el candado: EST� ESTRICTAMENTE PROHIBIDO ofrecerle horarios o agendarle. En este �nico caso, le pedir�s que env�e sus documentos de identidad y domicilio, y que llene su aviso de privacidad en este enlace: ${enlacePrivacidad}.`}
 `;
         } else {
