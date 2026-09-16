@@ -413,6 +413,8 @@ function filtrarPorEtiqueta(etiquetaId) {
         badge.className = "cursor-pointer px-2.5 py-1 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition";
     }
     filtroEtiquetaActiva = etiquetaId;
+    const buscarInput = document.getElementById('buscar-chat-input');
+    if (buscarInput) buscarInput.value = '';
     cargarEtiquetasFiltro();
     aplicarFiltrosConversaciones();
 }
