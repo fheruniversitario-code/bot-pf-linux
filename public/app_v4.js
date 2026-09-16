@@ -3404,28 +3404,23 @@ async function inyectarDisponibilidadChat(event) {
 
 
 async function abrirModalAgendarChat() {
-    console.log("Iniciando abrirModalAgendarChat...");
-    const fecha = document.getElementById('input-chat-fecha-disponibilidad')?.value;
-    if (!fecha) return alert('Selecciona una fecha primero en el calendario inferior.');
-    
-    if (!currentChatJid) return alert('Selecciona un chat primero.');
-    
-    if (typeof Swal === 'undefined') {
-        alert('Swal no está definido.');
-        return;
-    }
-    
     try {
-        console.log("Llamando a Swal Buscando horarios...");
+        const fecha = document.getElementById('input-chat-fecha-disponibilidad')?.value;
+        if (!fecha) return alert('Selecciona una fecha primero en el calendario inferior.');
+        
+        if (!currentChatJid) return alert('Selecciona un chat primero.');
+        
+        if (typeof Swal === 'undefined') {
+            return alert('Error cr�tico: La libreria visual Swal no carg�. Refresca la p�gina completamente.');
+        }
+        
         Swal.fire({
             title: 'Buscando horarios...',
             didOpen: () => Swal.showLoading(),
             allowOutsideClick: false
         });
         
-        console.log("Haciendo fetch a " + '/api/agenda/disponibilidad?fecha=' + fecha);
         const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
-        console.log("Respuesta fetch:", res);
         
         if (!res.success) throw new Error(res.error);
         if (!res.disponibles || res.disponibles.length === 0) {
@@ -3435,7 +3430,6 @@ async function abrirModalAgendarChat() {
         
         let optionsHtml = res.disponibles.map(h => `<option value="${h.hora24}">${h.horaTexto}</option>`).join('');
         
-        console.log("Abriendo modal final...");
         Swal.fire({
             title: 'Agendar Cita R�pida',
             html: `
@@ -3457,7 +3451,7 @@ async function abrirModalAgendarChat() {
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: '<i class="fa-solid fa-check mr-2"></i> Confirmar y Enviar',
+            confirmButtonText: '<i class="fa-solid fa-check mr-2"></i> Confirmar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#10b981',
             preConfirm: () => {
@@ -3487,7 +3481,7 @@ async function abrirModalAgendarChat() {
                     hora: hora,
                     servicio: servicio,
                     estado: 'Confirmada',
-                    notas: 'Agendada manualmente desde chat en vivo',
+                    notas: 'Agendada desde panel (Chat en vivo)',
                     duracion: 30
                 });
                 
@@ -3506,7 +3500,7 @@ Motivo: ${servicio}
                         input.value = msjConfirmacion;
                         enviarMensaje();
                     }
-                    Swal.fire('��xito!', 'Cita agendada y mensaje enviado al paciente.', 'success');
+                    Swal.fire('��xito!', 'Cita agendada.', 'success');
                 } else {
                     Swal.fire('Error', resCita.error || 'No se pudo agendar la cita.', 'error');
                 }
@@ -3514,7 +3508,6 @@ Motivo: ${servicio}
         });
         
     } catch (e) {
-        console.error("Error en abrirModalAgendarChat:", e);
-        alert('Error CRITICO: ' + e.message);
+        alert('Error inesperado: ' + e.message);
     }
 }
