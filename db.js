@@ -134,7 +134,8 @@ async function inicializarBD() {
     try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN google_calendar_id TEXT DEFAULT ''"); } catch(e) {}
     try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN hora_fin TEXT DEFAULT ''"); } catch(e) {}
     try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN origen TEXT DEFAULT 'ia'"); } catch(e) {}
-    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN link_evento TEXT DEFAULT ''"); } catch(e) {}
+        try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN link_evento TEXT DEFAULT ''"); } catch(e) {}
+    try { await runQuery("ALTER TABLE citas_agenda ADD COLUMN recordatorio_enviado INTEGER DEFAULT 0"); } catch(e) {}
 
     // 7. Enlaces para Mini-Sitio Público (Linktree)
     await runQuery(`

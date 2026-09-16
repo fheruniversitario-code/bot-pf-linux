@@ -3736,6 +3736,9 @@ function limpiarNombreParaSaludo(nombre) {
 
         const aiClient = new GoogleGenerativeAI(activeKey);
 
+
+
+
         const configPrompt = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'prompt_ia'"))?.valor || 'Eres un asistente cordial.';
         const catalogo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'catalogo_servicios'"))?.valor || '';
         const datosBancos = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'datos_bancarios'"))?.valor || '';
@@ -3966,8 +3969,12 @@ EMBUDO DE ATENCI�N (REGLAS ESTRICTAS):\n
 - REGLA DE DETECCIÓN DE CITAS (CRÍTICO): Si el usuario te confirma que desea agendar una cita, apartar un turno, o solicita hablar con el personal humano, DEBES incluir obligatoriamente la etiqueta oculta [REQUERIR_HUMANO] al final de tu mensaje. Esto le avisará al sistema que debe anotar al cliente de inmediato en el panel.`;
         }
 
+        
+        const reminderRule = `\n\n[REGLA DE RECORDATORIOS AUTOM�TICOS]\nSi en tu historial de mensajes notas que T� acabas de enviar un recordatorio de cita ("te recordamos tu cita", etc) y el usuario te est� respondiendo a ese recordatorio:\n- Si el usuario CONFIRMA la cita: Resp�ndele brevemente d�ndole las gracias y confirmando que lo esperan (no mandes todo el men� inicial de nuevo).\n- Si el usuario QUIERE CANCELAR o REAGENDAR: Resp�ndele diciendo que lamentas el inconveniente, que has dejado registrada su petici�n de cambio, y que pronto se notificar� al personal m�dico para que se comuniquen y reprogramen. Termina la conversaci�n de forma educada. No trates de reagendarlo t� mismo en este momento.\n\nIMPORTANTE: Solo aplica esta regla si la conversaci�n reciente trata sobre un recordatorio de cita.`;
+
         const systemInstruction = `
 ${configPrompt}
+${reminderRule}
 ${reglaHorarioIA}
 
 CLIENTE ACTUAL:
@@ -4387,6 +4394,73 @@ async function procesarSeguimientosAutomaticos() {
 
 // Ejecutar worker cada 15 minutos
 setInterval(procesarSeguimientosAutomaticos, 15 * 60 * 1000);
+
+
+// --------------------------------------------------------------------------
+// CRON: RECORDATORIOS AUTOM�TICOS DE CITAS
+// --------------------------------------------------------------------------
+let ultimoMinutoRecordatorio = -1;
+
+setInterval(async () => {
+    try {
+        const ahora = new Date();
+        const minActual = ahora.getMinutes();
+        const strHoraActual = String(ahora.getHours()).padStart(2, '0') + ':' + String(minActual).padStart(2, '0');
+        
+        // Evitar que se ejecute varias veces en el mismo minuto
+        if (ultimoMinutoRecordatorio === minActual) return;
+        
+        const configActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'recordatorios_activo'"))?.valor === '1';
+        if (!configActivo) return;
+        
+        const configHora = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'recordatorios_hora'"))?.valor;
+        if (!configHora || configHora !== strHoraActual) return;
+        
+        ultimoMinutoRecordatorio = minActual;
+        
+        const configTexto = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'recordatorios_texto'"))?.valor || 'Hola {nombre}, te recordamos tu cita hoy a las {hora} para {servicio}.';
+        
+        const hoyIso = ahora.toISOString().split('T')[0];
+        
+        const citasDeHoy = await allQuery("SELECT * FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada' AND (recordatorio_enviado = 0 OR recordatorio_enviado IS NULL) AND cliente_telefono != ''", [hoyIso]);
+        
+        if (citasDeHoy && citasDeHoy.length > 0) {
+            console.log(`[CRON RECORDATORIOS] Iniciando env�o de ${citasDeHoy.length} recordatorios...`);
+            for (const cita of citasDeHoy) {
+                // Formatear JID
+                let jid = cita.cliente_telefono.replace(/\D/g, '');
+                if (jid.length === 10) jid = '521' + jid; // Default a M�xico celular (o 52 sin 1)
+                if (!jid.includes('@s.whatsapp.net')) jid += '@s.whatsapp.net';
+                
+                // Formatear Mensaje
+                let mensaje = configTexto;
+                mensaje = mensaje.replace(/\{nombre\}/g, cita.cliente_nombre || 'Paciente');
+                mensaje = mensaje.replace(/\{hora\}/g, cita.hora || '');
+                mensaje = mensaje.replace(/\{servicio\}/g, cita.servicio || 'consulta');
+                
+                // Enviar
+                if (client && client.user) {
+                    await client.sendMessage(jid, { text: mensaje });
+                    
+                    // Insertar en mensajes como 'bot' (para que la IA lo vea)
+                    await runQuery(
+                        "INSERT INTO mensajes (jid, nombre, origen, texto, timestamp) VALUES (?, ?, 'bot', ?, ?)",
+                        [jid, cita.cliente_nombre || 'Paciente', mensaje, Date.now()]
+                    );
+                    
+                    // Marcar en DB
+                    await runQuery("UPDATE citas_agenda SET recordatorio_enviado = 1 WHERE id = ?", [cita.id]);
+                    console.log(`[CRON RECORDATORIOS] Recordatorio enviado a ${jid}`);
+                    
+                    // Peque�a pausa para no saturar WhatsApp
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[CRON RECORDATORIOS] Error:', e);
+    }
+}, 30000); // Check every 30 seconds
 
 client.on('message', async (msg) => {
     try {
