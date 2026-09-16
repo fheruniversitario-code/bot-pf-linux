@@ -1298,7 +1298,7 @@ app.post('/api/citas/sincronizar-google', autenticarToken, async (req, res) => {
 
 app.post('/api/citas', autenticarToken, async (req, res) => {
     try {
-        const { cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas, duracion } = req.body;
+        const { cliente_telefono, cliente_nombre, fecha, hora, servicio, estado, notas, duracion, origen_jid } = req.body;
         
         let googleEventId = '';
         let googleCalendarId = '';
@@ -1358,6 +1358,10 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
                 googleEventId, googleCalendarId, horaFin, linkEvento, Date.now()
             ]
         );
+
+        if (origen_jid && cliente_telefono) {
+            await runQuery("UPDATE contactos SET telefono = ?, nombre = ? WHERE jid = ?", [cliente_telefono.replace(/[^0-9]/g, ''), cliente_nombre, origen_jid]);
+        }
 
         io.emit('cita_actualizada');
         res.json({ id: result.id, success: true, googleEventId, linkEvento });
@@ -3916,9 +3920,16 @@ async function obtenerContenidoGoogleSheets(url) {
         const tieneExpediente = listaEtiquetas.some(t => t.toLowerCase().includes('expediente') || t.toLowerCase().includes('privacidad'));
 
         const nomLimpioIA = limpiarNombreParaSaludo(nombreContacto);
-        const instruccionNombre = nomLimpioIA
+        const instruccionNombreBase = nomLimpioIA
             ? `- Nombre del cliente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
-            : `- Nombre del cliente: No especificado (REGLA ESTRICTA: NO utilices números, códigos alfanuméricos, teléfonos, emojis ni identificadores para llamarlo o saludarlo; dirígete a él con calidez o llámalo "estimado(a)").`;
+            : `- Nombre del cliente: No especificado (REGLA ESTRICTA: NO utilices n�meros, c�digos alfanum�ricos, tel�fonos, emojis ni identificadores para llamarlo o saludarlo; dir�gete a �l con calidez o ll�malo "estimado(a)").`;
+
+        const telDelContacto = (contacto && contacto.telefono && contacto.telefono.length >= 10 && !contacto.telefono.includes('@lid')) ? contacto.telefono.replace(/[^0-9]/g, '') : '';
+        const instruccionTelefono = telDelContacto.length >= 10 && !telDelContacto.startsWith('2047')
+            ? `\n- Tel�fono registrado del cliente: ${telDelContacto}. Ya cuentas con su tel�fono en tu base de datos, NO SE LO PIDAS para agendar citas. Usa este n�mero directo en la etiqueta.`
+            : `\n- Tel�fono del cliente: No registrado en BD. Es obligatorio ped�rselo antes de agendar.`;
+
+        const instruccionNombre = instruccionNombreBase + instruccionTelefono;
 
         const reglaHorarioBase = estadoHorario.enReceso
             ? `3. REGLA ESTRICTA POR ${estadoHorario.esFestivo ? 'DÍA FESTIVO OFICIAL' : (estadoHorario.esCurso ? 'capacitación' : 'RECESO')}: Actualmente ${estadoHorario.esFestivo ? 'es día festivo oficial no laborable' : (estadoHorario.esCurso ? 'el equipo de atención se encuentra en jornadas de capacitación' : 'el personal se encuentra en receso vacacional')}. Las citas presenciales y la agenda se reanudan: ${estadoHorario.proximoTexto}. PROHIBIDO TERMINANTEMENTE decir que el personal atenderá a las 2:00 PM de hoy mientras estemos en festivo/receso.`
@@ -3987,7 +3998,7 @@ async function obtenerContenidoGoogleSheets(url) {
   ?? CANDADO DE SEGURIDAD PARA CITAS (ESTRICTO):
   ${tieneExpediente 
     ? `? EL PACIENTE CUENTA CON EXPEDIENTE/AVISO FIRMADO. TIENES PERMISO PARA AGENDAR.\nREGLAS ESTRICTAS DE AGENDAMIENTO:\n1. Si el cliente solicita una cita, DEBES ofrecer 3 o 4 opciones de los horarios reales mostrados arriba. NUNCA inventes horarios.
-2. UNA VEZ QUE EL CLIENTE ELIJA UN HORARIO, es ESTRICTAMENTE OBLIGATORIO que le pidas que te escriba los siguientes datos ANTES de dar por agendada la cita: Su Nombre completo, N�mero de Expediente (si lo tiene), N�mero de tel�fono, y Motivo de la consulta.
+2. UNA VEZ QUE EL CLIENTE ELIJA UN HORARIO, es ESTRICTAMENTE OBLIGATORIO que re�nas los siguientes datos ANTES de dar por agendada la cita: Su Nombre completo, N�mero de Expediente (si lo tiene), N�mero de tel�fono (si no lo tienes registrado arriba), y Motivo de la consulta. P�dele �nicamente los datos que te falten.
 3. CUANDO EL CLIENTE YA TE HAYA ESCRITO ESOS DATOS, conf�rmale la cita e INCLUYE obligatoriamente al final de tu mensaje esta etiqueta oculta (respeta las barras |):
    [AGENDAR_CITA: YYYY-MM-DD|HH:MM|Nombre Completo proporcionado|Motivo de consulta|Expediente: {numero}, Tel: {telefono}]
    (Ejemplo: [AGENDAR_CITA: 2026-09-24|17:30|Maria Lopez|Revision de DIU|Exp: 1234, Tel: 5551234567])
