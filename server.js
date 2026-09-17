@@ -1847,11 +1847,11 @@ function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
     }
 
     if (txt.includes('horario') || txt.includes('hora') || txt.includes('abren') || txt.includes('cierran') || txt.includes('atienden') || txt.includes('dias') || txt.includes('días')) {
-        return `${icono} ⏰ *HORARIOS DE ATENCIÓN*\n\n${config.horario_sucursal_fisica || 'Lunes a Viernes en horario de atención habitual.'}`;
+        return `${icono} 🕒 *HORARIOS DE ATENCIÓN*\n\n${config.horario_sucursal_fisica || 'Lunes a Viernes en horario de atención habitual.'}`;
     }
 
     if (txt.includes('costo') || txt.includes('precio') || txt.includes('cobran') || txt.includes('gratis') || txt.includes('pagar')) {
-        let resp = `${icono} 💰 *INFORMACIÓN DE COSTOS / SERVICIOS*\n\n`;
+        let resp = `${icono} 💸 *INFORMACIÓN DE COSTOS / SERVICIOS*\n\n`;
         if (config.catalogo_servicios) resp += `${config.catalogo_servicios}\n\n`;
         if (config.datos_bancarios) resp += `💳 *Métodos de pago:* ${config.datos_bancarios}`;
         return resp.trim();
@@ -1861,125 +1861,12 @@ function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
         return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención gratuita, presenta:\n• Copia de INE o identificación oficial con fotografía\n• Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
     }
 
-    return `${icono} 🏥 *¡Hola!* En este momento la red de servidores de Google AI está experimentando una saturación temporal de alta demanda (503).\n\n` +
+    return `${icono} 🏥 *¡Hola!* Por el momento mi sistema inteligente presenta una intermitencia temporal de conexión.\n\n` +
         `Para ayudarte de inmediato:\n` +
         `• Envía *Menú* para explorar todas nuestras opciones disponibles.\n` +
-        `• Envía *5* para solicitar atención personalizada con un asesor.\n\n` +
-        `_En breve el motor de IA responderá tus preguntas con total normalidad._ ✨`;
+        `• Escribe *asesor* o *5* para solicitar atención personalizada con un humano.\n\n` +
+        `_Agradecemos tu comprensión._ ✨`;
 }
-
-async function obtenerModelosDisponibles(apiKey) {
-    if (!apiKey) return ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.5-pro'];
-    if (cacheModelosValidos.length > 0 && (Date.now() - ultimoFetchModelos < 3600000)) {
-        return cacheModelosValidos;
-    }
-
-    try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-        if (!resp.ok) throw new Error(`Status ${resp.status}`);
-        const data = await resp.json();
-        
-        if (data && data.models && Array.isArray(data.models)) {
-            // Filtrar modelos compatibles con generateContent
-            const modelosSoportados = data.models
-                .filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent'))
-                .map(m => m.name.replace('models/', ''))
-                .filter(name => !name.includes('embedding') && !name.includes('aqa') && !name.includes('imagen') && !name.includes('tts') && !name.includes('transcribe'));
-
-            // Priorizar explícitamente gemini-3.6-flash y gemini-3-flash-preview (alta disponibilidad verificada)
-            const flashModernos = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
-                .filter(m => modelosSoportados.includes(m));
-
-            const otrosFlash = modelosSoportados.filter(name => name.includes('flash') && !flashModernos.includes(name) && !name.includes('-exp'));
-            const proModernos = modelosSoportados.filter(name => name.includes('pro') && !name.includes('-exp'));
-            const otrosModelos = modelosSoportados.filter(name => !flashModernos.includes(name) && !otrosFlash.includes(name) && !proModernos.includes(name));
-
-            const listaFinal = Array.from(new Set([...flashModernos, ...otrosFlash, ...proModernos, ...otrosModelos]));
-            if (listaFinal.length > 0) {
-                cacheModelosValidos = listaFinal;
-                ultimoFetchModelos = Date.now();
-                return listaFinal;
-            }
-        }
-    } catch (e) {
-        console.warn("⚠️ No se pudo consultar la lista dinámica de modelos de Google:", e.message);
-    }
-
-    return cacheModelosValidos.length > 0 ? cacheModelosValidos : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
-}
-
-// ============================================================================
-// ENDPOINTS DEL SUPERADMIN (Auditoría)
-// ============================================================================
-app.get('/api/superadmin/auditoria', async (req, res) => {
-    try {
-        const registros = await allQuery("SELECT * FROM auditoria_sistema ORDER BY timestamp DESC LIMIT 50");
-        res.json({ success: true, data: registros });
-    } catch (error) {
-        console.error("Error obteniendo auditoría:", error);
-        res.status(500).json({ success: false, message: "Error interno" });
-    }
-});
-
-app.get('/api/gemini/modelos', autenticarToken, async (req, res) => {
-    try {
-        const customApiKey = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'gemini_api_key'"))?.valor;
-        const activeKey = (customApiKey && customApiKey.trim()) ? customApiKey.trim() : geminiApiKey;
-        const modelos = await obtenerModelosDisponibles(activeKey);
-        res.json({ success: true, modelos });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Mini-Sitio Linktree
-app.get('/api/linktree', async (req, res) => {
-    try {
-        const links = await allQuery("SELECT * FROM linktree_links WHERE activo = 1 ORDER BY orden ASC");
-        const titulo = await getQuery("SELECT valor FROM configuracion WHERE clave = 'linktree_titulo'");
-        const descripcion = await getQuery("SELECT valor FROM configuracion WHERE clave = 'linktree_descripcion'");
-        const logoUrl = await getQuery("SELECT valor FROM configuracion WHERE clave = 'linktree_logo_url'");
-        res.json({
-            titulo: titulo?.valor || 'Mi Empresa',
-            descripcion: descripcion?.valor || '',
-            logo_url: logoUrl?.valor || '',
-            links
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/linktree/links', autenticarToken, async (req, res) => {
-    try {
-        const { titulo, url, icono, orden } = req.body;
-        const result = await runQuery(
-            "INSERT INTO linktree_links (titulo, url, icono, orden) VALUES (?, ?, ?, ?)",
-            [titulo, url, icono || 'link', orden || 0]
-        );
-        res.json({ id: result.id, success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.delete('/api/linktree/links/:id', autenticarToken, async (req, res) => {
-    try {
-        await runQuery("DELETE FROM linktree_links WHERE id = ?", [req.params.id]);
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Descargar Respaldo de Base de Datos SQLite (1 Clic)
-app.get('/api/backup/descargar', autenticarToken, (req, res) => {
-    if (fs.existsSync(DB_PATH)) {
-        res.download(DB_PATH, `respaldo_omnibot_${new Date().toISOString().split('T')[0]}.sqlite`);
-    } else {
-        res.status(404).json({ error: 'Archivo de base de datos no encontrado' });
-    }
-});
 
 // ------------------------------------------------------------------------------
 // 4.1 ENDPOINTS DE CONTROL RÁPIDO DEL BOT (1 CLIC EN DASHBOARD)
