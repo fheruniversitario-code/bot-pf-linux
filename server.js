@@ -4195,7 +4195,12 @@ ${seccionAgendaIA}
 
         let respuestaIA = null;
         let modeloExitoso = null;
+        const tiempoInicioGlobalIA = Date.now();
         for (const modName of listaModelos) {
+            if (Date.now() - tiempoInicioGlobalIA > 60000) {
+                console.warn('[Cascada IA] Se super� el minuto de intentos (60s). Abortando cascada.');
+                break;
+            }
             let intentos = 2;
             while (intentos > 0) {
                 try {
