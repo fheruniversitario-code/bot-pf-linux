@@ -3694,6 +3694,7 @@ async function sincronizarConGoogle() {
         const res = await apiFetch('/api/citas/sincronizar-google', { method: 'POST' });
         
         if(icon) icon.classList.remove('fa-spin');
+        estaSincronizandoGoogle = false;
         
         if (res.success) {
             Swal.fire('Sincronización Completa', res.canceladas > 0 ? `Se limpiaron ${res.canceladas} cita(s) que habías borrado en Google Calendar.` : 'Tu agenda está al día con Google Calendar.', 'success');
@@ -3702,6 +3703,7 @@ async function sincronizarConGoogle() {
             Swal.fire('Error', res.error || 'Error al sincronizar.', 'error');
         }
     } catch (e) {
+        estaSincronizandoGoogle = false;
         Swal.fire('Error', e.message, 'error');
     }
 }
