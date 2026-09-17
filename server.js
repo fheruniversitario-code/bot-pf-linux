@@ -373,12 +373,18 @@ app.post('/api/directorio', autenticarToken, async (req, res) => {
 app.put('/api/directorio/:jid', autenticarToken, async (req, res) => {
     try {
         const jid = decodeURIComponent(req.params.jid);
-        const { nombre, correo, expediente, domicilio } = req.body;
+        const { nombre, correo, expediente, domicilio, telefono } = req.body;
         
-        await runQuery(
-            "UPDATE contactos SET nombre = ?, correo = ?, expediente = ?, domicilio = ? WHERE jid = ?",
-            [nombre, correo || '', expediente || '', domicilio || '', jid]
-        );
+        let q = "UPDATE contactos SET nombre = ?, correo = ?, expediente = ?, domicilio = ?";
+        let params = [nombre, correo || '', expediente || '', domicilio || ''];
+        if (telefono !== undefined) {
+            q += ", telefono = ?";
+            params.push(telefono);
+        }
+        q += " WHERE jid = ?";
+        params.push(jid);
+        
+        await runQuery(q, params);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });

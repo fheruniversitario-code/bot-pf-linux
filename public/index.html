@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="h-full bg-slate-950">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IA WhatsApp | Panel de Administración</title>
+    <title>IA WhatsApp | Panel de AdministraciÃ³n</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
@@ -21,9 +21,9 @@
         /* Headers y Sidebars con contraste definido */
         body.light-theme aside { background-color: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 2px 0 8px rgba(0,0,0,0.02) !important; }
         body.light-theme header { background-color: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,0.02) !important; }
-        body.light-theme main { background-color: #e2e8f0 !important; /* Más contraste (slate-200) */ }
+        body.light-theme main { background-color: #e2e8f0 !important; /* MÃ¡s contraste (slate-200) */ }
         
-        /* Tarjetas y Contenedores Principales (Paneles, modales, área de chat) */
+        /* Tarjetas y Contenedores Principales (Paneles, modales, Ã¡rea de chat) */
         body.light-theme .bg-slate-900, 
         body.light-theme .bg-slate-900\/90, 
         body.light-theme .bg-slate-900\/80, 
@@ -34,7 +34,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; 
         }
 
-        /* Sub-paneles, Fondos Internos y Listas (Inputs oscuros y menús) */
+        /* Sub-paneles, Fondos Internos y Listas (Inputs oscuros y menÃºs) */
         body.light-theme .bg-slate-950, 
         body.light-theme .bg-slate-950\/40, 
         body.light-theme .bg-slate-950\/60, 
@@ -53,7 +53,7 @@
             color: #374151 !important; 
         }
 
-        /* Toggles (Switches) invisibles: Hacer el riel más oscuro SOLO cuando están apagados para no pisar el color de encendido */
+        /* Toggles (Switches) invisibles: Hacer el riel mÃ¡s oscuro SOLO cuando estÃ¡n apagados para no pisar el color de encendido */
         body.light-theme input[type="checkbox"].peer:not(:checked) + div {
             background-color: #cbd5e1 !important; /* Slate 300 - Gris intermedio */
         }
@@ -63,7 +63,7 @@
         body.light-theme ::-webkit-scrollbar-thumb { background: #cbd5e1 !important; }
         body.light-theme ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
 
-        /* Botones Primarios (Sustituir negro/slate por un Índigo profesional y elegante) */
+        /* Botones Primarios (Sustituir negro/slate por un Ãndigo profesional y elegante) */
         body.light-theme .bg-indigo-600 {
             background-color: #4f46e5 !important; /* Indigo 600 */
             color: #ffffff !important;
@@ -81,7 +81,7 @@
         }
         body.light-theme .text-indigo-400,
         body.light-theme .text-indigo-300 {
-            color: #4f46e5 !important; /* Índigo para textos */
+            color: #4f46e5 !important; /* Ãndigo para textos */
         }
         
         /* Logo: Reemplazar oscuro/neon por un gradiente profesional azul rey/indigo */
@@ -104,7 +104,7 @@
             color: #9ca3af !important; 
         }
 
-        /* Tipografías y Títulos con alto contraste y elegancia */
+        /* TipografÃ­as y TÃ­tulos con alto contraste y elegancia */
         body.light-theme h1, 
         body.light-theme h2, 
         body.light-theme h3, 
@@ -141,7 +141,7 @@
         body.light-theme #chat-mensajes-stream { 
             background-color: #f3f4f6 !important; 
         }
-        /* Mensajes de IA (Verde Menta Suave y Letras Oscuras Nítidas) */
+        /* Mensajes de IA (Verde Menta Suave y Letras Oscuras NÃ­tidas) */
         body.light-theme .bg-emerald-950\/40 { 
             background-color: #f0fdf4 !important; 
             border-color: #bbf7d0 !important; 
@@ -160,7 +160,7 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
         }
 
-        /* Sidebar Navegación Items */
+        /* Sidebar NavegaciÃ³n Items */
         body.light-theme .nav-btn:hover {
             background-color: #f3f4f6 !important;
             color: #0f172a !important;
@@ -176,7 +176,7 @@
 <body id="app-body" class="h-full bg-slate-950 text-slate-100 flex overflow-hidden font-sans">
 
     <!-- ==================================================================== -->
-    <!-- 1. SIDEBAR LATERAL NAVEGACIÓN -->
+    <!-- 1. SIDEBAR LATERAL NAVEGACIÃ“N -->
     <!-- ==================================================================== -->
     <aside class="w-64 bg-slate-900 border-r border-slate-800/80 flex flex-col justify-between flex-shrink-0 z-30 transition-all duration-300">
         <div>
@@ -195,7 +195,7 @@
                 </div>
             </div>
 
-            <!-- Navegación Items -->
+            <!-- NavegaciÃ³n Items -->
             <nav class="p-4 space-y-1.5 text-sm font-medium">
                 <a href="#ventas" onclick="cambiarTab('ventas')" id="nav-ventas" class="nav-btn flex items-center space-x-3 px-3.5 py-2.5 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 transition">
                     <i class="fa-solid fa-chart-line w-5 text-center"></i>
@@ -220,7 +220,7 @@
 
                 <a href="#linktree" onclick="cambiarTab('linktree')" id="nav-linktree" class="nav-btn flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
                     <i class="fa-solid fa-link w-5 text-center"></i>
-                    <span>Página de enlaces</span>
+                    <span>PÃ¡gina de enlaces</span>
                 </a>
 
                 <a href="#conocimiento" onclick="cambiarTab('conocimiento')" id="nav-conocimiento" class="nav-btn flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
@@ -230,13 +230,13 @@
 
                 <a href="#configuracion" onclick="cambiarTab('configuracion')" id="nav-configuracion" class="nav-btn flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition">
                     <i class="fa-solid fa-gear w-5 text-center"></i>
-                    <span>Configuración</span>
+                    <span>ConfiguraciÃ³n</span>
                 </a>
 
                 <div class="pt-2 border-t border-slate-800/60 mt-2">
                     <a href="/instructivos.html" target="_blank" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-indigo-400 hover:text-indigo-300 hover:bg-indigo-600/10 transition border border-indigo-500/20">
                         <i class="fa-solid fa-book-open w-5 text-center"></i>
-                        <span>Guías & Instructivos</span>
+                        <span>GuÃ­as & Instructivos</span>
                     </a>
                 </div>
             </nav>
@@ -270,11 +270,11 @@
             <div class="flex items-center space-x-4">
                 <div id="header-titulos">
                     <h1 id="tab-titulo" class="text-xl font-bold text-white tracking-tight">Reporte de ventas</h1>
-                    <p id="tab-subtitulo" class="text-xs text-slate-400">Ingresos, conversión y cotizaciones pendientes</p>
+                    <p id="tab-subtitulo" class="text-xs text-slate-400">Ingresos, conversiÃ³n y cotizaciones pendientes</p>
                 </div>
             </div>
 
-            <!-- Estado Conexión & Usuario -->
+            <!-- Estado ConexiÃ³n & Usuario -->
             <div class="flex items-center space-x-4">
                 <!-- Badge WhatsApp Status -->
                 <div id="btn-estado-whatsapp" onclick="abrirModalQR()" class="cursor-pointer flex items-center space-x-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-semibold hover:bg-emerald-500/20 transition">
@@ -287,20 +287,20 @@
                     <span>Ver Linktree</span>
                 </a>
 
-                <!-- Botón de Modo Claro / Oscuro -->
+                <!-- BotÃ³n de Modo Claro / Oscuro -->
                 <button onclick="alternarTema()" id="btn-theme-toggle" title="Cambiar a Modo Claro / Iluminado" class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700/60 text-amber-400 hover:bg-slate-700 flex items-center justify-center text-xs transition">
                     <i class="fa-solid fa-sun" id="theme-icon"></i>
                 </button>
 
                 <!-- Perfil Dropdown & Mi Cuenta -->
                 <div class="flex items-center space-x-3 pl-3 border-l border-slate-800">
-                    <button onclick="abrirModalMiCuenta()" title="Mi Cuenta y Contraseña" class="flex items-center space-x-2 hover:opacity-80 transition">
+                    <button onclick="abrirModalMiCuenta()" title="Mi Cuenta y ContraseÃ±a" class="flex items-center space-x-2 hover:opacity-80 transition">
                         <div id="user-avatar-badge" class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-sm text-white shadow">
                             C
                         </div>
                         <span id="user-display-name" class="text-xs font-semibold text-slate-300 hidden md:inline">Mi Cuenta</span>
                     </button>
-                    <button onclick="cerrarSesion()" title="Cerrar Sesión" class="text-slate-400 hover:text-rose-400 transition text-sm">
+                    <button onclick="cerrarSesion()" title="Cerrar SesiÃ³n" class="text-slate-400 hover:text-rose-400 transition text-sm">
                         <i class="fa-solid fa-right-from-bracket"></i>
                     </button>
                 </div>
@@ -310,20 +310,20 @@
         <!-- Main Workspace Scrollable Area -->
         <main class="flex-1 overflow-y-auto p-8 relative">
 
-            <!-- Barra de Control Rápido de 1 Clic para el Bot -->
+            <!-- Barra de Control RÃ¡pido de 1 Clic para el Bot -->
             <div class="mb-6 bg-slate-900/90 border border-slate-800/80 rounded-3xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center space-x-3">
                     <div id="bot-status-indicator" class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></div>
                     <div>
                         <div class="flex items-center space-x-2">
-                            <span id="bot-status-text" class="text-sm font-bold text-white">Bot en Línea (Atendiendo 24/7)</span>
+                            <span id="bot-status-text" class="text-sm font-bold text-white">Bot en LÃ­nea (Atendiendo 24/7)</span>
                             <span id="bot-status-badge" class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">Activo</span>
                         </div>
-                        <p id="bot-status-sub" class="text-xs text-slate-400">Respuestas automáticas con IA y agenda activas</p>
+                        <p id="bot-status-sub" class="text-xs text-slate-400">Respuestas automÃ¡ticas con IA y agenda activas</p>
                     </div>
                 </div>
 
-                <!-- Botones de Acción de 1 Clic -->
+                <!-- Botones de AcciÃ³n de 1 Clic -->
                 <div class="flex flex-wrap items-center gap-2.5">
                     <button onclick="ejecutarReactivarBot()" id="btn-ctrl-reactivar" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold shadow-md shadow-emerald-600/20 transition flex items-center space-x-2">
                         <i class="fa-solid fa-play"></i>
@@ -342,7 +342,7 @@
 
                     <button onclick="abrirModalAusencia('festivo')" id="btn-ctrl-festivo" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-2xl text-xs font-bold transition flex items-center space-x-2">
                         <i class="fa-solid fa-flag text-emerald-400"></i>
-                        <span>Día Festivo</span>
+                        <span>DÃ­a Festivo</span>
                     </button>
 
                     <button onclick="abrirModalAusencia('vacaciones')" id="btn-ctrl-ausencia" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 rounded-2xl text-xs font-bold transition flex items-center space-x-2">
@@ -383,16 +383,16 @@
                     <div class="flex items-center space-x-4">
                         <div class="relative">
                             <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
-                            <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o número..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
+                            <input type="text" id="buscar-directorio-input" placeholder="Buscar por nombre, correo o nÃºmero..." class="pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 w-64 transition">
                         </div>
                         <button onclick="exportarCSVDirectorio()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg">
                             <i class="fa-solid fa-download"></i>
                             <span>Exportar</span>
                         </button>
-                        <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg" title="El archivo debe tener 5 columnas: Nombre, Teléfono, Correo, Expediente, Domicilio.">
+                        <button onclick="document.getElementById('importar-csv-input').click()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg" title="El archivo debe tener 5 columnas: Nombre, TelÃ©fono, Correo, Expediente, Domicilio.">
                             <i class="fa-solid fa-file-csv"></i>
                             <span>Importar CSV</span>
-                            <i class="fa-solid fa-circle-info ml-1 opacity-70" title="Instrucciones:&#10;1. Crea un Excel con 5 columnas en este exacto orden: Nombre, Teléfono, Correo, Expediente, Domicilio.&#10;2. La fila 1 debe ser de títulos.&#10;3. Guárdalo como 'CSV (delimitado por comas)'."></i>
+                            <i class="fa-solid fa-circle-info ml-1 opacity-70" title="Instrucciones:&#10;1. Crea un Excel con 5 columnas en este exacto orden: Nombre, TelÃ©fono, Correo, Expediente, Domicilio.&#10;2. La fila 1 debe ser de tÃ­tulos.&#10;3. GuÃ¡rdalo como 'CSV (delimitado por comas)'."></i>
                         </button>
                         <input type="file" id="importar-csv-input" accept=".csv" class="hidden" onchange="importarCSVDirectorio(event)">
                         <button onclick="abrirModalDirectorioNuevo()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-sm font-bold flex items-center space-x-2 transition shadow-lg shadow-sky-900/50">
@@ -407,9 +407,9 @@
                         <thead>
                             <tr class="text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800">
                                 <th class="pb-3 px-4">Nombre Completo</th>
-                                <th class="pb-3 px-4">Teléfono</th>
+                                <th class="pb-3 px-4">TelÃ©fono</th>
                                 <th class="pb-3 px-4">Expediente</th>
-                                <th class="pb-3 px-4">Correo Electrónico</th>
+                                <th class="pb-3 px-4">Correo ElectrÃ³nico</th>
                                 <th class="pb-3 px-4">Domicilio</th>
                                 <th class="pb-3 px-4 text-center">Msj.</th>
                                 <th class="pb-3 px-4 text-right">Acciones</th>
@@ -438,22 +438,22 @@
                         <input type="hidden" id="dir-jid-input">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nombre Completo</label>
-                            <input type="text" id="dir-nombre-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. Juan Pérez">
+                            <input type="text" id="dir-nombre-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. Juan PÃ©rez">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Número de Teléfono</label>
-                            <input type="text" id="dir-telefono-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="10 dígitos">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">NÃºmero de TelÃ©fono</label>
+                            <input type="text" id="dir-telefono-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="10 dÃ­gitos">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">No. de Expediente (Opcional)</label>
                             <input type="text" id="dir-expediente-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="Ej. EXP-2023-01">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo Electrónico (Opcional)</label>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Correo ElectrÃ³nico (Opcional)</label>
                             <input type="email" id="dir-correo-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition" placeholder="paciente@correo.com">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Domicilio / Dirección (Opcional)</label>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Domicilio / DirecciÃ³n (Opcional)</label>
                             <textarea id="dir-domicilio-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition resize-none h-20" placeholder="Ej. Calle Principal #123, Colonia Centro"></textarea>
                         </div>
                         <div id="dir-etiquetas-wrapper" class="hidden">
@@ -525,7 +525,7 @@
                         </div>
                         <button onclick="abrirModalNuevoPedido()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition flex items-center space-x-2">
                             <i class="fa-solid fa-plus"></i>
-                            <span>Nueva Cotización</span>
+                            <span>Nueva CotizaciÃ³n</span>
                         </button>
                     </div>
 
@@ -538,7 +538,7 @@
                                     <th class="pb-3 font-semibold">Valor</th>
                                     <th class="pb-3 font-semibold">Estado</th>
                                     <th class="pb-3 font-semibold">Fecha</th>
-                                    <th class="pb-3 font-semibold text-right">Acción</th>
+                                    <th class="pb-3 font-semibold text-right">AcciÃ³n</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-pedidos-body" class="divide-y divide-slate-800/60">
@@ -573,7 +573,7 @@
                                     <th class="pb-3 font-semibold">Mensaje / Motivo</th>
                                     <th class="pb-3 font-semibold">Fecha y Hora</th>
                                     <th class="pb-3 font-semibold">Estado</th>
-                                    <th class="pb-3 font-semibold text-right">Acción</th>
+                                    <th class="pb-3 font-semibold text-right">AcciÃ³n</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-solicitudes-asesor-body" class="divide-y divide-slate-800/60">
@@ -625,7 +625,7 @@
                             <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-xs">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                             </span>
-                            <input type="text" id="buscar-chat-input" placeholder="Buscar cliente por nombre o teléfono..." class="w-full pl-8 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <input type="text" id="buscar-chat-input" placeholder="Buscar cliente por nombre o telÃ©fono..." class="w-full pl-8 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
 
@@ -643,7 +643,7 @@
                             <div id="chat-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">?</div>
                             <div>
                                 <div class="flex items-center space-x-2">
-                                    <h3 id="chat-nombre-cliente" class="font-bold text-white text-sm">Selecciona una conversación</h3>
+                                    <h3 id="chat-nombre-cliente" class="font-bold text-white text-sm">Selecciona una conversaciÃ³n</h3>
                                     <button id="btn-renombrar-chat" onclick="renombrarContactoActual()" class="text-slate-400 hover:text-indigo-400 text-xs transition" title="Renombrar paciente / cliente">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
@@ -669,16 +669,16 @@
                     <!-- Mensajes Stream -->
                     <div id="chat-mensajes-stream" class="flex-1 p-6 overflow-y-auto space-y-4 bg-slate-950/40">
                         <div class="h-full flex items-center justify-center text-slate-500 text-xs">
-                            Selecciona una conversación de la izquierda para ver el historial y responder.
+                            Selecciona una conversaciÃ³n de la izquierda para ver el historial y responder.
                         </div>
                     </div>
 
-                    <!-- Barra de Acciones Rápidas del Chat (Infografías, Adjuntos, Enlaces y Respuestas Rápidas) -->
+                    <!-- Barra de Acciones RÃ¡pidas del Chat (InfografÃ­as, Adjuntos, Enlaces y Respuestas RÃ¡pidas) -->
                     <div id="chat-barra-acciones-rapidas" class="px-4 py-2 bg-slate-900 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
                         <div class="flex items-center space-x-2 flex-wrap gap-1.5">
-                            <button type="button" onclick="abrirModalInfografias()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Enviar infografía del servidor por WhatsApp">
+                            <button type="button" onclick="abrirModalInfografias()" class="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Enviar infografÃ­a del servidor por WhatsApp">
                                 <i class="fa-solid fa-image text-indigo-400"></i>
-                                <span>Infografías</span>
+                                <span>InfografÃ­as</span>
                             </button>
                             <button type="button" onclick="document.getElementById('input-archivo-adjunto-chat').click()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Enviar imagen desde tu computadora">
                                 <i class="fa-solid fa-paperclip text-slate-400"></i>
@@ -686,13 +686,13 @@
                             </button>
                             <input type="file" id="input-archivo-adjunto-chat" accept="image/*" class="hidden" onchange="enviarImagenLocalChat(event)">
                             
-                            <button type="button" onclick="abrirModalEnlacesRapidos()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Insertar enlaces útiles (Maps, Privacidad, Linktree)">
+                            <button type="button" onclick="abrirModalEnlacesRapidos()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Insertar enlaces Ãºtiles (Maps, Privacidad, Linktree)">
                                 <i class="fa-solid fa-link text-emerald-400"></i>
-                                <span>Enlaces Útiles</span>
+                                <span>Enlaces Ãštiles</span>
                             </button>
-                            <button type="button" onclick="abrirModalRespuestasRapidas()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Respuestas rápidas predeterminadas">
+                            <button type="button" onclick="abrirModalRespuestasRapidas()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-semibold flex items-center space-x-1.5 transition shadow-xs" title="Respuestas rÃ¡pidas predeterminadas">
                                 <i class="fa-solid fa-bolt text-amber-400"></i>
-                                <span>Respuestas Rápidas</span>
+                                <span>Respuestas RÃ¡pidas</span>
                             </button>
                         </div>
                     </div>
@@ -718,7 +718,7 @@
 
                     <!-- Input Box para Asesor Humano -->
                     <form id="form-enviar-mensaje" class="p-4 bg-slate-900 border-t border-slate-800/40 flex items-center space-x-3">
-                        <input type="text" id="input-mensaje-texto" placeholder="Escribe una respuesta como asesor humano (el bot se pausará automáticamente)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <input type="text" id="input-mensaje-texto" placeholder="Escribe una respuesta como asesor humano (el bot se pausarÃ¡ automÃ¡ticamente)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500">
                         <button type="submit" class="w-11 h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-md shadow-indigo-600/20 transition flex-shrink-0" title="Enviar Mensaje">
                             <i class="fa-solid fa-paper-plane text-sm"></i>
                         </button>
@@ -745,7 +745,7 @@
                         </div>
                         <div class="flex items-center space-x-2 mr-3 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 shadow-md focus-within:border-indigo-500">
                               <i class="fa-regular fa-calendar text-slate-400"></i>
-                              <input type="date" id="filtro-fecha-input" onchange="aplicarFiltroCitas()" title="Filtrar por fecha espec�fica" class="bg-transparent text-xs text-white outline-none">
+                              <input type="date" id="filtro-fecha-input" onchange="aplicarFiltroCitas()" title="Filtrar por fecha especï¿½fica" class="bg-transparent text-xs text-white outline-none">
                               <button onclick="document.getElementById('filtro-fecha-input').value=''; aplicarFiltroCitas();" title="Quitar filtro de fecha" class="text-slate-500 hover:text-rose-400 px-1"><i class="fa-solid fa-xmark"></i></button>
                           </div>
                           <input type="text" id="buscar-cita-input" oninput="aplicarFiltroCitas()" placeholder="?? Buscar nombre, fecha o servicio..." class="px-4 py-2 mr-3 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white shadow-md focus:border-indigo-500 outline-none w-64">
@@ -765,7 +765,7 @@
                                 <tr>
                                     <th class="pb-3 font-semibold">Fecha & Hora</th>
                                     <th class="pb-3 font-semibold">Paciente / Cliente</th>
-                                    <th class="pb-3 font-semibold">Teléfono</th>
+                                    <th class="pb-3 font-semibold">TelÃ©fono</th>
                                     <th class="pb-3 font-semibold">Servicio</th>
                                     <th class="pb-3 font-semibold">Origen</th>
                                     <th class="pb-3 font-semibold">Estado</th>
@@ -781,21 +781,21 @@
             </div>
 
             <!-- ============================================================ -->
-            <!-- TAB 4: PÁGINA DE ENLACES (LINKTREE) (VISTA DE CAPTURA 3) -->
+            <!-- TAB 4: PÃGINA DE ENLACES (LINKTREE) (VISTA DE CAPTURA 3) -->
             <!-- ============================================================ -->
             <div id="view-linktree" class="tab-view hidden flex space-x-8">
-                <!-- Formulario Configuración Enlaces -->
+                <!-- Formulario ConfiguraciÃ³n Enlaces -->
                 <div class="flex-1 bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-                                <span>Tu Página de Enlaces Pública</span>
+                                <span>Tu PÃ¡gina de Enlaces PÃºblica</span>
                                 <button type="button" onclick="abrirInstructivo('linktree-instagram')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
                                     <i class="fa-solid fa-circle-info"></i>
-                                    <span>¿Cómo ponerlo en Instagram?</span>
+                                    <span>Â¿CÃ³mo ponerlo en Instagram?</span>
                                 </button>
                             </h2>
-                            <p class="text-xs text-slate-400">Mini-sitio web estilo Linktree con tus enlaces oficiales para la biografía de Instagram o TikTok.</p>
+                            <p class="text-xs text-slate-400">Mini-sitio web estilo Linktree con tus enlaces oficiales para la biografÃ­a de Instagram o TikTok.</p>
                         </div>
                         <button onclick="copiarEnlaceLinktree()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition flex items-center space-x-2">
                             <i class="fa-solid fa-copy"></i>
@@ -825,8 +825,8 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Descripción o Eslogan Corto</label>
-                            <input type="text" id="linktree-desc-input" placeholder="Ej. Atención y citas inmediatas por WhatsApp 24/7" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">DescripciÃ³n o Eslogan Corto</label>
+                            <input type="text" id="linktree-desc-input" placeholder="Ej. AtenciÃ³n y citas inmediatas por WhatsApp 24/7" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                         </div>
 
                         <button onclick="guardarConfigLinktree()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition">
@@ -837,8 +837,8 @@
                     <!-- Lista de Botones/Enlaces -->
                     <div class="border-t border-slate-800 pt-6">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-bold text-white">Botones Activos en Tu Página</h3>
-                            <button onclick="abrirModalNuevoEnlace()" class="text-xs text-indigo-400 hover:underline font-bold">+ Nuevo Botón / Enlace</button>
+                            <h3 class="text-sm font-bold text-white">Botones Activos en Tu PÃ¡gina</h3>
+                            <button onclick="abrirModalNuevoEnlace()" class="text-xs text-indigo-400 hover:underline font-bold">+ Nuevo BotÃ³n / Enlace</button>
                         </div>
                         <div id="lista-links-container" class="space-y-3"></div>
                     </div>
@@ -846,7 +846,7 @@
 
                 <!-- Smartphone Mockup Preview -->
                 <div class="w-96 flex flex-col items-center flex-shrink-0">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Así se ve en el celular</span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">AsÃ­ se ve en el celular</span>
                     <div class="w-[320px] h-[640px] bg-slate-950 border-[10px] border-slate-800 rounded-[48px] shadow-2xl p-4 flex flex-col overflow-hidden relative">
                         <!-- Camera Notch -->
                         <div class="w-28 h-4 bg-slate-800 rounded-full mx-auto mb-4"></div>
@@ -857,14 +857,14 @@
             </div>
 
             <!-- ============================================================ -->
-            <!-- TAB 5: CONOCIMIENTO IA, CATÁLOGO Y DOCUMENTOS -->
+            <!-- TAB 5: CONOCIMIENTO IA, CATÃLOGO Y DOCUMENTOS -->
             <!-- ============================================================ -->
             <div id="view-conocimiento" class="tab-view hidden space-y-6">
                 <!-- Motor de IA y Clave Propia -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
                     <div>
                         <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-                            <span>🤖 Motor de Inteligencia Artificial y Tu Clave de Acceso</span>
+                            <span>ðŸ¤– Motor de Inteligencia Artificial y Tu Clave de Acceso</span>
                         </h2>
                         <p class="text-xs text-slate-400">Conecta la clave de tu cuenta de Google AI Studio para que el asistente funcione con tu cuenta propia.</p>
                     </div>
@@ -879,8 +879,8 @@
                                 </button>
                             </label>
                             <select id="config-modelo-ia" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="gemini-3.6-flash">gemini-3.6-flash (Recomendado - Nueva Generación)</option>
-                                <option value="gemini-3.5-flash">gemini-3.5-flash (Ultra Rápido y Económico)</option>
+                                <option value="gemini-3.6-flash">gemini-3.6-flash (Recomendado - Nueva GeneraciÃ³n)</option>
+                                <option value="gemini-3.5-flash">gemini-3.5-flash (Ultra RÃ¡pido y EconÃ³mico)</option>
                                 <option value="gemini-flash-latest">gemini-flash-latest (Auto-actualizable)</option>
                                 <option value="gemini-3.5-pro">gemini-3.5-pro (Razonamiento Complejo)</option>
                             </select>
@@ -893,9 +893,9 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Longitud y Estilo de Respuestas</label>
                             <select id="config-estilo-longitud-ia" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="breve">⚡ Breve y Conciso (1-2 frases cortas - Recomendado WhatsApp)</option>
-                                <option value="equilibrado">⚖️ Equilibrado (1-2 párrafos claros)</option>
-                                <option value="detallado">📖 Detallado y Extenso (Explicación amplia y profunda)</option>
+                                <option value="breve">âš¡ Breve y Conciso (1-2 frases cortas - Recomendado WhatsApp)</option>
+                                <option value="equilibrado">âš–ï¸ Equilibrado (1-2 pÃ¡rrafos claros)</option>
+                                <option value="detallado">ðŸ“– Detallado y Extenso (ExplicaciÃ³n amplia y profunda)</option>
                             </select>
                             <span class="text-[10px] text-slate-400 mt-1 block">Controla si responde directo al grano o con detalle.</span>
                         </div>
@@ -905,7 +905,7 @@
                                 <span>Tu Clave de IA (API Key Gemini)</span>
                                 <button type="button" onclick="abrirInstructivo('gemini-api-key')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
                                     <i class="fa-solid fa-circle-info"></i>
-                                    <span>¿Cómo obtenerla gratis?</span>
+                                    <span>Â¿CÃ³mo obtenerla gratis?</span>
                                 </button>
                             </label>
                             <div class="relative">
@@ -915,7 +915,7 @@
                                 </button>
                             </div>
                             <span class="text-[11px] text-slate-400 mt-1 block">
-                                🔑 Consíguela en <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a>.
+                                ðŸ”‘ ConsÃ­guela en <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline font-semibold">Google AI Studio</a>.
                             </span>
                         </div>
                     </div>
@@ -927,13 +927,13 @@
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                                 <i class="fa-solid fa-file-excel text-emerald-400"></i>
-                                <span>Listas de Precios, Inventarios y Catálogos (PDF / Excel / TXT)</span>
+                                <span>Listas de Precios, Inventarios y CatÃ¡logos (PDF / Excel / TXT)</span>
                                 <button type="button" onclick="abrirInstructivo('archivos-catalogo')" class="text-slate-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal ml-2">
                                     <i class="fa-solid fa-circle-info"></i>
-                                    <span>Guía de archivos</span>
+                                    <span>GuÃ­a de archivos</span>
                                 </button>
                             </h2>
-                            <p class="text-xs text-slate-400">Sube tus listas de precios de Excel (.csv, .xlsx), manuales o catálogos PDF para que la IA los memorice automáticamente.</p>
+                            <p class="text-xs text-slate-400">Sube tus listas de precios de Excel (.csv, .xlsx), manuales o catÃ¡logos PDF para que la IA los memorice automÃ¡ticamente.</p>
                         </div>
                         <label class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -950,15 +950,15 @@
                     </div>
                 </div>
 
-                <!-- Gestor de Infografías, Imágenes de Métodos y Promociones -->
+                <!-- Gestor de InfografÃ­as, ImÃ¡genes de MÃ©todos y Promociones -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                                 <i class="fa-solid fa-images text-indigo-400"></i>
-                                <span>Galería de Infografías, Fotografías y Promociones</span>
+                                <span>GalerÃ­a de InfografÃ­as, FotografÃ­as y Promociones</span>
                             </h2>
-                            <p class="text-xs text-slate-400">Imágenes que el bot envía automáticamente por WhatsApp cuando el cliente pide información de un método, producto o promoción.</p>
+                            <p class="text-xs text-slate-400">ImÃ¡genes que el bot envÃ­a automÃ¡ticamente por WhatsApp cuando el cliente pide informaciÃ³n de un mÃ©todo, producto o promociÃ³n.</p>
                         </div>
                         <label class="cursor-pointer px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -967,28 +967,28 @@
                         </label>
                     </div>
 
-                    <!-- Cuadrícula de Infografías Subidas -->
+                    <!-- CuadrÃ­cula de InfografÃ­as Subidas -->
                     <div id="lista-infografias-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-2">
                         <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center col-span-full">
-                            Cargando galería de imágenes e infografías...
+                            Cargando galerÃ­a de imÃ¡genes e infografÃ­as...
                         </div>
                     </div>
                 </div>
 
-                <!-- Gestor de Menú Numérico Interactivo (Opciones 1, 2, 3, 4, 5...) -->
+                <!-- Gestor de MenÃº NumÃ©rico Interactivo (Opciones 1, 2, 3, 4, 5...) -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                                 <i class="fa-solid fa-list-ol text-amber-400"></i>
-                                <span>Menú Numérico Interactivo (Respuestas Rápidas 1, 2, 3...)</span>
+                                <span>MenÃº NumÃ©rico Interactivo (Respuestas RÃ¡pidas 1, 2, 3...)</span>
                             </h2>
-                            <p class="text-xs text-slate-400">Permite a tus clientes presionar o escribir un número simple para recibir información clave al instante.</p>
+                            <p class="text-xs text-slate-400">Permite a tus clientes presionar o escribir un nÃºmero simple para recibir informaciÃ³n clave al instante.</p>
                         </div>
                         <div class="flex items-center space-x-3">
                             <label class="flex items-center space-x-2 cursor-pointer bg-slate-950 px-3 py-2 border border-slate-800 rounded-xl">
                                 <input type="checkbox" id="config-mostrar-menu-numerico" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" checked>
-                                <span class="text-xs text-slate-300">Mostrar menú en saludos</span>
+                                <span class="text-xs text-slate-300">Mostrar menÃº en saludos</span>
                             </label>
                             <button type="button" onclick="previsualizarMenuEnVivo()" class="px-3.5 py-2 bg-slate-950 hover:bg-slate-800 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 flex-shrink-0">
                                 <i class="fa-solid fa-eye"></i>
@@ -996,15 +996,15 @@
                             </button>
                             <button onclick="abrirModalNuevaOpcionMenu()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center space-x-2 flex-shrink-0">
                                 <i class="fa-solid fa-plus"></i>
-                                <span>+ Nueva Opción</span>
+                                <span>+ Nueva OpciÃ³n</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Lista de Opciones del Menú Numérico -->
+                    <!-- Lista de Opciones del MenÃº NumÃ©rico -->
                     <div id="lista-menu-numerico-container" class="space-y-3 pt-2">
                         <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-xs text-slate-500 text-center">
-                            Cargando opciones del menú numérico...
+                            Cargando opciones del menÃº numÃ©rico...
                         </div>
                     </div>
                 </div>
@@ -1012,8 +1012,8 @@
                 <!-- Cerebro de IA -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6">
                     <div>
-                        <h2 class="text-lg font-bold text-white">Instrucciones, Catálogo y Datos de Pago de Tu Empresa</h2>
-                        <p class="text-xs text-slate-400">Aquí defines cómo saluda tu asistente, tus servicios principales y tus cuentas de pago.</p>
+                        <h2 class="text-lg font-bold text-white">Instrucciones, CatÃ¡logo y Datos de Pago de Tu Empresa</h2>
+                        <p class="text-xs text-slate-400">AquÃ­ defines cÃ³mo saluda tu asistente, tus servicios principales y tus cuentas de pago.</p>
                     </div>
 
                     <div class="space-y-5">
@@ -1023,16 +1023,16 @@
                                 <label class="block text-xs font-semibold text-slate-300 uppercase">Instrucciones de Personalidad de Tu Asistente</label>
                                 <span class="text-[11px] text-indigo-400">Se aplica en vivo sin reiniciar</span>
                             </div>
-                            <textarea id="config-prompt-ia" rows="6" placeholder="Define el rol de tu asistente (ej: Eres la asesora oficial de la clínica/tienda...)" class="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white font-mono focus:outline-none focus:border-indigo-500 leading-relaxed"></textarea>
+                            <textarea id="config-prompt-ia" rows="6" placeholder="Define el rol de tu asistente (ej: Eres la asesora oficial de la clÃ­nica/tienda...)" class="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white font-mono focus:outline-none focus:border-indigo-500 leading-relaxed"></textarea>
                         </div>
 
-                        <!-- Catálogo de Productos / Servicios -->
+                        <!-- CatÃ¡logo de Productos / Servicios -->
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Catálogo de Productos, Servicios y Precios Rápidos</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">CatÃ¡logo de Productos, Servicios y Precios RÃ¡pidos</label>
                             <textarea id="config-catalogo-servicios" rows="4" placeholder="Ejemplo: Consulta General: $500 MXN. Limpieza Dental: $700 MXN..." class="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white font-mono focus:outline-none focus:border-indigo-500 leading-relaxed"></textarea>
                         </div>
 
-                        <!-- Sincronización en Vivo de Google Sheets -->
+                        <!-- SincronizaciÃ³n en Vivo de Google Sheets -->
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
                                 <span class="flex items-center space-x-1.5">
@@ -1041,29 +1041,29 @@
                                 </span>
                                 <button type="button" onclick="abrirInstructivo('google-sheets')" class="text-emerald-400 hover:text-emerald-300 text-xs flex items-center space-x-1 font-normal">
                                     <i class="fa-solid fa-circle-info"></i>
-                                    <span>¿Cómo configurar tu hoja?</span>
+                                    <span>Â¿CÃ³mo configurar tu hoja?</span>
                                 </button>
                             </label>
-                            <input type="text" id="config-google-sheets-url" placeholder="https://docs.google.com/spreadsheets/d/... (Pega el enlace de tu hoja de cálculo compartida)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
-                            <span class="text-[10px] text-slate-500 mt-1 block">La IA consultará tu hoja de Google Sheets en vivo en cada mensaje para conocer el stock y precios al instante.</span>
+                            <input type="text" id="config-google-sheets-url" placeholder="https://docs.google.com/spreadsheets/d/... (Pega el enlace de tu hoja de cÃ¡lculo compartida)" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                            <span class="text-[10px] text-slate-500 mt-1 block">La IA consultarÃ¡ tu hoja de Google Sheets en vivo en cada mensaje para conocer el stock y precios al instante.</span>
                         </div>
 
-                        <!-- Ubicación Física y Maps -->
+                        <!-- UbicaciÃ³n FÃ­sica y Maps -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Dirección de Tu Sucursal / Consultorio</label>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">DirecciÃ³n de Tu Sucursal / Consultorio</label>
                                 <input type="text" id="config-ubicacion-direccion" placeholder="Calle Principal #123, Colonia Centro" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Enlace de Google Maps de Tu Ubicación</label>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Enlace de Google Maps de Tu UbicaciÃ³n</label>
                                 <input type="text" id="config-ubicacion-maps" placeholder="https://maps.google.com/..." class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                             </div>
                         </div>
 
                         <!-- Datos Bancarios -->
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Cuentas Bancarias y Métodos de Pago</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Cuentas Bancarias y MÃ©todos de Pago</label>
                             <textarea id="config-datos-bancarios" rows="3" placeholder="Banco: BBVA&#10;Cuenta: 1234567890&#10;CLABE: 012345678901234567&#10;Titular: Tu Empresa" class="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white font-mono focus:outline-none focus:border-indigo-500"></textarea>
                         </div>
 
@@ -1087,7 +1087,7 @@
                                 <i class="fa-solid fa-id-card text-indigo-400"></i>
                                 <span>Identidad del Negocio y Administradores</span>
                             </h2>
-                            <p class="text-xs text-slate-400">Parámetros principales de la empresa y números autorizados para controlar el bot</p>
+                            <p class="text-xs text-slate-400">ParÃ¡metros principales de la empresa y nÃºmeros autorizados para controlar el bot</p>
                         </div>
                     </div>
 
@@ -1101,31 +1101,31 @@
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Icono / Avatar al inicio de cada respuesta</label>
                             <div class="flex items-center space-x-2">
                                 <select id="select-icono-preset" onchange="seleccionarIconoPreset(this.value)" class="px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
-                                    <option value="🤖">🤖 Robot</option>
-                                    <option value="👩‍⚕️">👩‍⚕️ Enfermera</option>
-                                    <option value="🩺">🩺 Médico</option>
-                                    <option value="🌸">🌸 Belleza</option>
-                                    <option value="💼">💼 Asesor</option>
-                                    <option value="✨">✨ Destello</option>
-                                    <option value="🌟">🌟 Estrella</option>
-                                    <option value="">🚫 Sin icono</option>
-                                    <option value="custom">✏️ Personalizado...</option>
+                                    <option value="ðŸ¤–">ðŸ¤– Robot</option>
+                                    <option value="ðŸ‘©â€âš•ï¸">ðŸ‘©â€âš•ï¸ Enfermera</option>
+                                    <option value="ðŸ©º">ðŸ©º MÃ©dico</option>
+                                    <option value="ðŸŒ¸">ðŸŒ¸ Belleza</option>
+                                    <option value="ðŸ’¼">ðŸ’¼ Asesor</option>
+                                    <option value="âœ¨">âœ¨ Destello</option>
+                                    <option value="ðŸŒŸ">ðŸŒŸ Estrella</option>
+                                    <option value="">ðŸš« Sin icono</option>
+                                    <option value="custom">âœï¸ Personalizado...</option>
                                 </select>
-                                <input type="text" id="config-icono-asistente" value="🤖" placeholder="Emoji ej: 🤖 o 👩‍⚕️" class="w-24 px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white text-center font-bold">
+                                <input type="text" id="config-icono-asistente" value="ðŸ¤–" placeholder="Emoji ej: ðŸ¤– o ðŸ‘©â€âš•ï¸" class="w-24 px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white text-center font-bold">
                             </div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Pausa por Intervención Humana (Minutos)</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Pausa por IntervenciÃ³n Humana (Minutos)</label>
                             <input type="number" id="config-tiempo-pausa" value="30" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
                         </div>
 
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Enlace de Formulario / Aviso de Privacidad</label>
                             <input type="url" id="config-enlace-privacidad" placeholder="https://forms.gle/zJxZeXXj1TwWGF9N8" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
-                            <span class="text-[10px] text-slate-500 mt-1 block">El bot enviará este link a pacientes de primera vez antes de transferirlos a un asesor.</span>
+                            <span class="text-[10px] text-slate-500 mt-1 block">El bot enviarÃ¡ este link a pacientes de primera vez antes de transferirlos a un asesor.</span>
                         </div>
                     </div>
 
@@ -1134,14 +1134,14 @@
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-xs font-semibold text-slate-300 uppercase flex items-center space-x-1.5">
                                     <i class="fa-solid fa-user-shield text-amber-400"></i>
-                                    <span>Teléfonos Administradores Autorizados</span>
+                                    <span>TelÃ©fonos Administradores Autorizados</span>
                                 </label>
                                 <button type="button" onclick="abrirModalGuiaComandos()" class="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center space-x-1 transition">
                                     <i class="fa-solid fa-terminal text-[10px]"></i>
                                     <span>Ver Comandos WhatsApp</span>
                                 </button>
                             </div>
-                            <p class="text-[11px] text-slate-400 mb-2">Números separados por comas. <span class="text-amber-400/90 font-medium">💡 O envía <code>!admin tu_clave</code> desde WhatsApp para autorizarte al instante.</span></p>
+                            <p class="text-[11px] text-slate-400 mb-2">NÃºmeros separados por comas. <span class="text-amber-400/90 font-medium">ðŸ’¡ O envÃ­a <code>!admin tu_clave</code> desde WhatsApp para autorizarte al instante.</span></p>
                             <input type="text" id="config-numeros-admin" placeholder="Ej. 5214111120637, 5214112688857" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-mono focus:border-amber-500 outline-none">
                         </div>
 
@@ -1162,7 +1162,7 @@
                                 <i class="fa-solid fa-vial-circle-check text-purple-400"></i>
                                 <span>Modo Prueba de IA para Administradores</span>
                             </label>
-                            <p class="text-[11px] text-slate-400">Activa si deseas que el bot te conteste como a un cliente normal para probar respuestas. Desactívalo cuando termines para que el bot solo escuche tus comandos con <code>!</code> sin responderte con IA.</p>
+                            <p class="text-[11px] text-slate-400">Activa si deseas que el bot te conteste como a un cliente normal para probar respuestas. DesactÃ­valo cuando termines para que el bot solo escuche tus comandos con <code>!</code> sin responderte con IA.</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="checkbox" id="config-modo-prueba" class="sr-only peer">
@@ -1178,7 +1178,7 @@
                                     <i class="fa-solid fa-bell text-amber-400"></i>
                                     <span>Notificar a Administradores si un Cliente Menciona Palabras Clave</span>
                                 </label>
-                                <p class="text-[11px] text-slate-400">El bot enviará una alerta inmediata por WhatsApp a los números o grupo si un cliente escribe palabras de interés (o apágalo si no deseas alertas).</p>
+                                <p class="text-[11px] text-slate-400">El bot enviarÃ¡ una alerta inmediata por WhatsApp a los nÃºmeros o grupo si un cliente escribe palabras de interÃ©s (o apÃ¡galo si no deseas alertas).</p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                                 <input type="checkbox" id="config-notificar-admins-activa" class="sr-only peer">
@@ -1193,20 +1193,20 @@
                                     <span>Palabras Clave que Disparan la Alerta (Separadas por Comas)</span>
                                 </label>
                                 <input type="text" id="config-palabras-clave-alerta" placeholder="Ej: asesor, vasectomia, urgencia, cita, implante, queja" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-amber-500 outline-none">
-                                <span class="text-[10px] text-slate-500 mt-1 block">Si el mensaje del cliente incluye alguna de estas palabras, se enviará la alerta.</span>
+                                <span class="text-[10px] text-slate-500 mt-1 block">Si el mensaje del cliente incluye alguna de estas palabras, se enviarÃ¡ la alerta.</span>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center space-x-1.5">
                                     <i class="fa-solid fa-phone text-emerald-400"></i>
-                                    <span>Destino de la Notificación</span>
+                                    <span>Destino de la NotificaciÃ³n</span>
                                 </label>
                                 <select id="config-destino-alerta-admins" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:border-emerald-500 outline-none">
-                                    <option value="ambos">A los Números de Administradores y al Grupo de Control</option>
-                                    <option value="numeros">Solo a los Números Administradores Directos</option>
+                                    <option value="ambos">A los NÃºmeros de Administradores y al Grupo de Control</option>
+                                    <option value="numeros">Solo a los NÃºmeros Administradores Directos</option>
                                     <option value="grupo">Solo al Grupo de Control</option>
                                 </select>
-                                <span class="text-[10px] text-slate-500 mt-1 block">Elige por dónde prefieres recibir los avisos inmediatos.</span>
+                                <span class="text-[10px] text-slate-500 mt-1 block">Elige por dÃ³nde prefieres recibir los avisos inmediatos.</span>
                             </div>
                         </div>
                     </div>
@@ -1219,41 +1219,41 @@
                     </div>
                 </div>
 
-                <!-- 2. Horarios de Atención al Público (Limpio, Natural y Flexible) -->
+                <!-- 2. Horarios de AtenciÃ³n al PÃºblico (Limpio, Natural y Flexible) -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-5">
                     <div>
                         <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                             <i class="fa-solid fa-clock text-emerald-400"></i>
-                            <span>Horarios de Atención del Negocio</span>
+                            <span>Horarios de AtenciÃ³n del Negocio</span>
                         </h2>
-                        <p class="text-xs text-slate-400">Configura los horarios de tu sucursal física y/o de atención personalizada en WhatsApp para que la IA responda y calcule con exactitud.</p>
+                        <p class="text-xs text-slate-400">Configura los horarios de tu sucursal fÃ­sica y/o de atenciÃ³n personalizada en WhatsApp para que la IA responda y calcule con exactitud.</p>
                     </div>
 
-                    <!-- 1. Horario de Sucursal Física -->
+                    <!-- 1. Horario de Sucursal FÃ­sica -->
                     <div class="space-y-2">
                         <label class="block text-xs font-semibold text-slate-300 uppercase flex items-center space-x-1.5">
                             <i class="fa-solid fa-store text-emerald-400"></i>
-                            <span>Horario de Sucursal o Consultorio Físico (Texto Flexible)</span>
+                            <span>Horario de Sucursal o Consultorio FÃ­sico (Texto Flexible)</span>
                         </label>
-                        <textarea id="config-horario-fisico" rows="2" placeholder="Ejemplo: Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 10:00 AM a 2:00 PM. Domingos Cerrado." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white focus:border-emerald-500 outline-none leading-relaxed font-sans"></textarea>
+                        <textarea id="config-horario-fisico" rows="2" placeholder="Ejemplo: Lunes a Viernes de 9:00 AM a 6:00 PM. SÃ¡bados de 10:00 AM a 2:00 PM. Domingos Cerrado." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-2xl text-sm text-white focus:border-emerald-500 outline-none leading-relaxed font-sans"></textarea>
                         
-                        <!-- Botones de plantilla rápida genéricos -->
+                        <!-- Botones de plantilla rÃ¡pida genÃ©ricos -->
                         <div class="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                            <span class="text-slate-500 font-semibold">⚡ Plantillas Rápidas:</span>
-                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 9:00 AM a 6:00 PM. Sábados de 10:00 AM a 2:00 PM. Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Lun a Sáb (9 AM a 6 PM)</button>
-                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 2:00 PM a 8:30 PM. Sábados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Vespertino (2:00 PM a 8:30 PM)</button>
-                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Jueves de 8:00 AM a 2:00 PM y de 4:00 PM a 6:00 PM. Viernes de 8:00 AM a 2:00 PM. Sábados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Horario Partido / Quebrado</button>
+                            <span class="text-slate-500 font-semibold">âš¡ Plantillas RÃ¡pidas:</span>
+                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 9:00 AM a 6:00 PM. SÃ¡bados de 10:00 AM a 2:00 PM. Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Lun a SÃ¡b (9 AM a 6 PM)</button>
+                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Viernes de 2:00 PM a 8:30 PM. SÃ¡bados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Vespertino (2:00 PM a 8:30 PM)</button>
+                            <button type="button" onclick="aplicarPlantillaHorario('Lunes a Jueves de 8:00 AM a 2:00 PM y de 4:00 PM a 6:00 PM. Viernes de 8:00 AM a 2:00 PM. SÃ¡bados y Domingos Cerrado.')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">Horario Partido / Quebrado</button>
                         </div>
                     </div>
 
-                    <!-- 2. Switch Diferenciador: Atención en Línea / WhatsApp diferente a Sucursal -->
+                    <!-- 2. Switch Diferenciador: AtenciÃ³n en LÃ­nea / WhatsApp diferente a Sucursal -->
                     <div class="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between">
                         <div class="space-y-0.5 pr-4">
                             <label for="toggle-horario-online-diferente" class="font-bold text-white text-xs flex items-center space-x-2 cursor-pointer">
                                 <i class="fa-solid fa-headset text-indigo-400"></i>
-                                <span>¿Tienes un horario de atención en línea (WhatsApp) diferente al de la sucursal física?</span>
+                                <span>Â¿Tienes un horario de atenciÃ³n en lÃ­nea (WhatsApp) diferente al de la sucursal fÃ­sica?</span>
                             </label>
-                            <p class="text-[11px] text-slate-400">Activa si tu personal humano en WhatsApp atiende en horas distintas a las de la puerta física del negocio (o para especificar inicio y fin de turno exactos).</p>
+                            <p class="text-[11px] text-slate-400">Activa si tu personal humano en WhatsApp atiende en horas distintas a las de la puerta fÃ­sica del negocio (o para especificar inicio y fin de turno exactos).</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="checkbox" id="toggle-horario-online-diferente" onchange="toggleHorarioOnlineVisible(this.checked)" class="sr-only peer">
@@ -1261,12 +1261,12 @@
                         </label>
                     </div>
 
-                    <!-- 3. Sección Desplegable de Horario en Línea / WhatsApp -->
+                    <!-- 3. SecciÃ³n Desplegable de Horario en LÃ­nea / WhatsApp -->
                     <div id="seccion-horario-online" class="hidden space-y-4 p-4 bg-slate-950/60 border border-indigo-950/60 rounded-2xl">
                         <div>
                             <label class="block text-xs font-semibold text-indigo-300 uppercase mb-1.5 flex items-center space-x-1.5">
                                 <i class="fa-solid fa-comments text-indigo-400"></i>
-                                <span>Horario de Asesores en Línea / WhatsApp (Texto para la IA)</span>
+                                <span>Horario de Asesores en LÃ­nea / WhatsApp (Texto para la IA)</span>
                             </label>
                             <textarea id="config-horario-online" rows="2" placeholder="Ejemplo: Nuestro equipo en WhatsApp atiende de Lunes a Viernes de 2:00 PM a 8:30 PM. Fuera de este horario, el bot de IA responde tus dudas 24/7." class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-indigo-500"></textarea>
                         </div>
@@ -1281,20 +1281,20 @@
                                 <input type="time" id="config-hora-fin-semana" value="20:30" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
                             </div>
                         </div>
-                        <span class="text-[10px] text-slate-400 block">El motor inteligente de horarios usa estas horas exactas para calcular en vivo si dice: <em>"mañana a partir de las X"</em>, <em>"el próximo lunes"</em>, etc.</span>
+                        <span class="text-[10px] text-slate-400 block">El motor inteligente de horarios usa estas horas exactas para calcular en vivo si dice: <em>"maÃ±ana a partir de las X"</em>, <em>"el prÃ³ximo lunes"</em>, etc.</span>
                     </div>
 
                     <!-- 4. Mensaje Fuera de Horario -->
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Mensaje Automático Fuera de Horario (Opcional)</label>
-                        <p class="text-[11px] text-slate-400 mb-2">Mensaje que la IA o el bot responderá cuando escriban de noche o en días inhábiles.</p>
-                        <textarea id="config-mensaje-fuera-horario" rows="2" placeholder="Ejemplo: Hola. Por el momento nuestro equipo está fuera de horario. Tu solicitud ha quedado registrada y con gusto te atenderemos en nuestro próximo turno laboral." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-emerald-500"></textarea>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Mensaje AutomÃ¡tico Fuera de Horario (Opcional)</label>
+                        <p class="text-[11px] text-slate-400 mb-2">Mensaje que la IA o el bot responderÃ¡ cuando escriban de noche o en dÃ­as inhÃ¡biles.</p>
+                        <textarea id="config-mensaje-fuera-horario" rows="2" placeholder="Ejemplo: Hola. Por el momento nuestro equipo estÃ¡ fuera de horario. Tu solicitud ha quedado registrada y con gusto te atenderemos en nuestro prÃ³ximo turno laboral." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans focus:outline-none focus:border-emerald-500"></textarea>
                     </div>
 
                     <div class="pt-2 flex justify-end">
                         <button onclick="guardarHorariosDetallados()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-clock"></i>
-                            <span>Guardar Horarios de Atención</span>
+                            <span>Guardar Horarios de AtenciÃ³n</span>
                         </button>
                     </div>
                 </div>
@@ -1311,32 +1311,32 @@
                         </div>
                         <div class="flex items-center space-x-3 bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-slate-800">
                             <label for="toggle-modulo-agenda" class="text-xs font-bold text-slate-300 cursor-pointer">
-                                Estado del Módulo:
+                                Estado del MÃ³dulo:
                             </label>
                             <input type="checkbox" id="toggle-modulo-agenda" onchange="toggleModuloAgendaVisual(this.checked)" class="w-5 h-5 accent-indigo-500 cursor-pointer rounded">
                             <span id="badge-modulo-agenda" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400">Desactivado</span>
                         </div>
                     </div>
 
-                    <!-- Configuración de Conexión Google Calendar -->
+                    <!-- ConfiguraciÃ³n de ConexiÃ³n Google Calendar -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2 flex items-center justify-between">
                                 <span>Google Calendar ID</span>
                                 <button type="button" onclick="abrirInstructivo('google-calendar')" class="text-indigo-400 hover:text-indigo-300 text-xs flex items-center space-x-1 font-normal">
                                     <i class="fa-solid fa-circle-info"></i>
-                                    <span>¿Dónde obtenerlo?</span>
+                                    <span>Â¿DÃ³nde obtenerlo?</span>
                                 </button>
                             </label>
                             <input type="text" id="config-google-calendar-id" placeholder="ejemplo@gmail.com o xxx@group.calendar.google.com" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                            <p class="text-[11px] text-slate-500 mt-1.5">El ID del calendario de Google donde se registrarán las citas.</p>
+                            <p class="text-[11px] text-slate-500 mt-1.5">El ID del calendario de Google donde se registrarÃ¡n las citas.</p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Duración Predeterminada por Cita</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">DuraciÃ³n Predeterminada por Cita</label>
                             <select id="config-duracion-cita" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="15">15 minutos (Atención Rápida)</option>
-                                <option value="30" selected>30 minutos (Consulta Estándar)</option>
+                                <option value="15">15 minutos (AtenciÃ³n RÃ¡pida)</option>
+                                <option value="30" selected>30 minutos (Consulta EstÃ¡ndar)</option>
                                 <option value="45">45 minutos</option>
                                 <option value="60">60 minutos (1 Hora)</option>
                                 <option value="90">90 minutos (1 Hora y Media)</option>
@@ -1351,11 +1351,11 @@
                                 <span class="text-[11px] text-indigo-400 font-normal">Pega el contenido del archivo .json de tu cuenta de servicio</span>
                             </label>
                             <textarea id="config-google-service-account" rows="4" placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", "client_email": "..."}' class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"></textarea>
-                            <p class="text-[11px] text-slate-500 mt-1">Recuerda compartir tu calendario de Google con el <b>client_email</b> dándole permisos de "Hacer cambios en eventos".</p>
+                            <p class="text-[11px] text-slate-500 mt-1">Recuerda compartir tu calendario de Google con el <b>client_email</b> dÃ¡ndole permisos de "Hacer cambios en eventos".</p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Colchón / Descanso entre Citas</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">ColchÃ³n / Descanso entre Citas</label>
                             <select id="config-buffer-minutos" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
                                 <option value="0">0 minutos (Citas continuas)</option>
                                 <option value="5">5 minutos</option>
@@ -1366,12 +1366,12 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Días de Anticipación Máxima</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">DÃ­as de AnticipaciÃ³n MÃ¡xima</label>
                             <select id="config-dias-anticipacion" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500">
-                                <option value="7">7 días (1 semana hacia el futuro)</option>
-                                <option value="15" selected>15 días (2 semanas)</option>
-                                <option value="30">30 días (1 mes)</option>
-                                <option value="60">60 días (2 meses)</option>
+                                <option value="7">7 dÃ­as (1 semana hacia el futuro)</option>
+                                <option value="15" selected>15 dÃ­as (2 semanas)</option>
+                                <option value="30">30 dÃ­as (1 mes)</option>
+                                <option value="60">60 dÃ­as (2 meses)</option>
                             </select>
                         </div>
                     </div>
@@ -1384,7 +1384,7 @@
                                     <i class="fa-solid fa-business-time text-emerald-400"></i>
                                     <span>Horarios de Consulta y Turnos Divididos</span>
                                 </h3>
-                                <p class="text-[11px] text-slate-400 mt-0.5">Define los turnos en que el bot puede ofrecer citas. Los espacios entre turnos (comida, trámites administrativos) quedarán bloqueados automáticamente.</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Define los turnos en que el bot puede ofrecer citas. Los espacios entre turnos (comida, trÃ¡mites administrativos) quedarÃ¡n bloqueados automÃ¡ticamente.</p>
                             </div>
                         </div>
 
@@ -1408,7 +1408,7 @@
                                         <input type="time" id="config-agenda-turno1-fin" value="17:00" class="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
                                     </div>
                                 </div>
-                                <p class="text-[10px] text-slate-500">Ejemplo: De 2:00 PM a 5:00 PM (la mañana se reserva para actividades administrativas).</p>
+                                <p class="text-[10px] text-slate-500">Ejemplo: De 2:00 PM a 5:00 PM (la maÃ±ana se reserva para actividades administrativas).</p>
                             </div>
 
                             <!-- Turno 2 (Lunes a Viernes - Opcional) -->
@@ -1436,16 +1436,16 @@
                                 <p class="text-[10px] text-slate-500">Reanuda tras receso de comida (ej. 5:00 a 6:00 PM pausa libre, 6:00 a 8:00 PM citas).</p>
                             </div>
 
-                            <!-- Sábado -->
+                            <!-- SÃ¡bado -->
                             <div class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs font-bold text-white flex items-center space-x-1.5">
                                         <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                                        <span>Atención en Sábados</span>
+                                        <span>AtenciÃ³n en SÃ¡bados</span>
                                     </span>
                                     <label class="flex items-center space-x-2 cursor-pointer">
                                         <input type="checkbox" id="config-agenda-sabado-activo" checked class="w-4 h-4 accent-amber-500 rounded">
-                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar Sábados</span>
+                                        <span class="text-[11px] text-slate-300 font-semibold">Habilitar SÃ¡bados</span>
                                     </label>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
@@ -1465,7 +1465,7 @@
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs font-bold text-white flex items-center space-x-1.5">
                                         <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                                        <span>Atención en Domingos</span>
+                                        <span>AtenciÃ³n en Domingos</span>
                                     </span>
                                     <label class="flex items-center space-x-2 cursor-pointer">
                                         <input type="checkbox" id="config-agenda-domingo-activo" class="w-4 h-4 accent-rose-500 rounded">
@@ -1477,15 +1477,15 @@
                         </div>
                     </div>
 
-                    <!-- Botones de Acción y Diagnóstico -->
+                    <!-- Botones de AcciÃ³n y DiagnÃ³stico -->
                     <div class="flex flex-wrap items-center gap-3 pt-2">
                         <button onclick="guardarConfigAgenda()" id="btn-guardar-agenda" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2">
                             <i class="fa-solid fa-floppy-disk"></i>
-                            <span>Guardar Parámetros de Agenda</span>
+                            <span>Guardar ParÃ¡metros de Agenda</span>
                         </button>
                         <button onclick="probarConexionGoogleCalendar()" id="btn-probar-google-calendar" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center space-x-2">
                             <i class="fa-solid fa-plug text-emerald-400"></i>
-                            <span>🔌 Probar Conexión con Google Calendar</span>
+                            <span>ðŸ”Œ Probar ConexiÃ³n con Google Calendar</span>
                         </button>
                     </div>
 
@@ -1498,21 +1498,21 @@
                     <div class="border-b border-slate-800/70 pb-5">
                         <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
                             <i class="fa-solid fa-bell text-amber-400"></i>
-                            <span>Recordatorios Automáticos por WhatsApp</span>
+                            <span>Recordatorios AutomÃ¡ticos por WhatsApp</span>
                         </h2>
-                        <p class="text-xs text-slate-400 mt-1">El bot despertará a la hora programada, buscará las citas de ese día y enviará este mensaje a cada paciente.</p>
+                        <p class="text-xs text-slate-400 mt-1">El bot despertarÃ¡ a la hora programada, buscarÃ¡ las citas de ese dÃ­a y enviarÃ¡ este mensaje a cada paciente.</p>
                     </div>
                     <form id="config-recordatorios-form" class="space-y-6">
                         <div class="flex items-center space-x-3 mb-4">
                             <input type="checkbox" id="config-recordatorio-activo" class="w-5 h-5 accent-indigo-500 rounded">
-                            <label class="text-sm font-bold text-slate-200">Activar el envío de recordatorios diarios</label>
+                            <label class="text-sm font-bold text-slate-200">Activar el envÃ­o de recordatorios diarios</label>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Hora de envío automático</label>
+                                <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Hora de envÃ­o automÃ¡tico</label>
                                 <input type="time" id="config-recordatorio-hora" value="08:00" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none">
-                                <p class="text-[10px] text-slate-500 mt-1">Se evaluará diariamente a esta hora exacta.</p>
+                                <p class="text-[10px] text-slate-500 mt-1">Se evaluarÃ¡ diariamente a esta hora exacta.</p>
                             </div>
                         </div>
 
@@ -1520,8 +1520,8 @@
                             <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Plantilla del Mensaje</label>
                             <textarea id="config-recordatorio-texto" rows="4" class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white focus:border-indigo-500 outline-none" placeholder="Hola {nombre}, te recordamos tu cita de hoy a las {hora} para {servicio}."></textarea>
                             <div class="bg-slate-800/60 rounded-lg p-3 mt-2 border border-slate-700">
-                                <p class="text-[11px] font-mono text-indigo-300">Variables dinámicas soportadas:</p>
-                                <p class="text-[10px] text-slate-400 mt-1">Usa <b>{nombre}</b> para el paciente, <b>{hora}</b> para la hora de su cita, y <b>{servicio}</b> para el tratamiento. <br><br><b>Ejemplo sugerido:</b><br>Hola {nombre} 👋, somos de la clínica. Te recordamos tu cita programada para hoy a las {hora} para {servicio}.<br>¿Nos confirmas tu asistencia? (Si deseas cancelar o reagendar, por favor avísanos por este medio).</p>
+                                <p class="text-[11px] font-mono text-indigo-300">Variables dinÃ¡micas soportadas:</p>
+                                <p class="text-[10px] text-slate-400 mt-1">Usa <b>{nombre}</b> para el paciente, <b>{hora}</b> para la hora de su cita, y <b>{servicio}</b> para el tratamiento. <br><br><b>Ejemplo sugerido:</b><br>Hola {nombre} ðŸ‘‹, somos de la clÃ­nica. Te recordamos tu cita programada para hoy a las {hora} para {servicio}.<br>Â¿Nos confirmas tu asistencia? (Si deseas cancelar o reagendar, por favor avÃ­sanos por este medio).</p>
                             </div>
                         </div>
 
@@ -1542,7 +1542,7 @@
                                 <i class="fa-solid fa-umbrella-beach text-sky-400"></i>
                                 <span>Modo Ausencia / Vacaciones con IA</span>
                             </h3>
-                            <p class="text-xs text-slate-400">Activa este modo si el negocio sale a congreso, vacaciones o remodelación. La IA avisará amablemente a los clientes.</p>
+                            <p class="text-xs text-slate-400">Activa este modo si el negocio sale a congreso, vacaciones o remodelaciÃ³n. La IA avisarÃ¡ amablemente a los clientes.</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="config-ausencia-activa" class="sr-only peer">
@@ -1569,15 +1569,15 @@
                     </div>
                 </div>
 
-                <!-- 4. Módulo Universal de Recordatorios y Seguimientos Programados -->
+                <!-- 4. MÃ³dulo Universal de Recordatorios y Seguimientos Programados -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-6 shadow-sm">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
                         <div>
                             <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                                 <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
-                                <span>Módulo Universal de Recordatorios y Seguimientos Programados</span>
+                                <span>MÃ³dulo Universal de Recordatorios y Seguimientos Programados</span>
                             </h2>
-                            <p class="text-xs text-slate-400 mt-1">Automatiza recordatorios post-atención (ej: revisión a los 3 meses de vasectomía, satisfacción post-venta a los 7 días, etc.)</p>
+                            <p class="text-xs text-slate-400 mt-1">Automatiza recordatorios post-atenciÃ³n (ej: revisiÃ³n a los 3 meses de vasectomÃ­a, satisfacciÃ³n post-venta a los 7 dÃ­as, etc.)</p>
                         </div>
                         <button onclick="abrirModalNuevaReglaSeguimiento()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold rounded-xl text-xs shadow-md transition flex items-center space-x-1.5 flex-shrink-0">
                             <i class="fa-solid fa-plus text-xs"></i>
@@ -1593,7 +1593,7 @@
                         </div>
                     </div>
 
-                    <!-- Bandeja de Próximos Seguimientos a Enviar -->
+                    <!-- Bandeja de PrÃ³ximos Seguimientos a Enviar -->
                     <div class="space-y-3 pt-2">
                         <div class="flex items-center justify-between">
                             <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
@@ -1614,7 +1614,7 @@
                                         <th class="p-3">Regla / Motivo</th>
                                         <th class="p-3">Tiempo Transcurrido</th>
                                         <th class="p-3">Mensaje Preparado</th>
-                                        <th class="p-3 text-right">Acción</th>
+                                        <th class="p-3 text-right">AcciÃ³n</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-seguimientos-pendientes" class="divide-y divide-slate-800/60 text-slate-300">
@@ -1632,11 +1632,11 @@
                             <i class="fa-solid fa-user-slash text-rose-400"></i>
                             <span>Contactos Ignorados (Exclusiones)</span>
                         </h2>
-                        <p class="text-xs text-slate-400">Contactos a los que el bot NUNCA les responderá en privado</p>
+                        <p class="text-xs text-slate-400">Contactos a los que el bot NUNCA les responderÃ¡ en privado</p>
                     </div>
 
                     <div class="flex items-center space-x-3">
-                        <input type="text" id="nuevo-ignorado-input" placeholder="Ingresa número de 10 dígitos (ej. 4111234567)..." class="flex-1 px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                        <input type="text" id="nuevo-ignorado-input" placeholder="Ingresa nÃºmero de 10 dÃ­gitos (ej. 4111234567)..." class="flex-1 px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
                         <button onclick="agregarNumeroIgnorado()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold rounded-xl transition">
                             + Agregar a Ignorados
                         </button>
@@ -1645,12 +1645,12 @@
                     <div id="lista-ignorados-container" class="space-y-2 pt-2"></div>
                 </div>
 
-                <!-- 5. Centro de Comandos Móviles y Glosario (!) -->
+                <!-- 5. Centro de Comandos MÃ³viles y Glosario (!) -->
                 <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-6 space-y-4">
                     <div>
                         <h2 class="text-lg font-bold text-white flex items-center space-x-2">
                             <i class="fa-solid fa-terminal text-emerald-400"></i>
-                            <span>Centro de Comandos Móviles por WhatsApp (Glosario !)</span>
+                            <span>Centro de Comandos MÃ³viles por WhatsApp (Glosario !)</span>
                         </h2>
                         <p class="text-xs text-slate-400">Comandos que los administradores autorizados pueden enviar directamente desde su WhatsApp para controlar el bot:</p>
                     </div>
@@ -1660,7 +1660,7 @@
                             <span class="px-2 py-1 bg-emerald-500/20 text-emerald-300 font-mono font-bold rounded-lg flex-shrink-0">!reactivar</span>
                             <div>
                                 <strong class="text-white block">Reactivar Todo el Bot</strong>
-                                <span class="text-slate-400 text-[11px]">Reanuda la atención normal, quita pausas individuales y apaga el modo vacaciones.</span>
+                                <span class="text-slate-400 text-[11px]">Reanuda la atenciÃ³n normal, quita pausas individuales y apaga el modo vacaciones.</span>
                             </div>
                         </div>
 
@@ -1676,14 +1676,14 @@
                             <span class="px-2 py-1 bg-rose-500/20 text-rose-300 font-mono font-bold rounded-lg flex-shrink-0">!pausa</span>
                             <div>
                                 <strong class="text-white block">Pausar Globalmente</strong>
-                                <span class="text-slate-400 text-[11px]">El bot no responderá a ningún cliente hasta enviar <code>!reactivar</code>.</span>
+                                <span class="text-slate-400 text-[11px]">El bot no responderÃ¡ a ningÃºn cliente hasta enviar <code>!reactivar</code>.</span>
                             </div>
                         </div>
 
                         <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
                             <span class="px-2 py-1 bg-amber-500/20 text-amber-300 font-mono font-bold rounded-lg flex-shrink-0">!pausa [num]</span>
                             <div>
-                                <strong class="text-white block">Pausar Cliente Específico</strong>
+                                <strong class="text-white block">Pausar Cliente EspecÃ­fico</strong>
                                 <span class="text-slate-400 text-[11px]">Ej: <code>!pausa 4111234567</code>. Pausa a esa persona temporalmente.</span>
                             </div>
                         </div>
@@ -1700,7 +1700,7 @@
                             <span class="px-2 py-1 bg-indigo-500/20 text-indigo-300 font-mono font-bold rounded-lg flex-shrink-0">!resumen</span>
                             <div>
                                 <strong class="text-white block">Reporte de Contactos Recientes</strong>
-                                <span class="text-slate-400 text-[11px]">Envía la lista con nombre y número de los últimos clientes atendidos.</span>
+                                <span class="text-slate-400 text-[11px]">EnvÃ­a la lista con nombre y nÃºmero de los Ãºltimos clientes atendidos.</span>
                             </div>
                         </div>
 
@@ -1713,7 +1713,7 @@
                         </div>
 
                         <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl flex items-start space-x-3">
-                            <span class="px-2 py-1 bg-teal-500/20 text-teal-300 font-mono font-bold rounded-lg flex-shrink-0">📇 vCard</span>
+                            <span class="px-2 py-1 bg-teal-500/20 text-teal-300 font-mono font-bold rounded-lg flex-shrink-0">ðŸ“‡ vCard</span>
                             <div>
                                 <strong class="text-white block">Ignorar con Tarjeta de Contacto</strong>
                                 <span class="text-slate-400 text-[11px]">Comparte la tarjeta de contacto de WhatsApp al bot o grupo para ignorarlo en 1 segundo.</span>
@@ -1728,7 +1728,7 @@
                         <i class="fa-solid fa-database text-amber-400"></i>
                         <span>Respaldo de Base de Datos SQLite (1 Clic)</span>
                     </h3>
-                    <p class="text-xs text-slate-400">Descarga una copia completa de tus clientes, cotizaciones, citas y configuración en un solo archivo SQLite seguro.</p>
+                    <p class="text-xs text-slate-400">Descarga una copia completa de tus clientes, cotizaciones, citas y configuraciÃ³n en un solo archivo SQLite seguro.</p>
                     <button onclick="descargarRespaldoBD()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center space-x-2 transition">
                         <i class="fa-solid fa-download"></i>
                         <span>Descargar Respaldo (.sqlite)</span>
@@ -1740,14 +1740,14 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL NUEVA / EDITAR OPCIÓN MENÚ NUMÉRICO -->
+    <!-- MODAL NUEVA / EDITAR OPCIÃ“N MENÃš NUMÃ‰RICO -->
     <!-- ==================================================================== -->
     <div id="modal-menu-numerico" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-white">Opción del Menú Numérico</h3>
-                    <p class="text-xs text-slate-400">Configura el número y la respuesta automática.</p>
+                    <h3 class="text-lg font-bold text-white">OpciÃ³n del MenÃº NumÃ©rico</h3>
+                    <p class="text-xs text-slate-400">Configura el nÃºmero y la respuesta automÃ¡tica.</p>
                 </div>
                 <button onclick="cerrarModalMenuNumerico()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -1755,18 +1755,18 @@
             <form id="form-menu-numerico" onsubmit="guardarOpcionMenu(event)" class="space-y-4">
                 <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Dígito / N°</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">DÃ­gito / NÂ°</label>
                         <input type="text" id="menu-num-digito" required placeholder="1" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-bold text-center">
                     </div>
                     <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Título de la Opción</label>
-                        <input type="text" id="menu-num-titulo" required placeholder="Ej: Requisitos de Atención" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">TÃ­tulo de la OpciÃ³n</label>
+                        <input type="text" id="menu-num-titulo" required placeholder="Ej: Requisitos de AtenciÃ³n" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Respuesta Automática del Bot</label>
-                    <textarea id="menu-num-respuesta" rows="4" required placeholder="Texto que enviará el bot cuando el cliente escriba este número..." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans"></textarea>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Respuesta AutomÃ¡tica del Bot</label>
+                    <textarea id="menu-num-respuesta" rows="4" required placeholder="Texto que enviarÃ¡ el bot cuando el cliente escriba este nÃºmero..." class="w-full p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white font-sans"></textarea>
                 </div>
 
                 <div>
@@ -1776,14 +1776,14 @@
 
                 <div class="flex justify-end space-x-3 pt-2">
                     <button type="button" onclick="cerrarModalMenuNumerico()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Cancelar</button>
-                    <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition">Guardar Opción</button>
+                    <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition">Guardar OpciÃ³n</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL GUÍA DE COMANDOS WHATSAPP -->
+    <!-- MODAL GUÃA DE COMANDOS WHATSAPP -->
     <!-- ==================================================================== -->
     <div id="modal-guia-comandos" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto custom-scroll">
@@ -1803,8 +1803,8 @@
             <div class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5 text-xs text-amber-300 flex items-start space-x-2.5">
                 <i class="fa-solid fa-key text-amber-400 mt-0.5"></i>
                 <div>
-                    <span class="font-bold">¿Cómo vincularte sin copiar códigos técnicos?</span>
-                    <p class="mt-0.5 text-[11px] text-amber-200/90">Envía desde tu WhatsApp al bot el mensaje: <code>!admin tu_contraseña</code> (la misma clave con la que entras al panel). El bot te registrará al instante.</p>
+                    <span class="font-bold">Â¿CÃ³mo vincularte sin copiar cÃ³digos tÃ©cnicos?</span>
+                    <p class="mt-0.5 text-[11px] text-amber-200/90">EnvÃ­a desde tu WhatsApp al bot el mensaje: <code>!admin tu_contraseÃ±a</code> (la misma clave con la que entras al panel). El bot te registrarÃ¡ al instante.</p>
                 </div>
             </div>
 
@@ -1812,7 +1812,7 @@
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
                     <div class="flex items-center justify-between">
                         <code class="font-bold text-amber-400 font-mono">!ayuda</code>
-                        <span class="text-[10px] text-slate-400">Guía en vivo</span>
+                        <span class="text-[10px] text-slate-400">GuÃ­a en vivo</span>
                     </div>
                     <p class="text-slate-300 text-[11px]">Muestra en WhatsApp la lista completa de comandos autorizados.</p>
                 </div>
@@ -1822,7 +1822,7 @@
                         <code class="font-bold text-emerald-400 font-mono">!reactivar</code>
                         <span class="text-[10px] text-slate-400">Desbloqueo total</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">Reanuda la atención normal, elimina todas las pausas humanas y desactiva vacaciones/cursos.</p>
+                    <p class="text-slate-300 text-[11px]">Reanuda la atenciÃ³n normal, elimina todas las pausas humanas y desactiva vacaciones/cursos.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
@@ -1830,39 +1830,39 @@
                         <code class="font-bold text-rose-400 font-mono">!pausa</code>
                         <span class="text-[10px] text-slate-400">Silencio global</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">Pausa las respuestas automáticas del bot a todos los clientes hasta que envíes <code>!reactivar</code>.</p>
+                    <p class="text-slate-300 text-[11px]">Pausa las respuestas automÃ¡ticas del bot a todos los clientes hasta que envÃ­es <code>!reactivar</code>.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
                     <div class="flex items-center justify-between">
                         <code class="font-bold text-purple-400 font-mono">!probar / !probar off</code>
-                        <span class="text-[10px] text-slate-400">Modo simulación</span>
+                        <span class="text-[10px] text-slate-400">Modo simulaciÃ³n</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">El bot te responderá en tu chat exactamente como si fueras un cliente para que pruebes flujos y menús.</p>
+                    <p class="text-slate-300 text-[11px]">El bot te responderÃ¡ en tu chat exactamente como si fueras un cliente para que pruebes flujos y menÃºs.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
                     <div class="flex items-center justify-between">
                         <code class="font-bold text-sky-400 font-mono">!menu</code>
-                        <span class="text-[10px] text-slate-400">Probar menú</span>
+                        <span class="text-[10px] text-slate-400">Probar menÃº</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">Entrega de inmediato el menú numérico interactivo configurado en el panel.</p>
+                    <p class="text-slate-300 text-[11px]">Entrega de inmediato el menÃº numÃ©rico interactivo configurado en el panel.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
                     <div class="flex items-center justify-between">
                         <code class="font-bold text-indigo-400 font-mono">!curso [hasta el viernes]</code>
-                        <span class="text-[10px] text-slate-400">Capacitación</span>
+                        <span class="text-[10px] text-slate-400">CapacitaciÃ³n</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">Activa el modo capacitación médica; la IA atiende dudas sobre servicios y anota en lista prioritaria.</p>
+                    <p class="text-slate-300 text-[11px]">Activa el modo capacitaciÃ³n mÃ©dica; la IA atiende dudas sobre servicios y anota en lista prioritaria.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
                     <div class="flex items-center justify-between">
                         <code class="font-bold text-teal-400 font-mono">!resumen</code>
-                        <span class="text-[10px] text-slate-400">Últimos contactos</span>
+                        <span class="text-[10px] text-slate-400">Ãšltimos contactos</span>
                     </div>
-                    <p class="text-slate-300 text-[11px]">Entrega un listado rápido con los últimos pacientes atendidos y sus números reales.</p>
+                    <p class="text-slate-300 text-[11px]">Entrega un listado rÃ¡pido con los Ãºltimos pacientes atendidos y sus nÃºmeros reales.</p>
                 </div>
 
                 <div class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl space-y-1">
@@ -1881,7 +1881,7 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL VISTA PREVIA MENÚ NUMÉRICO -->
+    <!-- MODAL VISTA PREVIA MENÃš NUMÃ‰RICO -->
     <!-- ==================================================================== -->
     <div id="modal-preview-menu" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4">
@@ -1889,8 +1889,8 @@
                 <div class="flex items-center space-x-2.5">
                     <i class="fa-brands fa-whatsapp text-emerald-400 text-xl"></i>
                     <div>
-                        <h3 class="text-base font-bold text-white">Vista Previa del Menú</h3>
-                        <p class="text-xs text-slate-400">Así lo reciben tus clientes en WhatsApp</p>
+                        <h3 class="text-base font-bold text-white">Vista Previa del MenÃº</h3>
+                        <p class="text-xs text-slate-400">AsÃ­ lo reciben tus clientes en WhatsApp</p>
                     </div>
                 </div>
                 <button onclick="cerrarModalPreviewMenu()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -1903,7 +1903,7 @@
             </div>
 
             <div class="pt-2 flex justify-between items-center text-xs text-slate-400">
-                <span>💬 Interacción automática</span>
+                <span>ðŸ’¬ InteracciÃ³n automÃ¡tica</span>
                 <button type="button" onclick="cerrarModalPreviewMenu()" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition">Cerrar</button>
             </div>
         </div>
@@ -1927,12 +1927,12 @@
                     <input type="text" id="cita-nombre-input" required placeholder="Ej. Carlos Hernandez" style="text-transform: uppercase;" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">NÚMERO DE EXPEDIENTE (Opcional)</label>
+                    <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">NÃšMERO DE EXPEDIENTE (Opcional)</label>
                     <input type="text" id="cita-expediente-input" placeholder="Ej. 12345-B" style="text-transform: uppercase;" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Teléfono de WhatsApp</label>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">TelÃ©fono de WhatsApp</label>
                     <input type="text" id="cita-telefono-input" required placeholder="Ej. 4111234567" class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                 </div>
 
@@ -1954,13 +1954,13 @@
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">Duración (min)</label>
+                        <label class="block text-[11px] font-semibold text-slate-300 uppercase mb-1.5">DuraciÃ³n (min)</label>
                         <input type="number" id="cita-duracion-input" placeholder="Ej. 30 o 60" class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Notas o Síntomas (Opcional)</label>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase mb-1.5">Notas o SÃ­ntomas (Opcional)</label>
                     <textarea id="cita-notas-input" rows="2" placeholder="Detalles adicionales..." class="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"></textarea>
                 </div>
 
@@ -1973,14 +1973,14 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL MI CUENTA Y CAMBIO DE CONTRASEÑA -->
+    <!-- MODAL MI CUENTA Y CAMBIO DE CONTRASEÃ‘A -->
     <!-- ==================================================================== -->
     <div id="modal-mi-cuenta" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-5">
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-white">Mi Cuenta & Seguridad</h3>
-                    <p class="text-xs text-slate-400">Actualiza tu nombre de usuario y tu contraseña de acceso</p>
+                    <p class="text-xs text-slate-400">Actualiza tu nombre de usuario y tu contraseÃ±a de acceso</p>
                 </div>
                 <button onclick="cerrarModalMiCuenta()" class="text-slate-400 hover:text-white transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -1999,16 +1999,16 @@
                 </div>
 
                 <div class="border-t border-slate-800 pt-4 space-y-3">
-                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">Cambiar Contraseña (Opcional)</span>
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider block">Cambiar ContraseÃ±a (Opcional)</span>
 
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Contraseña Actual</label>
-                        <input type="password" id="perfil-pass-actual" placeholder="••••••••" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                        <label class="block text-[11px] text-slate-400 mb-1">ContraseÃ±a Actual</label>
+                        <input type="password" id="perfil-pass-actual" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
                     </div>
 
                     <div>
-                        <label class="block text-[11px] text-slate-400 mb-1">Nueva Contraseña</label>
-                        <input type="password" id="perfil-pass-nuevo" placeholder="••••••••" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
+                        <label class="block text-[11px] text-slate-400 mb-1">Nueva ContraseÃ±a</label>
+                        <input type="password" id="perfil-pass-nuevo" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" class="w-full px-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white">
                     </div>
                 </div>
 
@@ -2021,14 +2021,14 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL VINCULACIÓN QR -->
+    <!-- MODAL VINCULACIÃ“N QR -->
     <!-- ==================================================================== -->
     <div id="modal-qr" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
             <h3 class="text-lg font-bold text-white mb-1">Vincular WhatsApp</h3>
-            <p class="text-xs text-slate-400 mb-6">Escanea este código QR con la app de WhatsApp</p>
+            <p class="text-xs text-slate-400 mb-6">Escanea este cÃ³digo QR con la app de WhatsApp</p>
             <div id="qr-container" class="w-56 h-56 bg-white p-4 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-inner">
-                <span class="text-slate-400 text-xs">Generando código QR...</span>
+                <span class="text-slate-400 text-xs">Generando cÃ³digo QR...</span>
             </div>
             <button onclick="cerrarModalQR()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition">Cerrar</button>
         </div>
@@ -2045,8 +2045,8 @@
                         <i class="fa-solid fa-circle-info"></i>
                     </div>
                     <div>
-                        <h3 id="inst-titulo" class="text-base font-bold text-white leading-snug">Instructivo de Configuración</h3>
-                        <p id="inst-subtitulo" class="text-xs text-slate-400">Guía rápida paso a paso</p>
+                        <h3 id="inst-titulo" class="text-base font-bold text-white leading-snug">Instructivo de ConfiguraciÃ³n</h3>
+                        <p id="inst-subtitulo" class="text-xs text-slate-400">GuÃ­a rÃ¡pida paso a paso</p>
                     </div>
                 </div>
                 <button onclick="cerrarInstructivo()" class="text-slate-400 hover:text-white transition">
@@ -2056,7 +2056,7 @@
 
             <!-- Pasos -->
             <div id="inst-pasos" class="space-y-3 text-xs text-slate-300 leading-relaxed bg-slate-950 p-5 rounded-2xl border border-slate-800 max-h-72 overflow-y-auto">
-                <!-- Dinámico -->
+                <!-- DinÃ¡mico -->
             </div>
 
             <!-- Acciones -->
@@ -2082,7 +2082,7 @@
                     </div>
                     <div>
                         <h3 id="modal-ausencia-titulo" class="text-base font-bold text-white leading-snug">Modo Receso y Calendario</h3>
-                        <p class="text-xs text-slate-400">Control inmediato y programación anticipada de festivos</p>
+                        <p class="text-xs text-slate-400">Control inmediato y programaciÃ³n anticipada de festivos</p>
                     </div>
                 </div>
                 <button onclick="cerrarModalAusencia()" class="text-slate-400 hover:text-white transition">
@@ -2090,15 +2090,15 @@
                 </button>
             </div>
 
-            <!-- Navegación Principal del Modal: Inmediato vs Calendario Anticipado -->
+            <!-- NavegaciÃ³n Principal del Modal: Inmediato vs Calendario Anticipado -->
             <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-2xl">
                 <button type="button" id="btn-vista-inmediato" onclick="cambiarVistaModalAusencia('inmediato')" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/30">
                     <i class="fa-solid fa-bolt"></i>
-                    <span>⚡ Control Inmediato (Hoy)</span>
+                    <span>âš¡ Control Inmediato (Hoy)</span>
                 </button>
                 <button type="button" id="btn-vista-calendario" onclick="cambiarVistaModalAusencia('calendario')" class="py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent">
                     <i class="fa-solid fa-calendar-days"></i>
-                    <span>📅 Programar en Calendario</span>
+                    <span>ðŸ“… Programar en Calendario</span>
                 </button>
             </div>
 
@@ -2126,7 +2126,7 @@
                     <div class="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
                         <div>
                             <span id="label-switch-ausencia" class="text-xs font-bold text-white block">Activar Modo Curso</span>
-                            <span id="sub-switch-ausencia" class="text-[11px] text-slate-400">La IA explicará la capacitación y atenderá dudas 24/7</span>
+                            <span id="sub-switch-ausencia" class="text-[11px] text-slate-400">La IA explicarÃ¡ la capacitaciÃ³n y atenderÃ¡ dudas 24/7</span>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="modal-ausencia-activa" class="sr-only peer">
@@ -2135,51 +2135,51 @@
                     </div>
 
                     <div>
-                        <label id="label-modal-ausencia-motivo" class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Curso o Congreso Médico</label>
-                        <textarea id="modal-ausencia-mensaje" rows="2" placeholder="Ej: Capacitación y Actualización Médica Continua" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-indigo-500 outline-none"></textarea>
+                        <label id="label-modal-ausencia-motivo" class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Curso o Congreso MÃ©dico</label>
+                        <textarea id="modal-ausencia-mensaje" rows="2" placeholder="Ej: CapacitaciÃ³n y ActualizaciÃ³n MÃ©dica Continua" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:border-indigo-500 outline-none"></textarea>
                         
                         <!-- Chips sugerencias Curso -->
                         <div id="chips-sugerencias-curso" class="flex flex-wrap gap-1 pt-1">
-                            <button type="button" onclick="setMotivoCurso('Capacitación y Actualización Médica Continua')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Actualización Continua</button>
-                            <button type="button" onclick="setMotivoCurso('Congreso de Salud Sexual y Reproductiva')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Congreso Médico</button>
-                            <button type="button" onclick="setMotivoCurso('Taller de Actualización Clínica en Métodos')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Taller Clínico</button>
+                            <button type="button" onclick="setMotivoCurso('CapacitaciÃ³n y ActualizaciÃ³n MÃ©dica Continua')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">ActualizaciÃ³n Continua</button>
+                            <button type="button" onclick="setMotivoCurso('Congreso de Salud Sexual y Reproductiva')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Congreso MÃ©dico</button>
+                            <button type="button" onclick="setMotivoCurso('Taller de ActualizaciÃ³n ClÃ­nica en MÃ©todos')" class="px-2 py-0.5 bg-indigo-950/40 hover:bg-indigo-900/50 border border-indigo-800/30 text-[10px] text-indigo-300 rounded-md">Taller ClÃ­nico</button>
                         </div>
 
                         <!-- Chips sugerencias Festivo -->
                         <div id="chips-sugerencias-festivo" class="hidden flex flex-wrap gap-1 pt-1">
-                            <button type="button" onclick="setMotivoCurso('Día Festivo Oficial / Inhábil')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">Día Festivo Oficial</button>
-                            <button type="button" onclick="setMotivoCurso('Aniversario de la Independencia de México')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">16 Sep - Independencia</button>
-                            <button type="button" onclick="setMotivoCurso('Conmemoración de la Revolución Mexicana')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">20 Nov - Revolución</button>
-                            <button type="button" onclick="setMotivoCurso('Celebración de Navidad')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">25 Dic - Navidad</button>
-                            <button type="button" onclick="setMotivoCurso('Año Nuevo')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 Ene - Año Nuevo</button>
+                            <button type="button" onclick="setMotivoCurso('DÃ­a Festivo Oficial / InhÃ¡bil')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">DÃ­a Festivo Oficial</button>
+                            <button type="button" onclick="setMotivoCurso('Aniversario de la Independencia de MÃ©xico')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">16 Sep - Independencia</button>
+                            <button type="button" onclick="setMotivoCurso('ConmemoraciÃ³n de la RevoluciÃ³n Mexicana')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">20 Nov - RevoluciÃ³n</button>
+                            <button type="button" onclick="setMotivoCurso('CelebraciÃ³n de Navidad')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">25 Dic - Navidad</button>
+                            <button type="button" onclick="setMotivoCurso('AÃ±o Nuevo')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 Ene - AÃ±o Nuevo</button>
                         </div>
 
                         <!-- Chips sugerencias Vacaciones -->
                         <div id="chips-sugerencias-vacaciones" class="hidden flex flex-wrap gap-1 pt-1">
                             <button type="button" onclick="setMotivoCurso('Periodo Vacacional de Temporada')" class="px-2 py-0.5 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/30 text-[10px] text-sky-300 rounded-md">Vacaciones de Temporada</button>
-                            <button type="button" onclick="setMotivoCurso('Receso Vacacional de Fin de Año')" class="px-2 py-0.5 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/30 text-[10px] text-sky-300 rounded-md">Fin de Año</button>
+                            <button type="button" onclick="setMotivoCurso('Receso Vacacional de Fin de AÃ±o')" class="px-2 py-0.5 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/30 text-[10px] text-sky-300 rounded-md">Fin de AÃ±o</button>
                             <button type="button" onclick="setMotivoCurso('Receso de Semana Santa')" class="px-2 py-0.5 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/30 text-[10px] text-sky-300 rounded-md">Semana Santa</button>
                         </div>
                     </div>
 
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label class="block text-xs font-semibold text-slate-300">Fecha de Reanudación de Citas</label>
-                            <span class="text-[10px] text-slate-400">Atajos rápidos:</span>
+                            <label class="block text-xs font-semibold text-slate-300">Fecha de ReanudaciÃ³n de Citas</label>
+                            <span class="text-[10px] text-slate-400">Atajos rÃ¡pidos:</span>
                         </div>
                         <div class="flex flex-wrap gap-1 mb-1.5">
-                            <button type="button" onclick="setFechaRapida(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Mañana</button>
+                            <button type="button" onclick="setFechaRapida(1)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">MaÃ±ana</button>
                             <button type="button" onclick="setFechaRapida('viernes')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Este Viernes</button>
-                            <button type="button" onclick="setFechaRapida('lunes')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">Próximo Lunes</button>
-                            <button type="button" onclick="setFechaRapida(2)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+2 Días</button>
-                            <button type="button" onclick="setFechaRapida(3)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+3 Días</button>
+                            <button type="button" onclick="setFechaRapida('lunes')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">PrÃ³ximo Lunes</button>
+                            <button type="button" onclick="setFechaRapida(2)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+2 DÃ­as</button>
+                            <button type="button" onclick="setFechaRapida(3)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 rounded-md">+3 DÃ­as</button>
                         </div>
                         <input type="date" id="modal-ausencia-fecha" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-indigo-500 outline-none">
                     </div>
 
                     <!-- Nota explicativa de IA -->
                     <div id="nota-modal-ausencia" class="p-3 bg-slate-950 border border-slate-800/80 rounded-xl text-[11px] text-slate-300 leading-relaxed">
-                        <span class="text-indigo-400 font-bold">🎓 Rol de la IA:</span> Explicará con calidez y prestigio médico que el equipo está en actualización continua, responderá dudas de métodos 24/7 y registrará pacientes en la <b>Lista de Espera Prioritaria</b>.
+                        <span class="text-indigo-400 font-bold">ðŸŽ“ Rol de la IA:</span> ExplicarÃ¡ con calidez y prestigio mÃ©dico que el equipo estÃ¡ en actualizaciÃ³n continua, responderÃ¡ dudas de mÃ©todos 24/7 y registrarÃ¡ pacientes en la <b>Lista de Espera Prioritaria</b>.
                     </div>
 
                     <div class="flex items-center space-x-2.5 pt-1">
@@ -2194,21 +2194,21 @@
                 <div class="p-3.5 bg-slate-950 border border-amber-500/20 rounded-2xl flex items-start space-x-3 text-xs text-slate-300 leading-relaxed">
                     <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-base mt-0.5 shrink-0"></i>
                     <div>
-                        <b class="text-amber-400">Activación 100% Automática:</b> Registra festivos o congresos con anticipación. Cuando llegue el día (hora de México), el bot activará el modo correspondiente y lo desactivará al terminar sin que tengas que enviar nada desde tu teléfono.
+                        <b class="text-amber-400">ActivaciÃ³n 100% AutomÃ¡tica:</b> Registra festivos o congresos con anticipaciÃ³n. Cuando llegue el dÃ­a (hora de MÃ©xico), el bot activarÃ¡ el modo correspondiente y lo desactivarÃ¡ al terminar sin que tengas que enviar nada desde tu telÃ©fono.
                     </div>
                 </div>
 
                 <!-- Formulario Agregar Evento -->
                 <form onsubmit="guardarEventoAusencia(event)" class="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
-                    <span class="text-xs font-bold text-white block">➕ Programar Nuevo Evento / Festivo</span>
+                    <span class="text-xs font-bold text-white block">âž• Programar Nuevo Evento / Festivo</span>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tipo de Evento</label>
                             <select id="nuevo-evento-tipo" onchange="actualizarSugerenciasNuevoEvento()" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-indigo-500">
-                                <option value="festivo">🇲🇽 Día Festivo Oficial</option>
-                                <option value="curso">🎓 Curso / Congreso</option>
-                                <option value="vacaciones">🏖️ Vacaciones</option>
+                                <option value="festivo">ðŸ‡²ðŸ‡½ DÃ­a Festivo Oficial</option>
+                                <option value="curso">ðŸŽ“ Curso / Congreso</option>
+                                <option value="vacaciones">ðŸ–ï¸ Vacaciones</option>
                             </select>
                         </div>
                         <div class="sm:col-span-2">
@@ -2219,13 +2219,13 @@
 
                     <!-- Chips de festivos oficiales populares -->
                     <div class="flex flex-wrap gap-1">
-                        <span class="text-[10px] text-slate-500 mr-1 self-center">Festivos Oficiales México:</span>
+                        <span class="text-[10px] text-slate-500 mr-1 self-center">Festivos Oficiales MÃ©xico:</span>
                         <button type="button" onclick="autollenarFestivoOficial('Aniversario de la Independencia', '09-16', '09-16')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">16 Sep</button>
-                        <button type="button" onclick="autollenarFestivoOficial('Revolución Mexicana', '11-20', '11-20')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">20 Nov</button>
+                        <button type="button" onclick="autollenarFestivoOficial('RevoluciÃ³n Mexicana', '11-20', '11-20')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">20 Nov</button>
                         <button type="button" onclick="autollenarFestivoOficial('Navidad', '12-25', '12-25')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">25 Dic</button>
-                        <button type="button" onclick="autollenarFestivoOficial('Año Nuevo', '01-01', '01-01')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 Ene</button>
-                        <button type="button" onclick="autollenarFestivoOficial('Día de la Constitución', '02-05', '02-05')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">5 Feb</button>
-                        <button type="button" onclick="autollenarFestivoOficial('Día del Trabajo', '05-01', '05-01')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 May</button>
+                        <button type="button" onclick="autollenarFestivoOficial('AÃ±o Nuevo', '01-01', '01-01')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 Ene</button>
+                        <button type="button" onclick="autollenarFestivoOficial('DÃ­a de la ConstituciÃ³n', '02-05', '02-05')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">5 Feb</button>
+                        <button type="button" onclick="autollenarFestivoOficial('DÃ­a del Trabajo', '05-01', '05-01')" class="px-2 py-0.5 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/30 text-[10px] text-emerald-300 rounded-md">1 May</button>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2.5">
@@ -2240,8 +2240,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Texto de Reanudación (Opcional)</label>
-                        <input type="text" id="nuevo-evento-reanudacion" placeholder="Ej: al día siguiente a primera hora / el próximo lunes" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-indigo-500">
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Texto de ReanudaciÃ³n (Opcional)</label>
+                        <input type="text" id="nuevo-evento-reanudacion" placeholder="Ej: al dÃ­a siguiente a primera hora / el prÃ³ximo lunes" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white outline-none focus:border-indigo-500">
                     </div>
 
                     <div class="pt-1 flex justify-end">
@@ -2263,7 +2263,7 @@
                     </div>
 
                     <div id="lista-eventos-ausencia-container" class="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        <!-- Renderizado dinámico desde app.js -->
+                        <!-- Renderizado dinÃ¡mico desde app.js -->
                         <div class="p-4 text-center text-xs text-slate-500">Cargando eventos...</div>
                     </div>
                 </div>
@@ -2283,7 +2283,7 @@
                     </div>
                     <div>
                         <h3 class="text-base font-bold text-white leading-snug">Lista de Contactos Ignorados</h3>
-                        <p class="text-xs text-slate-400">Números a los que el bot no les responde</p>
+                        <p class="text-xs text-slate-400">NÃºmeros a los que el bot no les responde</p>
                     </div>
                 </div>
                 <button onclick="cerrarModalIgnorados()" class="text-slate-400 hover:text-white transition">
@@ -2306,14 +2306,14 @@
             </div>
 
             <div class="pt-2 text-center">
-                <p class="text-[11px] text-slate-400">💡 También puedes enviar una tarjeta de contacto al grupo <b class="text-slate-200">[CONTROL-BOT]</b> para ignorarlo al instante.</p>
+                <p class="text-[11px] text-slate-400">ðŸ’¡ TambiÃ©n puedes enviar una tarjeta de contacto al grupo <b class="text-slate-200">[CONTROL-BOT]</b> para ignorarlo al instante.</p>
                 <button type="button" onclick="cerrarModalIgnorados()" class="mt-4 w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">Cerrar</button>
             </div>
         </div>
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL GESTIÓN DE ETIQUETAS DE CONTACTO -->
+    <!-- MODAL GESTIÃ“N DE ETIQUETAS DE CONTACTO -->
     <!-- ==================================================================== -->
     <div id="modal-etiquetas-contacto" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
@@ -2328,7 +2328,7 @@
             <p class="text-xs text-slate-400">Marca o desmarca las listas/etiquetas a las que pertenece <span id="modal-etiquetas-nombre-cliente" class="font-bold text-white"></span>:</p>
 
             <div id="modal-etiquetas-lista-check" class="space-y-2 max-h-60 overflow-y-auto p-1">
-                <!-- Dinámico -->
+                <!-- DinÃ¡mico -->
             </div>
 
             <div class="flex items-center space-x-2 pt-2 border-t border-slate-800">
@@ -2356,14 +2356,14 @@
                 <input type="hidden" id="input-etiqueta-id" value="">
                 <div>
                     <label class="block font-bold text-slate-300 uppercase mb-1">Nombre de la Etiqueta *</label>
-                    <input type="text" id="input-etiqueta-nombre" required placeholder="Ej: Vasectomía, Implante, Pedido..." class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                    <input type="text" id="input-etiqueta-nombre" required placeholder="Ej: VasectomÃ­a, Implante, Pedido..." class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
                 </div>
 
                 <div>
                     <label class="block font-bold text-slate-300 uppercase mb-2">Color Distintivo</label>
                     <div class="flex items-center space-x-3">
                         <input type="color" id="input-etiqueta-color" value="#10b981" class="w-10 h-10 rounded-xl border border-slate-800 bg-slate-950 cursor-pointer">
-                        <span class="text-xs text-slate-400">Color que identificará visualmente a este grupo</span>
+                        <span class="text-xs text-slate-400">Color que identificarÃ¡ visualmente a este grupo</span>
                     </div>
                 </div>
 
@@ -2393,7 +2393,7 @@
 
                 <div>
                     <label class="block font-bold text-slate-300 uppercase mb-1">Nombre Descriptivo de la Regla *</label>
-                    <input type="text" id="input-regla-nombre" required placeholder="Ej: Seguimiento 3 Meses Vasectomía / Encuesta 7 Días Post-Venta" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
+                    <input type="text" id="input-regla-nombre" required placeholder="Ej: Seguimiento 3 Meses VasectomÃ­a / Encuesta 7 DÃ­as Post-Venta" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2401,25 +2401,25 @@
                         <label class="block font-bold text-slate-300 uppercase mb-1">Aplica a Pacientes / Clientes con Etiqueta:</label>
                         <select id="select-regla-etiqueta" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
                             <option value="">(Aplica a Todos los Clientes)</option>
-                            <!-- Dinámico -->
+                            <!-- DinÃ¡mico -->
                         </select>
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-300 uppercase mb-1">Días de Espera Transcurridos *</label>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">DÃ­as de Espera Transcurridos *</label>
                         <input type="number" id="input-regla-dias" required value="90" min="1" max="730" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-bold text-slate-300 uppercase mb-1">Hora de Envío Diaria (Formato 24h)</label>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Hora de EnvÃ­o Diaria (Formato 24h)</label>
                         <input type="time" id="input-regla-hora" value="10:30" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-300 uppercase mb-1">Modo de Envío</label>
+                        <label class="block font-bold text-slate-300 uppercase mb-1">Modo de EnvÃ­o</label>
                         <select id="select-regla-modo" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
-                            <option value="automatico">Automático (Envío Seguro Diario)</option>
-                            <option value="manual_aprobacion">Manual (Aprobación con 1 Clic en Bandeja)</option>
+                            <option value="automatico">AutomÃ¡tico (EnvÃ­o Seguro Diario)</option>
+                            <option value="manual_aprobacion">Manual (AprobaciÃ³n con 1 Clic en Bandeja)</option>
                         </select>
                     </div>
                 </div>
@@ -2429,7 +2429,7 @@
                         <span>Plantilla del Mensaje de WhatsApp *</span>
                         <span class="text-[10px] text-amber-400 font-normal">Variables: {nombre}, {negocio}, {dias}</span>
                     </label>
-                    <textarea id="input-regla-plantilla" rows="3" required placeholder="🏥 Hola, *{nombre}*. Te saludamos de *{negocio}*. Han transcurrido {dias} días desde tu atención..." class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500 leading-relaxed"></textarea>
+                    <textarea id="input-regla-plantilla" rows="3" required placeholder="ðŸ¥ Hola, *{nombre}*. Te saludamos de *{negocio}*. Han transcurrido {dias} dÃ­as desde tu atenciÃ³n..." class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500 leading-relaxed"></textarea>
                 </div>
 
                 <div class="flex items-center space-x-3 pt-2">
@@ -2441,28 +2441,28 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL ENVIAR INFOGRAFÍAS Y FOTOGRAFÍAS -->
+    <!-- MODAL ENVIAR INFOGRAFÃAS Y FOTOGRAFÃAS -->
     <!-- ==================================================================== -->
     <div id="modal-infografias" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-image text-indigo-400"></i>
-                    <h3 class="font-bold text-white text-base">Enviar Infografía o Fotografía</h3>
+                    <h3 class="font-bold text-white text-base">Enviar InfografÃ­a o FotografÃ­a</h3>
                 </div>
                 <button onclick="cerrarModalInfografias()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <p class="text-xs text-slate-400">Selecciona la infografía o imagen que deseas enviar por WhatsApp a este cliente:</p>
+            <p class="text-xs text-slate-400">Selecciona la infografÃ­a o imagen que deseas enviar por WhatsApp a este cliente:</p>
 
             <div id="galeria-infografias-grid" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
-                <!-- Se rellena dinámicamente con JavaScript -->
+                <!-- Se rellena dinÃ¡micamente con JavaScript -->
             </div>
 
             <div class="pt-2 border-t border-slate-800 space-y-3 text-xs">
                 <div>
                     <label class="block font-semibold text-slate-300 mb-1">Pie de foto / Mensaje adjunto (opcional):</label>
-                    <input type="text" id="input-infografia-caption" placeholder="Ej: Te comparto la información detallada con los cuidados y requisitos ☺️" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
+                    <input type="text" id="input-infografia-caption" placeholder="Ej: Te comparto la informaciÃ³n detallada con los cuidados y requisitos â˜ºï¸" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
                 </div>
                 <div class="flex items-center justify-between">
                     <span id="label-infografia-seleccionada" class="text-xs text-indigo-300 font-medium">Ninguna imagen seleccionada</span>
@@ -2480,14 +2480,14 @@
 
     <!-- ==================================================================== -->
     <!-- ==================================================================== -->
-    <!-- MODAL ENLACES RÁPIDOS Y FORMULARIOS (MÍNIMO 4 ESPACIOS PERSONALIZABLES) -->
+    <!-- MODAL ENLACES RÃPIDOS Y FORMULARIOS (MÃNIMO 4 ESPACIOS PERSONALIZABLES) -->
     <!-- ==================================================================== -->
     <div id="modal-enlaces-rapidos" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-link text-emerald-400"></i>
-                    <h3 class="font-bold text-white text-base">Enlaces Rápidos y Formularios</h3>
+                    <h3 class="font-bold text-white text-base">Enlaces RÃ¡pidos y Formularios</h3>
                 </div>
                 <div class="flex items-center space-x-2">
                     <button onclick="abrirModalCrearEnlaceRapido()" class="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center space-x-1">
@@ -2501,13 +2501,13 @@
             <p class="text-xs text-slate-400">Haz clic en <b>Pegar</b> para insertar cualquier formulario o enlace en tu mensaje de WhatsApp, o edita las URLs para personalizarlas:</p>
 
             <div class="space-y-2.5 flex-1 overflow-y-auto p-1" id="lista-enlaces-sistema">
-                <!-- Se llena dinámicamente con JS -->
+                <!-- Se llena dinÃ¡micamente con JS -->
             </div>
 
             <div class="pt-3 border-t border-slate-800 space-y-2 text-xs">
                 <h4 class="font-bold text-slate-300 flex items-center space-x-1.5">
                     <i class="fa-solid fa-pen text-indigo-400"></i>
-                    <span>Pegar Enlace Temporal Único:</span>
+                    <span>Pegar Enlace Temporal Ãšnico:</span>
                 </h4>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="text" id="input-enlace-personalizado-desc" placeholder="Texto descriptivo (opcional)..." class="flex-1 px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500">
@@ -2521,7 +2521,7 @@
         </div>
     </div>
 
-    <!-- MODAL EDITAR / CREAR ENLACE RÁPIDO O FORMULARIO -->
+    <!-- MODAL EDITAR / CREAR ENLACE RÃPIDO O FORMULARIO -->
     <div id="modal-editar-enlace-rapido" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -2532,12 +2532,12 @@
             <form onsubmit="guardarEnlaceRapido(event)" class="space-y-3.5 text-xs">
                 <input type="hidden" id="input-enlace-id">
                 <div>
-                    <label class="block font-bold text-slate-300 mb-1">Título del Enlace o Formulario *</label>
-                    <input type="text" id="input-enlace-titulo" required placeholder="Ej: Formulario de Valoración Inicial" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
+                    <label class="block font-bold text-slate-300 mb-1">TÃ­tulo del Enlace o Formulario *</label>
+                    <input type="text" id="input-enlace-titulo" required placeholder="Ej: Formulario de ValoraciÃ³n Inicial" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-300 mb-1">Descripción breve (opcional)</label>
-                    <input type="text" id="input-enlace-desc" placeholder="Ej: Cuestionario previo para consulta de métodos" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
+                    <label class="block font-bold text-slate-300 mb-1">DescripciÃ³n breve (opcional)</label>
+                    <input type="text" id="input-enlace-desc" placeholder="Ej: Cuestionario previo para consulta de mÃ©todos" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Enlace / URL completa *</label>
@@ -2553,14 +2553,14 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL RESPUESTAS RÁPIDAS PREDETERMINADAS -->
+    <!-- MODAL RESPUESTAS RÃPIDAS PREDETERMINADAS -->
     <!-- ==================================================================== -->
     <div id="modal-respuestas-rapidas" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-bolt text-amber-400"></i>
-                    <h3 class="font-bold text-white text-base">Respuestas Rápidas</h3>
+                    <h3 class="font-bold text-white text-base">Respuestas RÃ¡pidas</h3>
                 </div>
                 <div class="flex items-center space-x-2">
                     <button onclick="abrirModalCrearRespuestaRapida()" class="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center space-x-1">
@@ -2574,7 +2574,7 @@
             <p class="text-xs text-slate-400">Haz clic en cualquier plantilla para pegarla en el mensaje o enviarla:</p>
 
             <div id="lista-respuestas-rapidas-container" class="flex-1 overflow-y-auto space-y-2.5 p-1">
-                <!-- Se llena dinámicamente con JS -->
+                <!-- Se llena dinÃ¡micamente con JS -->
             </div>
 
             <div class="pt-2 border-t border-slate-800 flex justify-end">
@@ -2584,18 +2584,18 @@
     </div>
 
     <!-- ==================================================================== -->
-    <!-- MODAL CREAR / EDITAR RESPUESTA RÁPIDA -->
+    <!-- MODAL CREAR / EDITAR RESPUESTA RÃPIDA -->
     <!-- ==================================================================== -->
     <div id="modal-crear-respuesta-rapida" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-white text-sm">Nueva Respuesta Rápida</h3>
+                <h3 class="font-bold text-white text-sm">Nueva Respuesta RÃ¡pida</h3>
                 <button onclick="cerrarModalCrearRespuestaRapida()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <form onsubmit="guardarNuevaRespuestaRapida(event)" class="space-y-3.5 text-xs">
                 <div>
-                    <label class="block font-bold text-slate-300 mb-1">Título Descriptivo *</label>
+                    <label class="block font-bold text-slate-300 mb-1">TÃ­tulo Descriptivo *</label>
                     <input type="text" id="input-resp-titulo" required placeholder="Ej: Requisitos de Consulta / Horarios" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-amber-500">
                 </div>
                 <div>
@@ -2616,6 +2616,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="/app_v23.js"></script>
+    <script src="/app_v24.js"></script>
 </body>
 </html>
+

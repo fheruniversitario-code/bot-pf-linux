@@ -3917,6 +3917,7 @@ async function guardarDatosDirectorio() {
         }
         
         document.getElementById('modal-directorio').classList.add('hidden');
+          alert('? Paciente guardado correctamente.');
         
         // Refrescar vistas
         if (currentTab === 'directorio') {
