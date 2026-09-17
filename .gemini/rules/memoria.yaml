@@ -1,0 +1,7 @@
+﻿name: Lectura de Memoria del Proyecto
+description: Regla para asegurar que Antigravity siempre lea el archivo MEMORIA.md antes de modificar cualquier código en este repositorio.
+trigger: "siempre que el usuario pida modificar, analizar o agregar funcionalidades al código"
+instructions: |
+  1. Antes de proponer cambios, escribir código o hacer tool calls para editar archivos, DEBES leer el archivo \docs/MEMORIA.md\ ubicado en la raíz del proyecto usando la herramienta \iew_file\.
+  2. Utiliza la información en \MEMORIA.md\ para comprender la arquitectura, las dependencias y los "comportamientos deseados" para no romper reglas de negocio previas (ej. manejo de pausas, estructura de la cascada de modelos).
+  3. Si durante la sesión realizas cambios arquitectónicos importantes, resuelves un bug complejo, o cambias una regla de negocio, DEBES actualizar \docs/MEMORIA.md\ para reflejar esos cambios.
