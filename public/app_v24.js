@@ -3625,7 +3625,7 @@ function aplicarFiltroCitas() {
             <td class="py-3 px-1 text-sm text-slate-300">
                 <div class="flex items-center space-x-2">
                     <span>${c.cliente_telefono || '-'}</span>
-                    ${c.cliente_telefono ? `<button onclick="cambiarTab('mensajes'); setTimeout(() => seleccionarChat('${c.cliente_telefono.replace(/\D/g, '')}@s.whatsapp.net', '${c.cliente_nombre || ''}', '${c.cliente_telefono}'), 300);" class="text-emerald-500 hover:text-emerald-400 transition transform hover:scale-110" title="Abrir Chat de WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></button>` : ''}
+                    ${c.cliente_telefono ? `<button onclick="cambiarTab('conversaciones'); setTimeout(() => seleccionarChat('${c.cliente_telefono.replace(/\D/g, '')}@s.whatsapp.net', '${c.cliente_nombre || ''}', '${c.cliente_telefono}'), 300);" class="text-emerald-500 hover:text-emerald-400 transition transform hover:scale-110" title="Abrir Chat de WhatsApp"><i class="fa-brands fa-whatsapp text-lg"></i></button>` : ''}
                 </div>
             </td>
             <td class="py-3 px-1 text-sm text-slate-300" style="text-transform: uppercase;">${c.servicio || '-'}</td>
