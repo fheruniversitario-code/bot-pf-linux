@@ -4015,7 +4015,7 @@ async function obtenerContenidoGoogleSheets(url) {
             ? `- Nombre del cliente: ${nomLimpioIA} (Usa su nombre de pila con naturalidad y calidez cuando sea oportuno).`
             : `- Nombre del cliente: No especificado (REGLA ESTRICTA: NO utilices n�meros, c�digos alfanum�ricos, tel�fonos, emojis ni identificadores para llamarlo o saludarlo; dir�gete a �l con calidez o ll�malo "estimado(a)").`;
 
-        const telDelContacto = (contacto && contacto.telefono && contacto.telefono.length >= 10 && !contacto.telefono.includes('@lid')) ? contacto.telefono.replace(/[^0-9]/g, '') : '';
+        const telDelContacto = (contactoPrevio && contactoPrevio.telefono && contactoPrevio.telefono.length >= 10 && !contactoPrevio.telefono.includes('@lid')) ? contactoPrevio.telefono.replace(/[^0-9]/g, '') : '';
         const instruccionTelefono = telDelContacto.length >= 10 && !telDelContacto.startsWith('2047')
             ? `\n- Tel�fono registrado del cliente: ${telDelContacto}. Ya cuentas con su tel�fono en tu base de datos, NO SE LO PIDAS para agendar citas. Usa este n�mero directo en la etiqueta.`
             : `\n- Tel�fono del cliente: No registrado en BD. Es obligatorio ped�rselo antes de agendar.`;
