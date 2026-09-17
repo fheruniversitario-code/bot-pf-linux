@@ -3696,7 +3696,7 @@ async function sincronizarConGoogle() {
         if(icon) icon.classList.remove('fa-spin');
         
         if (res.success) {
-            Swal.fire('Sincronizaci�n Completa', res.canceladas > 0 ? `Se limpiaron ${res.canceladas} cita(s) que hab�as borrado en Google Calendar.` : 'Tu agenda est� al d�a con Google Calendar.', 'success');
+            Swal.fire('Sincronización Completa', res.canceladas > 0 ? `Se limpiaron ${res.canceladas} cita(s) que habías borrado en Google Calendar.` : 'Tu agenda está al día con Google Calendar.', 'success');
             cargarAgendaCitas();
         } else {
             Swal.fire('Error', res.error || 'Error al sincronizar.', 'error');
