@@ -4543,7 +4543,7 @@ async function procesarSeguimientosAutomaticos() {
 }
 
 // Ejecutar worker cada 15 minutos
-setInterval(procesarSeguimientosAutomaticos, 15 * 60 * 1000);
+setInterval(procesarSeguimientosAutomaticos, 60 * 1000); // Revisi�n precisa cada minuto
 
 
 // --------------------------------------------------------------------------
