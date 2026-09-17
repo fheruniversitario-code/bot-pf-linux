@@ -1861,11 +1861,11 @@ function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
         return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención gratuita, presenta:\n• Copia de INE o identificación oficial con fotografía\n• Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
     }
 
-    return `${icono} 🏥 *¡Hola!* En este momento la red de servidores de Google AI está experimentando una saturación temporal de alta demanda (503).\n\n` +
+    return `${icono} 🏥 *¡Hola!* Por el momento mi sistema inteligente presenta una intermitencia temporal de conexión.\n\n` +
         `Para ayudarte de inmediato:\n` +
         `• Envía *Menú* para explorar todas nuestras opciones disponibles.\n` +
-        `• Envía *5* para solicitar atención personalizada con un asesor.\n\n` +
-        `_En breve el motor de IA responderá tus preguntas con total normalidad._ ✨`;
+        `• Escribe *asesor* o elige la opción 5 para solicitar atención personalizada.\n\n` +
+        `_Agradecemos tu comprensión._ ✨`;
 }
 
 async function obtenerModelosDisponibles(apiKey) {
