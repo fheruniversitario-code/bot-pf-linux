@@ -1563,7 +1563,8 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
         await runQuery(
             `UPDATE citas_agenda SET 
              fecha = ?, hora = ?, servicio = ?, notas = ?, 
-             google_event_id = ?, google_calendar_id = ?, hora_fin = ?, link_evento = ?
+             google_event_id = ?, google_calendar_id = ?, hora_fin = ?, link_evento = ?,
+             cliente_nombre = ?, cliente_telefono = ?
              WHERE id = ?`,
             [
                 fecha || citaVieja.fecha, 
@@ -1573,7 +1574,9 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
                 nuevoEvId || '', 
                 calIdConfig || '', 
                 nuevaHoraFin, 
-                nuevoLink || '', 
+                nuevoLink || '',
+                cliente_nombre || citaVieja.cliente_nombre,
+                cliente_telefono || citaVieja.cliente_telefono,
                 idCita
             ]
         );
