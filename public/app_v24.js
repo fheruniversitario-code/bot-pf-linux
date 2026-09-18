@@ -1012,17 +1012,30 @@ function abrirModalNuevaCita(cita = null) {
         document.getElementById('cita-telefono-input').value = cita.cliente_telefono || '';
         document.getElementById('cita-servicio-input').value = cita.servicio || '';
         document.getElementById('cita-fecha-input').value = cita.fecha || '';
-        document.getElementById('cita-hora-input').value = cita.hora || '';
+        
+        const selectHora = document.getElementById('cita-hora-input');
+        selectHora.innerHTML = '';
+        if (cita.hora) {
+            const opt = document.createElement('option');
+            opt.value = cita.hora;
+            opt.text = cita.hora;
+            selectHora.appendChild(opt);
+            selectHora.value = cita.hora;
+        }
+        cargarDisponibilidadCita();
+    
         document.getElementById('cita-notas-input').value = cita.notas || '';
         document.getElementById('cita-expediente-input').value = '';
-        document.getElementById('cita-duracion-input').value = '';
+        document.getElementById('cita-duracion-input').value = cita.duracion || '30';
     } else {
         citaEditandoId = null;
         document.querySelector('#modal-nueva-cita h3').innerText = 'Agendar Nueva Cita';
         document.getElementById('form-nueva-cita').reset();
     }
-    const dispContainer = document.getElementById('cita-disponibilidad-container');
-    if(dispContainer) dispContainer.classList.add('hidden');
+    if(!cita) {
+        document.getElementById('cita-hora-input').innerHTML = '<option value="">Selec. fecha...</option>';
+        document.getElementById('cita-duracion-input').value = '30';
+    }
     document.getElementById('modal-nueva-cita').classList.remove('hidden');
 }
 
@@ -4028,15 +4041,6 @@ function registrarCitaEnDirectorio(nombre, telefono) {
     abrirModalDirectorioCompleto('', nombre, telefono, '', '', '');
 }
 
-async function cargarDisponibilidadCita() {
-    const fecha = document.getElementById('cita-fecha-input').value;
-    const container = document.getElementById('cita-disponibilidad-container');
-    const slotsDiv = document.getElementById('cita-disponibilidad-slots');
-    
-    if (!fecha) {
-        container.classList.add('hidden');
-        return;
-    }
     
     container.classList.remove('hidden');
     slotsDiv.innerHTML = '<span class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Consultando agenda...</span>';
@@ -4067,5 +4071,53 @@ async function cargarDisponibilidadCita() {
         }
     } catch(e) {
         slotsDiv.innerHTML = '<span class="text-xs text-slate-500">Error al consultar horarios.</span>';
+    }
+}
+
+async function cargarDisponibilidadCita() {
+    const fecha = document.getElementById('cita-fecha-input').value;
+    const selectHora = document.getElementById('cita-hora-input');
+    
+    // Si estamos editando una cita, guardar su hora original para mantenerla en el dropdown
+    const horaActualSeleccionada = selectHora.value; 
+    
+    if (!fecha) {
+        selectHora.innerHTML = '<option value="">Selec. fecha...</option>';
+        return;
+    }
+    
+    selectHora.innerHTML = '<option value="">Cargando...</option>';
+    
+    try {
+        const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
+        selectHora.innerHTML = '<option value="">Selecciona una hora</option>';
+        
+        let foundCurrent = false;
+        if (res && res.success && res.disponibles && res.disponibles.length > 0) {
+            res.disponibles.forEach(slot => {
+                const opt = document.createElement('option');
+                opt.value = slot.horaTexto;
+                opt.text = slot.horaTexto;
+                selectHora.appendChild(opt);
+                if (horaActualSeleccionada === slot.horaTexto) foundCurrent = true;
+            });
+        }
+        
+        // Si est᭯s editando y la hora no vino en disponibles (porque la API la ve ocupada por ti mismo)
+        if (citaEditandoId && horaActualSeleccionada && horaActualSeleccionada !== 'Cargando...') {
+            if (!foundCurrent) {
+                const opt = document.createElement('option');
+                opt.value = horaActualSeleccionada;
+                opt.text = horaActualSeleccionada + ' (Actual)';
+                selectHora.appendChild(opt);
+            }
+            selectHora.value = horaActualSeleccionada;
+        } else if (res.disponibles && res.disponibles.length > 0) {
+            // No editando, auto-seleccionar nada o el primero
+        } else {
+            selectHora.innerHTML = '<option value="">No hay horarios libres</option>';
+        }
+    } catch(e) {
+        selectHora.innerHTML = '<option value="">Error al cargar</option>';
     }
 }
