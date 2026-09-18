@@ -2525,9 +2525,9 @@ app.post('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
         const reanudacionFinal = reanudacion_texto || `al concluir ${titulo}`;
 
         let googleEventId = null;
-        const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
         
-        if (configAgendaActivo) {
+        // Dependencia de modulo_agenda_activo eliminada
+        if (true) {
             const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
             const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
             const tz = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
@@ -2570,8 +2570,8 @@ app.delete('/api/bot/eventos-ausencia/:id', autenticarToken, async (req, res) =>
         const ev = await getQuery("SELECT * FROM eventos_ausencia WHERE id = ?", [req.params.id]);
         if (ev && ev.google_event_id) {
             try {
-                const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
-                if (configAgendaActivo) {
+                // Dependencia de modulo_agenda_activo eliminada
+                if (true) {
                     const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
                     const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
                     if (calId && creds) {
