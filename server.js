@@ -1458,27 +1458,25 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
         if (moduloActivo && calIdConfig && credsConfig) {
-            try {
-                const resGoogle = await calendarService.crearCita({
-                    calendarId: calIdConfig,
-                    credentials: credsConfig,
-                    nombre: cliente_nombre || 'Cliente',
-                    telefono: cliente_telefono || '',
-                    fecha,
-                    hora,
-                    duracionMinutos: isNaN(parseInt(duracionCita)) ? 30 : parseInt(duracionCita),
-                    servicio: servicio || 'Consulta General',
-                    notas: notas || '',
-                    timezone
-                });
-                if (resGoogle.success) {
-                    googleEventId = resGoogle.eventId;
-                    googleCalendarId = calIdConfig;
-                    horaFin = resGoogle.horaFin;
-                    linkEvento = resGoogle.htmlLink || '';
-                }
-            } catch (errG) {
-                console.warn("âš ï¸ No se pudo sincronizar cita con Google Calendar:", errG.message);
+            const resGoogle = await calendarService.crearCita({
+                calendarId: calIdConfig,
+                credentials: credsConfig,
+                nombre: cliente_nombre || 'Cliente',
+                telefono: cliente_telefono || '',
+                fecha,
+                hora,
+                duracionMinutos: isNaN(parseInt(duracionCita)) ? 30 : parseInt(duracionCita),
+                servicio: servicio || 'Consulta General',
+                notas: notas || '',
+                timezone
+            });
+            if (resGoogle.success) {
+                googleEventId = resGoogle.eventId;
+                googleCalendarId = calIdConfig;
+                horaFin = resGoogle.horaFin;
+                linkEvento = resGoogle.htmlLink || '';
+            } else {
+                return res.status(500).json({ error: "Error de Google Calendar al crear cita: " + (resGoogle.error || "Fallo desconocido") });
             }
         }
 
