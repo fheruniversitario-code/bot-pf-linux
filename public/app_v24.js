@@ -1071,7 +1071,7 @@ async function guardarNuevaCita(e) {
         const endpoint = citaEditandoId ? `/api/citas/${citaEditandoId}` : '/api/citas';
         const method = citaEditandoId ? 'PUT' : 'POST';
 
-        await apiFetch(endpoint, {
+        const resData = await apiFetch(endpoint, {
             method: method,
             body: JSON.stringify({
                 cliente_nombre,
@@ -1085,6 +1085,7 @@ async function guardarNuevaCita(e) {
                 origen_jid: window.citaOrigenJid
             })
         });
+        if (resData && resData.error) throw new Error(resData.error);
 
         alert(citaEditandoId ? "Cita actualizada con �xito!" : "Cita agendada con �xito!");
         cerrarModalNuevaCita();

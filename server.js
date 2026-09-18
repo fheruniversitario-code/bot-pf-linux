@@ -2527,29 +2527,32 @@ app.post('/api/bot/eventos-ausencia', autenticarToken, async (req, res) => {
         const reanudacionFinal = reanudacion_texto || `al concluir ${titulo}`;
 
         let googleEventId = null;
-        try {
-            const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
-            if (configAgendaActivo) {
-                const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
-                const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
-                const tz = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
-                if (calId && creds) {
-                    const bloqRes = await calendarService.crearBloqueoAusencia({
-                        calendarId: calId,
-                        credentials: creds,
-                        titulo: titulo.trim(),
-                        tipo: tipoFinal,
-                        fechaInicio: fecha_inicio,
-                        fechaFin: fechaFinFinal,
-                        timezone: tz
-                    });
-                    if (bloqRes && bloqRes.success) {
-                        googleEventId = bloqRes.eventId;
-                    }
+        const configAgendaActivo = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'modulo_agenda_activo'"))?.valor === '1';
+        
+        if (configAgendaActivo) {
+            const calId = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_calendar_id'"))?.valor;
+            const creds = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'google_service_account_json'"))?.valor;
+            const tz = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+            
+            if (calId && creds) {
+                const bloqRes = await calendarService.crearBloqueoAusencia({
+                    calendarId: calId,
+                    credentials: creds,
+                    titulo: titulo.trim(),
+                    tipo: tipoFinal,
+                    fechaInicio: fecha_inicio,
+                    fechaFin: fechaFinFinal,
+                    timezone: tz
+                });
+                
+                if (bloqRes && bloqRes.success) {
+                    googleEventId = bloqRes.eventId;
+                } else if (bloqRes && !bloqRes.success) {
+                    return res.status(500).json({ error: "Error de Google Calendar: " + (bloqRes.error || "Fallo desconocido") });
                 }
+            } else {
+                return res.status(400).json({ error: "Faltan credenciales de Google Calendar en configuración (ID de calendario o JSON de cuenta de servicio)." });
             }
-        } catch (eG) {
-            console.error("âš ï¸ Error creando bloqueo en Google Calendar:", eG.message);
         }
 
         const resultado = await runQuery(`
