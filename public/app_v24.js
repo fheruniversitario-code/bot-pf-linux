@@ -1021,6 +1021,8 @@ function abrirModalNuevaCita(cita = null) {
         document.querySelector('#modal-nueva-cita h3').innerText = 'Agendar Nueva Cita';
         document.getElementById('form-nueva-cita').reset();
     }
+    const dispContainer = document.getElementById('cita-disponibilidad-container');
+    if(dispContainer) dispContainer.classList.add('hidden');
     document.getElementById('modal-nueva-cita').classList.remove('hidden');
 }
 
@@ -4024,4 +4026,46 @@ async function importarCSVDirectorio(event) {
 
 function registrarCitaEnDirectorio(nombre, telefono) {
     abrirModalDirectorioCompleto('', nombre, telefono, '', '', '');
+}
+
+async function cargarDisponibilidadCita() {
+    const fecha = document.getElementById('cita-fecha-input').value;
+    const container = document.getElementById('cita-disponibilidad-container');
+    const slotsDiv = document.getElementById('cita-disponibilidad-slots');
+    
+    if (!fecha) {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    slotsDiv.innerHTML = '<span class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Consultando agenda...</span>';
+    
+    try {
+        const res = await apiFetch('/api/agenda/disponibilidad?fecha=' + fecha);
+        if (res && res.success && res.disponibles && res.disponibles.length > 0) {
+            slotsDiv.innerHTML = '';
+            res.disponibles.forEach(slot => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 rounded-lg text-xs font-semibold transition';
+                btn.innerText = slot.horaTexto;
+                btn.onclick = () => {
+                    document.getElementById('cita-hora-input').value = slot.horaTexto;
+                    // highlight selected
+                    Array.from(slotsDiv.children).forEach(c => {
+                        c.classList.remove('bg-indigo-600', 'text-white');
+                        c.classList.add('bg-indigo-600/20', 'text-indigo-300');
+                    });
+                    btn.classList.remove('bg-indigo-600/20', 'text-indigo-300');
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                };
+                slotsDiv.appendChild(btn);
+            });
+        } else {
+            slotsDiv.innerHTML = '<span class="text-xs text-rose-400">No hay horarios disponibles para esta fecha.</span>';
+        }
+    } catch(e) {
+        slotsDiv.innerHTML = '<span class="text-xs text-slate-500">Error al consultar horarios.</span>';
+    }
 }
