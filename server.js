@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -4621,9 +4621,11 @@ let ultimoMinutoRecordatorio = -1;
 
 setInterval(async () => {
     try {
+        const timezoneNegocio = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
+        
         const ahora = new Date();
-        const minActual = ahora.getMinutes();
-        const strHoraActual = String(ahora.getHours()).padStart(2, '0') + ':' + String(minActual).padStart(2, '0');
+        const strHoraActual = ahora.toLocaleTimeString('en-GB', { timeZone: timezoneNegocio, hour: '2-digit', minute: '2-digit' });
+        const minActual = parseInt(strHoraActual.split(':')[1]);
         
         // Evitar que se ejecute varias veces en el mismo minuto
         if (ultimoMinutoRecordatorio === minActual) return;
@@ -4638,7 +4640,7 @@ setInterval(async () => {
         
         const configTexto = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'recordatorios_texto'"))?.valor || 'Hola {nombre}, te recordamos tu cita hoy a las {hora} para {servicio}.';
         
-        const hoyIso = ahora.toISOString().split('T')[0];
+        const hoyIso = ahora.toLocaleDateString('en-CA', { timeZone: timezoneNegocio });
         
         const citasDeHoy = await allQuery("SELECT * FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada' AND (recordatorio_enviado = 0 OR recordatorio_enviado IS NULL) AND cliente_telefono != ''", [hoyIso]);
         
