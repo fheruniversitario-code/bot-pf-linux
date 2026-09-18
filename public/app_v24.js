@@ -3615,7 +3615,7 @@ function aplicarFiltroCitas() {
         tr.className = 'hover:bg-slate-800/30 transition border-b border-slate-800/50 ' + (esHoy ? 'bg-slate-800/20' : '');
         tr.innerHTML = `
             <td class="py-3 px-1">
-                <div class="font-bold text-slate-200">${c.fecha}</div>
+                <div class="font-bold text-slate-200">${c.fecha ? c.fecha.split('-').reverse().join('/') : ''}</div>
                 <div class="text-xs text-indigo-400 font-semibold">${c.hora} ${c.duracion ? '('+c.duracion+'m)' : ''}</div>
             </td>
             <td class="py-3 px-1">

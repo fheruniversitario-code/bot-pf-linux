@@ -1490,6 +1490,26 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
         if (origen_jid && cliente_telefono) {
             await runQuery("UPDATE contactos SET telefono = ?, nombre = ? WHERE jid = ?", [cliente_telefono.replace(/[^0-9]/g, ''), cliente_nombre, origen_jid]);
         }
+        
+        let destinatarioJid = origen_jid;
+        if (!destinatarioJid && cliente_telefono) {
+            destinatarioJid = `${cliente_telefono.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+        }
+        
+        if (destinatarioJid && typeof client !== 'undefined' && client && typeof client.sendMessage === 'function') {
+            const botNombre = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'nombre_negocio'"))?.valor || 'Nosotros';
+            const msgConfirmacion = `¡Hola ${cliente_nombre}! 👋\n\nTu cita ha sido programada con éxito.\n\n📅 Fecha: ${fecha.split('-').reverse().join('/')}\n⏰ Hora: ${hora}\n⚕️ Servicio: ${servicio || 'Consulta'}\n\nTe esperamos en ${botNombre}.`;
+            try {
+                await client.sendMessage(destinatarioJid, msgConfirmacion);
+                await runQuery(
+                    `INSERT INTO mensajes (conversacion_id, texto, remitente, sender_name, timestamp) VALUES ((SELECT id FROM conversaciones WHERE jid = ?), ?, 'bot', 'Bot / Sistema', ?)`,
+                    [destinatarioJid, msgConfirmacion, Date.now()]
+                );
+            } catch (err) {
+                console.warn("No se pudo enviar mensaje de confirmación por WhatsApp:", err.message);
+            }
+        }
+
 
         io.emit('cita_actualizada');
         res.json({ id: result.id, success: true, googleEventId, linkEvento });
