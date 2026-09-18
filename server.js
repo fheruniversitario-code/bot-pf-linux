@@ -1526,6 +1526,7 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
 app.put('/api/citas/:id', autenticarToken, async (req, res) => {
     try {
         const idCita = req.params.id;
+        let mensajeAdvertenciaGoogle = '';
         const { fecha, hora, duracion, servicio, notas, cliente_nombre, cliente_telefono } = req.body;
         const citaVieja = await getQuery("SELECT * FROM citas_agenda WHERE id = ?", [idCita]);
         if (!citaVieja) return res.status(404).json({ error: "Cita no encontrada" });
@@ -1622,6 +1623,7 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
 app.delete('/api/citas/:id', autenticarToken, async (req, res) => {
     try {
         const idCita = req.params.id;
+        let mensajeAdvertenciaGoogle = '';
         const cita = await getQuery("SELECT * FROM citas_agenda WHERE id = ?", [idCita]);
         if (!cita) {
             return res.status(404).json({ error: "Cita no encontrada" });
@@ -1639,13 +1641,14 @@ app.delete('/api/citas/:id', autenticarToken, async (req, res) => {
                     });
                 } catch (eCal) {
                     console.warn("Aviso al cancelar evento en Google Calendar:", eCal.message);
+                    mensajeAdvertenciaGoogle = " Aviso: No se pudo eliminar de Google Calendar, por favor bórrala manualmente allá.";
                 }
             }
         }
 
         await runQuery("UPDATE citas_agenda SET estado = 'Cancelada' WHERE id = ?", [idCita]);
         io.emit('cita_actualizada');
-        res.json({ success: true, message: "Cita cancelada con éxito" });
+        res.json({ success: true, message: 'Cita cancelada en el panel.' + mensajeAdvertenciaGoogle });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
