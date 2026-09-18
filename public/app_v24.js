@@ -12,7 +12,7 @@ let chatActivoJid = null;
 let currentTab = 'ventas';
 let listaEtiquetasMem = [];
 let listaConversacionesMem = [];
-let filtroEtiquetaActiva = 'todas';
+let filtroEtiquetaActiva = 'todías';
 let listaReglasSeguimientoMem = [];
 
 // ------------------------------------------------------------------------------
@@ -1094,7 +1094,7 @@ async function guardarNuevaCita(e) {
             const fechaFormat = fecha.split('-').reverse().join('/');
             const horaTexto = document.getElementById('cita-hora-input').value;
             const nom = cliente_nombre;
-            const msjConfirmacion = `??? *Cita Agendada*\nHola ${nom}, tu cita ha quedado programada para el d�a *${fechaFormat}* a las *${horaTexto}*.\n\nNos vemos pronto, cualquier duda estamos a tus �rdenes.`;
+            const msjConfirmacion = `📅 *Cita Agendada*\nHola ${nom}, tu cita ha quedado programada para el d�a *${fechaFormat}* a las *${horaTexto}*.\n\nNos vemos pronto, cualquier duda estamos a tus �órdenes.`;
             
             fetch(`/api/conversaciones/${encodeURIComponent(window._citaChatJid)}/enviar`, {
                 method: 'POST',
