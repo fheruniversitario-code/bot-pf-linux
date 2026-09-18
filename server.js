@@ -1912,24 +1912,24 @@ function generarRespuestaEmergencia(textoUsuario, config, estadoHorario) {
     const negocio = config.nombre_negocio || 'nuestro establecimiento';
 
     if (txt.includes('donde') || txt.includes('dónde') || txt.includes('ubicacion') || txt.includes('ubicación') || txt.includes('direccion') || txt.includes('dirección') || txt.includes('llegar')) {
-        let resp = `${icono} ðŸ“ *UBICACIÓN DE ${negocio.toUpperCase()}*\n\n${config.ubicacion_direccion || 'Consulta con nuestro personal para indicaciones exactas.'}`;
+        let resp = `${icono} 📍 *UBICACIÓN DE ${negocio.toUpperCase()}*\n\n${config.ubicacion_direccion || 'Consulta con nuestro personal para indicaciones exactas.'}`;
         if (config.ubicacion_maps_link) resp += `\n\nðŸ—ºï¸ *Ver en Google Maps:*\n${config.ubicacion_maps_link}`;
         return resp;
     }
 
     if (txt.includes('horario') || txt.includes('hora') || txt.includes('abren') || txt.includes('cierran') || txt.includes('atienden') || txt.includes('dias') || txt.includes('días')) {
-        return `${icono} â° *HORARIOS DE ATENCIÓN*\n\n${config.horario_sucursal_fisica || 'Lunes a Viernes en horario de atención habitual.'}`;
+        return `${icono} ⏰ *HORARIOS DE ATENCIÓN*\n\n${config.horario_sucursal_fisica || 'Lunes a Viernes en horario de atención habitual.'}`;
     }
 
     if (txt.includes('costo') || txt.includes('precio') || txt.includes('cobran') || txt.includes('gratis') || txt.includes('pagar')) {
-        let resp = `${icono} ðŸ’° *INFORMACIÓN DE COSTOS / SERVICIOS*\n\n`;
+        let resp = `${icono} 💰 *INFORMACIÓN DE COSTOS / SERVICIOS*\n\n`;
         if (config.catalogo_servicios) resp += `${config.catalogo_servicios}\n\n`;
         if (config.datos_bancarios) resp += `ðŸ’³ *Métodos de pago:* ${config.datos_bancarios}`;
         return resp.trim();
     }
 
     if (txt.includes('requisito') || txt.includes('papel') || txt.includes('documento') || txt.includes('ine') || txt.includes('curp')) {
-        return `${icono} ðŸ“‹ *REQUISITOS GENERALES*\n\nPara tu atención gratuita, presenta:\nâ€¢ Copia de INE o identificación oficial con fotografía\nâ€¢ Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
+        return `${icono} 📋 *REQUISITOS GENERALES*\n\nPara tu atención gratuita, presenta:\nâ€¢ Copia de INE o identificación oficial con fotografía\nâ€¢ Copia de CURP\n\n_Para mayores informes acude en nuestro horario de atención o escribe *5* para solicitar un asesor._`;
     }
 
     return `${icono} ðŸ¥ *¡Hola!* Por el momento mi sistema inteligente presenta una intermitencia temporal de conexión.\n\n` +
@@ -3014,7 +3014,7 @@ function limpiarNombreParaSaludo(nombre) {
 
             const sent = await client.sendMessage(remitente, 
                 `✅ *¡ADMINISTRADOR VINCULADO CON ÉXITO!*\n\n` +
-                `ðŸ‘¤ *Usuario validado:* ${adminUser.username}\n` +
+                `👤 *Usuario validado:* ${adminUser.username}\n` +
                 `ðŸ“± *Tu identificador registrado:* ${remitenteNum}\n\n` +
                 `Tu chat ahora cuenta con *permisos totales de administrador* en este bot.\n\n` +
                 `ðŸ“Œ *Comandos disponibles listos para usar:*\n` +
@@ -3263,14 +3263,14 @@ function limpiarNombreParaSaludo(nombre) {
 
             if (textoLower === '!pendientes' || textoLower === '!resumen') {
                 const ultimos = await allQuery("SELECT nombre, pushname, telefono, jid, ultimo_contacto FROM contactos WHERE es_ignorado = 0 AND telefono NOT LIKE '1660%' AND jid NOT LIKE '%@lid' ORDER BY ultimo_contacto DESC LIMIT 10");
-                let rep = `ðŸ“‹ *REPORTE DE CONTACTOS RECIENTES (${ultimos.length}):*\n\n`;
+                let rep = `📋 *REPORTE DE CONTACTOS RECIENTES (${ultimos.length}):*\n\n`;
                 if (ultimos.length === 0) {
                     rep += `_Aún no hay clientes recientes registrados (los registros de prueba se han limpiado)._\n`;
                 } else {
                     ultimos.forEach((u, i) => {
                         const nom = u.nombre !== 'Cliente' ? u.nombre : (u.pushname || 'Cliente');
                         const telLimpio = u.telefono && !u.telefono.startsWith('1660') ? u.telefono : u.jid.replace(/[^0-9]/g, '');
-                        rep += `${i + 1}ï¸âƒ£ ðŸ‘¤ *${nom}*\n   ðŸ“± +${telLimpio}\n`;
+                        rep += `${i + 1}ï¸âƒ£ 👤 *${nom}*\n   ðŸ“± +${telLimpio}\n`;
                     });
                 }
                 rep += `\n_ðŸ’¡ Puedes abrir sus chats en WhatsApp Web para dar seguimiento personal._`;
@@ -3289,10 +3289,10 @@ function limpiarNombreParaSaludo(nombre) {
                     "ðŸŒ´ `!vacaciones [mensaje/fecha]` -> Activa modo receso vacacional.\n" +
                     "ðŸ§ª `!probar` (o `!prueba`) -> Activa Modo Prueba (el bot te responde como cliente).\n" +
                     "ðŸ›¡ï¸ `!probar off` -> Desactiva Modo Prueba.\n" +
-                    "ðŸ“‹ `!menu` -> Muestra el menú numérico interactivo.\n" +
+                    "📋 `!menu` -> Muestra el menú numérico interactivo.\n" +
                     "ðŸš« `!ignorar 4111234567` -> Agrega a la lista de ignorados.\n" +
                     "✅ `!atender 4111234567` -> Remueve de ignorados.\n" +
-                    "ðŸ“‹ `!resumen` -> Lista los últimos clientes atendidos.\n" +
+                    "📋 `!resumen` -> Lista los últimos clientes atendidos.\n" +
                     "ðŸ›¡ï¸ `!auditoria` -> Diagnóstico del servidor, memoria RAM y salud del bot.\n" +
                     "ðŸ”‘ `!admin [contraseña]` -> Vincular tu WhatsApp como Administrador."
                 );
@@ -3313,13 +3313,13 @@ function limpiarNombreParaSaludo(nombre) {
                     if (menuRaw) {
                         const menuOpts = JSON.parse(menuRaw);
                         menuOpts.forEach(o => {
-                            textoMenu += `${o.opcion}ï¸âƒ£ *${o.titulo}*\n`;
+                            textoMenu += `${o.opcion}️⃣ *${o.titulo}*\n`;
                         });
                     } else {
-                        textoMenu += `1ï¸âƒ£ ðŸ“‹ *Catálogo / Servicios*\n2ï¸âƒ£ ðŸ’° *Precios y promociones*\n3ï¸âƒ£ â° *Horarios de atención*\n4ï¸âƒ£ ðŸ“ *Ubicación / Envíos*\n5ï¸âƒ£ ðŸ‘¤ *Solicitar Asesor / Hacer pedido*\n`;
+                        textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
                     }
                 } catch(e) {
-                    textoMenu += `1ï¸âƒ£ ðŸ“‹ *Catálogo / Servicios*\n2ï¸âƒ£ ðŸ’° *Precios y promociones*\n3ï¸âƒ£ â° *Horarios de atención*\n4ï¸âƒ£ ðŸ“ *Ubicación / Envíos*\n5ï¸âƒ£ ðŸ‘¤ *Solicitar Asesor / Hacer pedido*\n`;
+                    textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
                 }
                 textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 
@@ -3446,11 +3446,11 @@ function limpiarNombreParaSaludo(nombre) {
                     const nombreLimpio = nombreContacto && nombreContacto !== 'Cliente' ? nombreContacto : (pushname || 'Cliente / Cliente');
 
                     const alertaMsg = `🚨 *ALERTA OMNIBOT - PALABRA CLAVE DETECTADA* 🚨\n\n` +
-                        `ðŸ‘¤ *Cliente / Cliente:* ${nombreLimpio}\n` +
+                        `👤 *Cliente / Cliente:* ${nombreLimpio}\n` +
                         `ðŸ“± *WhatsApp:* +${telLimpio}\n` +
                         `ðŸ”‘ *Palabra detectada:* *"${palabraEncontrada.toUpperCase()}"*\n` +
                         `ðŸ’¬ *Mensaje recibido:*\n"${texto}"\n\n` +
-                        `â° *Fecha:* ${obtenerFechaHoraLocal()}\n` +
+                        `⏰ *Fecha:* ${obtenerFechaHoraLocal()}\n` +
                         `ðŸ‘‰ _Puedes responderle directamente abriendo su conversación en WhatsApp o en el Panel._`;
 
                     // 1. Enviar a Números Administradores y LIDs vinculados
@@ -3567,7 +3567,7 @@ function limpiarNombreParaSaludo(nombre) {
             }
         } else if (!estadoHorario.enHorario) {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. âœï¸✅\n\n` +
-                `â° *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
+                `⏰ *Fuera de horario de atención en línea:* He dejado tu solicitud registrada. Nuestro personal te responderá por este chat **${estadoHorario.proximoTexto}**.\n\n` +
                 `_Mientras tanto, el asistente virtual se mantiene activo 24/7 por si deseas consultar nuestros servicios, requisitos o disponibilidad._`;
         } else {
             msjConfirmado = `${iconoAsistente ? iconoAsistente + ' ' : ''}¡Muchas gracias, *${nombreLimpio}*! Tu registro y aviso de privacidad han sido confirmados con éxito. âœï¸✅\n\n` +
@@ -3638,13 +3638,13 @@ function limpiarNombreParaSaludo(nombre) {
             if (menuRaw) {
                 const menuOpts = JSON.parse(menuRaw);
                 menuOpts.forEach(o => {
-                    textoMenu += `${o.opcion}ï¸âƒ£ *${o.titulo}*\n`;
+                    textoMenu += `${o.opcion}️⃣ *${o.titulo}*\n`;
                 });
             } else {
-                textoMenu += `1ï¸âƒ£ ðŸ“‹ *Catálogo / Servicios*\n2ï¸âƒ£ ðŸ’° *Precios y promociones*\n3ï¸âƒ£ â° *Horarios de atención*\n4ï¸âƒ£ ðŸ“ *Ubicación / Envíos*\n5ï¸âƒ£ ðŸ‘¤ *Solicitar Asesor / Hacer pedido*\n`;
+                textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
             }
         } catch(e) {
-            textoMenu += `1ï¸âƒ£ ðŸ“‹ *Catálogo / Servicios*\n2ï¸âƒ£ ðŸ’° *Precios y promociones*\n3ï¸âƒ£ â° *Horarios de atención*\n4ï¸âƒ£ ðŸ“ *Ubicación / Envíos*\n5ï¸âƒ£ ðŸ‘¤ *Solicitar Asesor / Hacer pedido*\n`;
+            textoMenu += `1️⃣ 📋 *Catálogo / Servicios*\n2️⃣ 💰 *Precios y promociones*\n3️⃣ ⏰ *Horarios de atención*\n4️⃣ 📍 *Ubicación / Envíos*\n5️⃣ 👤 *Solicitar Asesor / Hacer pedido*\n`;
         }
         textoMenu += `\n_Escribe el número de la opción o tu pregunta libremente y con gusto te responderé._`;
 
@@ -3724,7 +3724,7 @@ function limpiarNombreParaSaludo(nombre) {
                     `ðŸ’¬ *¡El asistente virtual sigue 100% activo 24/7!* Con gusto puedo resolver cualquier duda sobre el catálogo, productos o precios.`;
             }
         } else if (!estadoHorario.enHorario) {
-            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}â° *Fuera de Horario de Atención en Línea:*\n` +
+            msjTransferido = `${iconoAsistente ? iconoAsistente + ' ' : ''}⏰ *Fuera de Horario de Atención en Línea:*\n` +
                 `${saludoPersonal} Nuestro horario de atención en línea es: ${horarioAtencionFinal || 'en nuestro horario habitual'}.\n\n` +
                 `ðŸ•’ Tu solicitud ha quedado registrada. Nuestro equipo te responderá y atenderá **${estadoHorario.proximoTexto}**.`;
         } else {
@@ -3735,7 +3735,7 @@ function limpiarNombreParaSaludo(nombre) {
 
         // Si el cliente aún no tiene su nombre registrado o no ha llenado el formulario de privacidad:
         if (!nombreContacto || nombreContacto === 'Cliente' || nombreContacto.startsWith('Cliente (+')) {
-            msjTransferido += `\n\nðŸ“‹ *Para agilizar tu turno al reanudar:* Si aún no has llenado tu registro previo, por favor completa este enlace:\nðŸ‘‰ ${enlacePrivacidad}\n\nâœï¸ Y escríbenos aquí tu *Nombre Completo* para apartar tu lugar en la lista.`;
+            msjTransferido += `\n\n📋 *Para agilizar tu turno al reanudar:* Si aún no has llenado tu registro previo, por favor completa este enlace:\nðŸ‘‰ ${enlacePrivacidad}\n\nâœï¸ Y escríbenos aquí tu *Nombre Completo* para apartar tu lugar en la lista.`;
             chatsEsperandoNombre.set(remitente, Date.now());
         }
 
@@ -4761,7 +4761,7 @@ client.on('message_create', async (msg) => {
             (iconoConf && cuerpoMsg.startsWith(iconoConf)) ||
             cuerpoMsg.startsWith('🤖') ||
             cuerpoMsg.startsWith('ðŸ‘¨â€âš•ï¸') ||
-            cuerpoMsg.startsWith('ðŸ‘¤') ||
+            cuerpoMsg.startsWith('👤') ||
             cuerpoMsg.startsWith('ðŸ¥') ||
             cuerpoMsg.startsWith('ðŸ›ï¸') ||
             cuerpoMsg.startsWith('👋') ||
@@ -4774,10 +4774,10 @@ client.on('message_create', async (msg) => {
             cuerpoMsg.startsWith('ðŸ›¡ï¸') ||
             cuerpoMsg.startsWith('ðŸ–¼ï¸') ||
             cuerpoMsg.startsWith('ðŸŽ™ï¸') ||
-            cuerpoMsg.startsWith('ðŸ“‹') ||
+            cuerpoMsg.startsWith('📋') ||
             cuerpoMsg.startsWith('ðŸŽ‰') ||
             cuerpoMsg.startsWith('ðŸ“Œ') ||
-            cuerpoMsg.startsWith('â°') ||
+            cuerpoMsg.startsWith('⏰') ||
             cuerpoMsg.startsWith('âš ï¸') ||
             cuerpoMsg.startsWith('🗓ï¸') ||
             cuerpoMsg.startsWith('ðŸ’¬') ||
