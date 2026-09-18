@@ -3713,7 +3713,10 @@ async function sincronizarConGoogle() {
         estaSincronizandoGoogle = false;
         
         if (res.success) {
-            Swal.fire('Sincronización Completa', res.canceladas > 0 ? `Se limpiaron ${res.canceladas} cita(s) que habías borrado en Google Calendar.` : 'Tu agenda está al día con Google Calendar.', 'success');
+            let msg = 'Tu agenda está al día con Google Calendar.';
+            if (res.subidas > 0) msg += `\n- Se subieron ${res.subidas} cita(s) faltantes a Google.`;
+            if (res.canceladas > 0) msg += `\n- Se limpiaron ${res.canceladas} cita(s) canceladas.`;
+            Swal.fire('Sincronización Completa', msg, 'success');
             cargarAgendaCitas();
         } else {
             Swal.fire('Error', res.error || 'Error al sincronizar.', 'error');
