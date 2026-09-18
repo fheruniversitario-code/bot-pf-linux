@@ -1449,6 +1449,12 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
         const pad = (num) => String(num).padStart(2, '0');
         let horaFin = `${pad(Math.floor(totalMinFin / 60))}:${pad(totalMinFin % 60)}`;
 
+        // Check overlap
+        const empalme = await getQuery(`SELECT * FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada' AND hora < ? AND hora_fin > ? LIMIT 1`, [fecha, horaFin, hora]);
+        if (empalme) {
+            return res.status(400).json({ error: `Ya existe una cita en ese horario (${empalme.hora} - ${empalme.hora_fin}). Por favor elige otra hora.` });
+        }
+
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
         if (moduloActivo && calIdConfig && credsConfig) {
@@ -1554,6 +1560,13 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
         const totalMinFin = hIni * 60 + mIni + duracionCita;
         const pad = (num) => String(num).padStart(2, '0');
         let nuevaHoraFin = `${pad(Math.floor(totalMinFin / 60))}:${pad(totalMinFin % 60)}`;
+
+        // Check overlap
+        const horaCheck = hora || citaVieja.hora;
+        const empalmePut = await getQuery(`SELECT * FROM citas_agenda WHERE fecha = ? AND estado != 'Cancelada' AND id != ? AND hora < ? AND hora_fin > ? LIMIT 1`, [fecha || citaVieja.fecha, idCita, nuevaHoraFin, horaCheck]);
+        if (empalmePut) {
+            return res.status(400).json({ error: `Ya existe una cita en ese horario (${empalmePut.hora} - ${empalmePut.hora_fin}). Por favor elige otra hora.` });
+        }
 
         let nuevoEvId = '';
         let nuevoLink = '';

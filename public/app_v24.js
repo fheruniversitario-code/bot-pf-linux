@@ -1076,9 +1076,9 @@ async function guardarNuevaCita(e) {
         cargarAgendaCitas();
         
         if (window._citaDesdeChat && window._citaChatJid) {
-            const fechaFormat = data.fecha.split('-').reverse().join('/');
+            const fechaFormat = fecha.split('-').reverse().join('/');
             const horaTexto = document.getElementById('cita-hora-input').value;
-            const nom = data.nombre;
+            const nom = cliente_nombre;
             const msjConfirmacion = `??? *Cita Agendada*\nHola ${nom}, tu cita ha quedado programada para el d�a *${fechaFormat}* a las *${horaTexto}*.\n\nNos vemos pronto, cualquier duda estamos a tus �rdenes.`;
             
             fetch(`/api/conversaciones/${encodeURIComponent(window._citaChatJid)}/enviar`, {
