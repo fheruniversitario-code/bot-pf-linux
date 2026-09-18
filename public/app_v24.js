@@ -4065,10 +4065,10 @@ async function cargarDisponibilidadCita() {
         if (res && res.success && res.disponibles && res.disponibles.length > 0) {
             res.disponibles.forEach(slot => {
                 const opt = document.createElement('option');
-                opt.value = slot.horaTexto;
+                opt.value = slot.hora;
                 opt.text = slot.horaTexto;
                 selectHora.appendChild(opt);
-                if (horaActualSeleccionada === slot.horaTexto) foundCurrent = true;
+                if (horaActualSeleccionada === slot.hora) foundCurrent = true;
             });
         }
         
