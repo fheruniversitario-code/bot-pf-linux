@@ -1457,7 +1457,7 @@ app.post('/api/citas', autenticarToken, async (req, res) => {
 
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
-        if (moduloActivo && calIdConfig && credsConfig) {
+        if (calIdConfig && credsConfig) {
             const resGoogle = await calendarService.crearCita({
                 calendarId: calIdConfig,
                 credentials: credsConfig,
@@ -1571,7 +1571,7 @@ app.put('/api/citas/:id', autenticarToken, async (req, res) => {
         const timezone = (await getQuery("SELECT valor FROM configuracion WHERE clave = 'timezone'"))?.valor || 'America/Mexico_City';
 
         // 3. Crear nuevo evento
-        if (moduloActivo && calIdConfig && credsConfig) {
+        if (calIdConfig && credsConfig) {
             const resGoogle = await calendarService.crearCita({
                 calendarId: calIdConfig,
                 credentials: credsConfig,
