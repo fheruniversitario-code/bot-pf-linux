@@ -3435,8 +3435,11 @@ async function inyectarDisponibilidadChat(event) {
              alert('No hay horarios disponibles para el ' + fecha + '.');
              return;
         }
+        const fechaObj = new Date(fecha + 'T12:00:00');
+        const dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+        const diaSemana = dias[fechaObj.getDay()];
         const fechaFormat = fecha.split('-').reverse().join('/');
-        let texto = '📅 Para el ' + fechaFormat + ' tenemos estos horarios:\n\n';
+        let texto = '📅 Para el ' + diaSemana + ' ' + fechaFormat + ' tenemos estos horarios:\n\n';
         res.disponibles.forEach(h => { texto += '  🕓 ' + h.horaTexto + '\n'; });
         texto += '\n✅ A que hora te anoto?';
         inputTexto.value = (inputTexto.value ? inputTexto.value + '\n\n' : '') + texto;
