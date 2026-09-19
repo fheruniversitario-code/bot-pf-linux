@@ -11,7 +11,7 @@
     <div class="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-indigo-950/50">
         <!-- Logo & Titulo con Icono Moderno de Agente IA -->
         <div class="flex flex-col items-center mb-8">
-            <div class="w-16 h-16 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-4 transform hover:scale-105 transition duration-300">
+            <div id="logo-container" class="w-16 h-16 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-4 transform hover:scale-105 transition duration-300 overflow-hidden relative">
                 <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                     <circle cx="12" cy="12" r="4" fill="currentColor" class="text-white opacity-40"/>
@@ -54,6 +54,24 @@
     </div>
 
     <script>
+        
+        // Cargar logo de Linktree dinamicamente
+        async function cargarLogo() {
+            try {
+                const res = await fetch('/api/linktree');
+                if(res.ok) {
+                    const data = await res.json();
+                    if(data.logo_url) {
+                        const container = document.getElementById('logo-container');
+                        container.innerHTML = `<img src="${data.logo_url}" alt="Logo" class="w-full h-full object-cover">`;
+                        // Opcional: Actualizar el titulo si tambien se desea
+                        // document.querySelector('h1').textContent = data.titulo || 'OmniBot AI Agent';
+                    }
+                }
+            } catch(e) {}
+        }
+        cargarLogo();
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnSubmit');
