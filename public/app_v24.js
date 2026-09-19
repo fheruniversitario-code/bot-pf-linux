@@ -4096,3 +4096,26 @@ async function cargarDisponibilidadCita() {
         selectHora.innerHTML = '<option value="">Error al cargar</option>';
     }
 }
+
+
+// ==============================================================================
+// 12. CERRAR SESION Y TIMEOUT DE INACTIVIDAD
+// ==============================================================================
+window.cerrarSesion = function() {
+    localStorage.removeItem('omnibot_token');
+    localStorage.removeItem('omnibot_user');
+    window.location.href = '/login.html';
+};
+
+let inactividadTimeout;
+function resetInactividad() {
+    clearTimeout(inactividadTimeout);
+    // 3 horas de inactividad
+    inactividadTimeout = setTimeout(window.cerrarSesion, 3 * 60 * 60 * 1000);
+}
+
+['mousemove', 'keypress', 'click', 'scroll', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, resetInactividad, { passive: true });
+});
+
+resetInactividad();
