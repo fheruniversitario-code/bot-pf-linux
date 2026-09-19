@@ -2900,11 +2900,21 @@ function limpiarNombreParaSaludo(nombre) {
         if (contact) {
             let nRaw = contact.name || contact.pushname || 'Cliente';
             if (nRaw.toLowerCase().includes('usuario desconocido')) nRaw = 'Cliente';
-            nombreContacto = nRaw;
-            pushname = contact.pushname || '';
-            if (contact.number && !contact.number.startsWith('1660') && contact.number.length >= 10) {
+            
+            // HEURISTICA INTELIGENTE PARA @lid: Si el nombre proporcionado por WhatsApp es un telefono, extraerlo
+            const isPhoneNumberName = /^[\+\d\s\-]{10,25}$/.test(nRaw.trim());
+            if (isPhoneNumberName) {
+                let extractedNumber = nRaw.replace(/[^0-9]/g, '');
+                if (extractedNumber.length >= 10) {
+                    telefonoReal = extractedNumber;
+                    nRaw = 'Cliente'; // Resetear a Cliente para no tener un telefono guardado como nombre
+                }
+            } else if (contact.number && !contact.number.startsWith('1660') && contact.number.length >= 10) {
                 telefonoReal = contact.number;
             }
+            
+            nombreContacto = nRaw;
+            pushname = contact.pushname || '';
         }
     } catch (e) {}
 
@@ -4905,6 +4915,20 @@ inicializarBD().then(async () => {
         await runQuery("UPDATE contactos SET telefono = '' WHERE jid LIKE '%@lid' AND LENGTH(telefono) > 12");
         await runQuery("UPDATE contactos SET nombre = CASE WHEN pushname != '' THEN pushname ELSE 'Cliente' END WHERE nombre LIKE 'Cliente (+%' AND (jid LIKE '%@lid' OR LENGTH(telefono) > 12)");
         await runQuery("DELETE FROM contactos_etiquetas WHERE jid = '0@s.whatsapp.net'");
+
+        // 7. Rescatar telefonos reales atorados en el campo 'nombre' de LIDs
+        try {
+            const contactosLid = await allQuery("SELECT jid, nombre FROM contactos WHERE jid LIKE '%@lid' AND nombre LIKE '+%'");
+            for (const c of contactosLid) {
+                const isPhoneNumberName = /^[\+\d\s\-]{10,25}$/.test(c.nombre.trim());
+                if (isPhoneNumberName) {
+                    let extractedNumber = c.nombre.replace(/[^0-9]/g, '');
+                    if (extractedNumber.length >= 10) {
+                        await runQuery("UPDATE contactos SET telefono = ?, nombre = 'Cliente' WHERE jid = ?", [extractedNumber, c.jid]);
+                    }
+                }
+            }
+        } catch(e) {}
         console.log("🧹 [DB-CLEAN] Limpieza integral de BD completada: sin notificaciones, sin códigos base64 y chats ordenados canónicamente.");
     } catch (eClean) {
         console.error("Error en auto-limpieza BD:", eClean.message);
